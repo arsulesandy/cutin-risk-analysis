@@ -1,0 +1,9 @@
+name: indicator_comparison
+dataset: highd
+indicators:
+  - ttc
+  - headway
+  - brakedemand
+  - safe_gap
+outputs:
+  artifacts_dir: outputs/runs/latest

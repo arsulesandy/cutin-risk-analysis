@@ -1,0 +1,7 @@
+name: cutin_detection
+dataset: highd
+parameters:
+  window_seconds: 20
+  min_speed_mps: 0.1
+outputs:
+  artifacts_dir: outputs/runs/latest

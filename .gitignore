@@ -201,7 +201,17 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Project data and outputs
+data/raw/
+data/interim/
+data/processed/
+outputs/runs/
+outputs/figures/
+outputs/tables/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+data/.DS_Store
+/.idea

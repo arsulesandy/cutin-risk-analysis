@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Cut-in Risk Analysis"
+version: "0.0.0"
+doi: ""
+authors:
+  - family-names: "TODO"
+    given-names: "Author"
+date-released: "2024-01-01"
