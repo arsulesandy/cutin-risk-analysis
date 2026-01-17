@@ -1,6 +1,0 @@
-name: ngsim
-description: "Placeholder configuration for the NGSIM dataset"
-paths:
-  raw: data/raw/ngsim
-  interim: data/interim/ngsim
-  processed: data/processed/ngsim

@@ -1,6 +1,0 @@
-name: exid
-description: "Placeholder configuration for the ExiD dataset"
-paths:
-  raw: data/raw/exid
-  interim: data/interim/exid
-  processed: data/processed/exid
