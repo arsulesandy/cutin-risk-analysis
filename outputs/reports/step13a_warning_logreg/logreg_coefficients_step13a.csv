@@ -1,0 +1,6 @@
+feature,coef
+decision_lat_v,0.31481797294669406
+decision_speed_delta,0.20331804624323757
+decision_acc_delta,0.20022556040160575
+decision_lat_v_x_speed_delta,0.11317464586092518
+decision_dy_abs,0.05976529016958251

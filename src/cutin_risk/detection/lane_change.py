@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 """
-Lane-change detection based on laneId transitions.
+Lane-change detection based on discrete lane transitions.
 
-This module provides a baseline, reproducible lane-change segmentation strategy:
-a lane change is defined as a transition from a stable lane block (from_lane)
-to a stable lane block (to_lane).
+A lane change is defined as a transition from a stable lane block (from_lane)
+to a stable lane block (to_lane). Stability is enforced by requiring a minimum
+number of consecutive frames in each lane.
 
-The implementation intentionally avoids using lateral position (y) in this baseline.
-A refined version can be added later for more precise boundary-crossing timing.
+The lane column is configurable via LaneChangeOptions.lane_col, allowing this
+detector to run on:
+  - dataset-provided lane IDs (e.g., "laneId")
+  - reconstructed/inferred lane indices (e.g., "laneIndex_xy")
 """
 
 from dataclasses import dataclass
+
+import numpy as np
 import pandas as pd
 
 from .events import LaneChangeEvent
@@ -28,94 +32,91 @@ class LaneChangeOptions:
 
     ignore_lane_ids:
       Lane ids that are treated as invalid/unknown (transitions involving these are skipped).
+
+    lane_col:
+      Column used to represent lane membership (e.g., "laneId" or "laneIndex_xy").
     """
     min_stable_before_frames: int = 25  # 1 second at 25 Hz
     min_stable_after_frames: int = 25   # 1 second at 25 Hz
     ignore_lane_ids: tuple[int, ...] = (0,)
+    lane_col: str = "laneId"
+
+    id_col: str = "id"
+    frame_col: str = "frame"
+    time_col: str = "time"
 
 
 def detect_lane_changes(df: pd.DataFrame, *, options: LaneChangeOptions | None = None) -> list[LaneChangeEvent]:
     """
-    Detect lane changes based on laneId transitions per vehicle.
+    Detect lane changes based on lane transitions per vehicle.
 
     Requirements:
-      - df contains columns: id, frame, time, laneId
-      - df is sorted by (id, frame)
+      - df contains columns: id, frame, time, <lane_col>
+      - each vehicle's rows must be orderable by frame (we sort within each vehicle)
     """
     options = options or LaneChangeOptions()
 
-    required = {"id", "frame", "time", "laneId"}
+    required = {options.id_col, options.frame_col, options.time_col, options.lane_col}
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"detect_lane_changes missing required columns: {sorted(missing)}")
 
-    def is_ignored(lane_id: int) -> bool:
-        return int(lane_id) in options.ignore_lane_ids
-
+    ignore_set = {int(x) for x in options.ignore_lane_ids}
     events: list[LaneChangeEvent] = []
 
-    for vid, g in df.groupby("id", sort=False):
-        lane = g["laneId"].to_numpy()
-        frames = g["frame"].to_numpy()
-        times = g["time"].to_numpy()
+    for vid, g in df.groupby(options.id_col, sort=False):
+        # Ensure temporal order even if upstream data isn't strictly sorted.
+        g = g.sort_values(options.frame_col, kind="mergesort")
 
-        n = len(lane)
-        if n < (options.min_stable_before_frames + options.min_stable_after_frames + 2):
+        lane = g[options.lane_col].fillna(0).astype(int).to_numpy()
+        frames = g[options.frame_col].to_numpy(dtype=int)
+        times = g[options.time_col].to_numpy(dtype=float)
+
+        n = lane.size
+        if n < 2:
             continue
 
-        i = 0
-        while i < n - 1:
-            cur_lane = int(lane[i])
-            nxt_lane = int(lane[i + 1])
+        # Identify constant-lane runs (run-length encoding).
+        change_mask = lane[1:] != lane[:-1]
+        if not np.any(change_mask):
+            continue  # vehicle never changes lane
 
-            # No change
-            if cur_lane == nxt_lane:
-                i += 1
+        run_starts = np.concatenate(([0], np.nonzero(change_mask)[0] + 1))
+        run_ends = np.concatenate((run_starts[1:] - 1, [n - 1]))
+        run_lanes = lane[run_starts]
+        run_lengths = run_ends - run_starts + 1
+
+        # Lane-change candidates are boundaries between run k-1 and run k
+        for k in range(1, len(run_starts)):
+            from_lane = int(run_lanes[k - 1])
+            to_lane = int(run_lanes[k])
+
+            if from_lane == to_lane:
+                continue
+            if from_lane in ignore_set or to_lane in ignore_set:
                 continue
 
-            # Skip transitions involving ignored lane ids
-            if is_ignored(cur_lane) or is_ignored(nxt_lane):
-                i += 1
+            before_len = int(run_lengths[k - 1])
+            after_len = int(run_lengths[k])
+
+            if before_len < options.min_stable_before_frames:
+                continue
+            if after_len < options.min_stable_after_frames:
                 continue
 
-            from_lane = cur_lane
-            to_lane = nxt_lane
+            start_idx = int(run_starts[k])  # first frame in target lane
+            end_idx = int(run_ends[k])      # last frame in that stable target-lane block
 
-            # ---- stability BEFORE: count how long we have been in from_lane ending at i ----
-            k = i
-            while k >= 0 and int(lane[k]) == from_lane:
-                k -= 1
-            stable_before_len = i - k  # number of from_lane frames ending at i
-
-            if stable_before_len < options.min_stable_before_frames:
-                i += 1
-                continue
-
-            # Transition starts at first frame in the target lane
-            start_idx = i + 1
-
-            # ---- stability AFTER: count how long we remain in to_lane starting at start_idx ----
-            j = start_idx
-            while j < n and int(lane[j]) == to_lane:
-                j += 1
-            stable_after_len = j - start_idx
-
-            if stable_after_len >= options.min_stable_after_frames:
-                end_idx = j - 1
-
-                events.append(
-                    LaneChangeEvent(
-                        vehicle_id=int(vid),
-                        from_lane=from_lane,
-                        to_lane=to_lane,
-                        start_frame=int(frames[start_idx]),
-                        end_frame=int(frames[end_idx]),
-                        start_time=float(times[start_idx]),
-                        end_time=float(times[end_idx]),
-                    )
+            events.append(
+                LaneChangeEvent(
+                    vehicle_id=int(vid),
+                    from_lane=from_lane,
+                    to_lane=to_lane,
+                    start_frame=int(frames[start_idx]),
+                    end_frame=int(frames[end_idx]),
+                    start_time=float(times[start_idx]),
+                    end_time=float(times[end_idx]),
                 )
-
-            # Continue after the stable block in the target lane
-            i = j
+            )
 
     return events
