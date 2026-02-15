@@ -29,8 +29,8 @@ def main() -> None:
     for (a, b), c in counts.most_common(10):
         print(f"  {a} -> {b}: {c}")
 
-    print("\nFirst 10 events:")
-    for e in events[:10]:
+    print("\nAll lane change events:")
+    for e in events:
         print(e)
 
 

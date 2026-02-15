@@ -66,7 +66,7 @@ def main() -> None:
     for rid in recordings:
         cmd = [
             sys.executable,
-            "scripts/stage_features.py",
+            "scripts/step08_stage_features.py",
             "--dataset-root",
             args.dataset_root,
             "--recording-id",

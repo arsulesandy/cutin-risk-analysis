@@ -47,8 +47,8 @@ def main() -> None:
         print("  median:", int(stats.median(durations)))
         print("  max:", max(durations))
 
-    print("\nFirst 10 cut-ins:")
-    for e in cutins[:10]:
+    print("\nAll lane cut-ins:")
+    for e in cutins:
         print(e)
 
 
