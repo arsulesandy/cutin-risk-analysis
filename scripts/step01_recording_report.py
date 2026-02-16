@@ -27,7 +27,7 @@ def process_recording(root: Path, rec_id: str) -> bool:
         )
 
         stats = compute_basic_stats(df)
-        logger.info("== Report for recording %s ==", rec.recording_id)
+        logger.info("Step 01: Report for recording %s", rec.recording_id)
         logger.info("Rows: %d", stats.rows)
         logger.info("Vehicles: %d", stats.vehicles)
         logger.info("Time range: %.2fs .. %.2fs", stats.time_min, stats.time_max)

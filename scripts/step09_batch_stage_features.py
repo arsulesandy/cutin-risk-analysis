@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-from typing import Iterable
-
-import pandas as pd
-
 import subprocess
 import sys
+from pathlib import Path
+
+import pandas as pd
 
 
 def parse_recordings_arg(value: str) -> list[str]:
@@ -32,7 +30,7 @@ def main() -> None:
     parser.add_argument(
         "--recordings",
         type=str,
-        default="01",
+        default="1-10",
         help="Examples: '01', '01,02,03', '1-10', or 'all'",
     )
     parser.add_argument(
@@ -111,7 +109,8 @@ def main() -> None:
         merged.groupby("recording_id")
         .agg(
             cutins=("cutter_id", "count"),
-            ttc_finite=("ttc_min_total", lambda s: pd.to_numeric(s, errors="coerce").replace([float("inf")], pd.NA).notna().sum()),
+            ttc_finite=("ttc_min_total",
+                        lambda s: pd.to_numeric(s, errors="coerce").replace([float("inf")], pd.NA).notna().sum()),
             exec_thw_median=("execution_thw_min", "median"),
         )
         .reset_index()

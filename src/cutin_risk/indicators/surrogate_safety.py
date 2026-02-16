@@ -4,9 +4,9 @@ from __future__ import annotations
 Surrogate safety indicators for leader–follower vehicle pairs.
 
 Indicators implemented:
-- DHW: distance headway (gap) [m]
-- THW: time headway [s]
-- TTC: time-to-collision [s] (classic closing-speed definition)
+- DHW: distance headway (gap) [m] - bumper-to-bumper gap in meters
+- THW: time headway [s] - gap divided by follower speed (seconds)
+- TTC: time-to-collision [s] (classic closing-speed definition) - gap divided by closing speed when follower is faster (seconds)
 
 This module focuses on longitudinal interaction only.
 """

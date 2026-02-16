@@ -19,7 +19,7 @@ def main() -> None:
     )
 
 
-    print("== Lane Change Report ==")
+    print("Step 02: Lane Change Report")
     print("Recording:", rec.recording_id)
     print("Vehicles:", df["id"].nunique())
     print("Lane change events:", len(events))

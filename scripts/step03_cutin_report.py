@@ -27,7 +27,7 @@ def main() -> None:
         options=CutInOptions(search_window_frames=50, min_relation_frames=10),
     )
 
-    print("== Cut-in Report ==")
+    print("Step 03: Cut-in Report")
     print("Recording:", rec.recording_id)
     print("Vehicles:", df["id"].nunique())
     print("Lane changes:", len(lane_changes))

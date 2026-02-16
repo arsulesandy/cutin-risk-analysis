@@ -113,8 +113,8 @@ def main() -> None:
     # Sort by min TTC (risky first)
     event_summaries.sort(key=lambda r: r["ttc_min"])
 
-    print("\nTop 10 by minimum TTC (smaller = more critical):")
-    for r in event_summaries[:10]:
+    print("\nAll events by minimum TTC (smaller = more critical):")
+    for r in event_summaries:
         print(r)
 
     ttc_vals = [r["ttc_min"] for r in event_summaries if math.isfinite(r["ttc_min"])]

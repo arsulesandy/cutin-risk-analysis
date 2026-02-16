@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 import argparse
-import math
-from pathlib import Path
 import statistics as stats
+from pathlib import Path
 
 import pandas as pd
-
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
-from cutin_risk.reconstruction.neighbors import reconstruct_same_lane_neighbors
-from cutin_risk.detection.lane_change import detect_lane_changes, LaneChangeOptions
 from cutin_risk.detection.cutin import detect_cutins, CutInOptions
+from cutin_risk.detection.lane_change import detect_lane_changes, LaneChangeOptions
+from cutin_risk.reconstruction.neighbors import reconstruct_same_lane_neighbors
 
 
 def _norm_neighbor(s: pd.Series, *, no_neighbor_ids: tuple[int, ...] = (0, -1)) -> pd.Series:
@@ -105,7 +103,7 @@ def _match_cutins(true_events, pred_events, *, frame_tolerance: int = 10) -> dic
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Step 6: reconstruct neighbors from geometry and evaluate vs highD.")
-    parser.add_argument("--dataset-root", type=str, default="data/raw/highD-dataset-v1.0/data")
+    parser.add_argument("--dataset-root", type=str, default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/data/raw/highD-dataset-v1.0/data")
     parser.add_argument("--recording-id", type=str, default="01")
     parser.add_argument("--frame-tolerance", type=int, default=10)
     parser.add_argument("--mismatch-examples", type=int, default=10)
@@ -136,8 +134,10 @@ def main() -> None:
     print(_accuracy(truth_fol, pred_fol))
 
     # Show a few mismatches to understand edge cases
-    mism_pre = df.loc[truth_pre != pred_pre, ["frame", "id", "laneId", "drivingDirection", "x", "precedingId", "precedingId_xy"]]
-    mism_fol = df.loc[truth_fol != pred_fol, ["frame", "id", "laneId", "drivingDirection", "x", "followingId", "followingId_xy"]]
+    mism_pre = df.loc[
+        truth_pre != pred_pre, ["frame", "id", "laneId", "drivingDirection", "x", "precedingId", "precedingId_xy"]]
+    mism_fol = df.loc[
+        truth_fol != pred_fol, ["frame", "id", "laneId", "drivingDirection", "x", "followingId", "followingId_xy"]]
 
     print(f"\nprecedingId mismatches: {len(mism_pre)}")
     if len(mism_pre) > 0:
