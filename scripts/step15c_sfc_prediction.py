@@ -145,7 +145,7 @@ def main() -> None:
     ap.add_argument("--threshold-strategy", choices=["fixed", "train_opt"], default="train_opt")
     ap.add_argument("--fixed-threshold", type=float, default=0.5)
 
-    ap.add_argument("--out-dir", default="outputs/reports/step15c_sfc_prediction")
+    ap.add_argument("--out-dir", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step15c_sfc_prediction")
     args = ap.parse_args()
 
     input_csv = Path(args.input_csv)

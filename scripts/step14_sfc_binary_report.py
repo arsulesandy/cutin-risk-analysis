@@ -35,8 +35,8 @@ def plot_grid(g: np.ndarray, title: str, out: Path) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--codes-csv", required=True)
-    ap.add_argument("--out-dir", default="outputs/reports/step14_sfc_binary_report")
+    ap.add_argument("--codes-csv", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step14_sfc_binary/sfc_binary_codes_long_hilbert.csv")
+    ap.add_argument("--out-dir", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step14_sfc_binary_report")
     args = ap.parse_args()
 
     codes_csv = Path(args.codes_csv)

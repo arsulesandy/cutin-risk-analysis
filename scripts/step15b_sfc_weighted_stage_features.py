@@ -64,7 +64,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Step 15B: Weighted SFC stage features (distance or TTC).")
     ap.add_argument("--events-csv", default="outputs/reports/step9_batch/cutin_stage_features_merged.csv")
     ap.add_argument("--dataset-root", default="data/raw/highD-dataset-v1.0/data")
-    ap.add_argument("--out-dir", default="outputs/reports/step15b_sfc_weighted")
+    ap.add_argument("--out-dir", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step15b_sfc_weighted")
 
     ap.add_argument("--mode", choices=["distance", "ttc"], default="distance")
     ap.add_argument("--order", choices=["hilbert", "morton"], default="hilbert")

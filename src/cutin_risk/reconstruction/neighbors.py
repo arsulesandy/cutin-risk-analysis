@@ -57,25 +57,7 @@ def reconstruct_same_lane_neighbors(
     """
     options = options or NeighborReconstructionOptions()
 
-    required = {
-        options.id_col,
-        options.frame_col,
-        options.lane_col,
-        options.driving_direction_col,
-        options.x_col,
-    }
-    missing = required - set(df.columns)
-    if missing:
-        raise ValueError(f"reconstruct_same_lane_neighbors missing columns: {sorted(missing)}")
-
-    # Determine sign per drivingDirection so "forward travel" always increases s.
-    if direction_sign_map is None:
-        if options.x_velocity_col not in df.columns:
-            raise ValueError(
-                f"direction_sign_map not provided and '{options.x_velocity_col}' is missing; "
-                "need xVelocity to infer travel direction sign."
-            )
-        direction_sign_map = infer_direction_sign_map(df)
+    direction_sign_map = infer_direction_sign_map(df)
 
     # Output initialized to "no neighbor" everywhere.
     out = pd.DataFrame(index=df.index)

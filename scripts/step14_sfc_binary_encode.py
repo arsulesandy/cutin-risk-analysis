@@ -66,9 +66,9 @@ def stage_ranges(t0: int, fr: int, *, pre4: int, pre2: int, post2: int) -> list[
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Step 14: Binary SFC encoding for cut-in events.")
-    ap.add_argument("--merged-csv", default="outputs/reports/step9_batch/cutin_stage_features_merged.csv")
+    ap.add_argument("--merged-csv", default="/outputs/reports/step9_batch/cutin_stage_features_merged.csv")
     ap.add_argument("--dataset-root", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/data/raw/highD-dataset-v1.0/data")
-    ap.add_argument("--out-dir", default="outputs/reports/step14_sfc_binary")
+    ap.add_argument("--out-dir", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step14_sfc_binary")
     ap.add_argument("--risk-thw", type=float, default=0.70)
 
     ap.add_argument("--sfc-order", choices=["hilbert", "morton"], default="hilbert")

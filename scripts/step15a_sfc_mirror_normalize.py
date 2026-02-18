@@ -41,7 +41,7 @@ def main() -> None:
         help="Canonical lane-change direction. If 'positive', mirror events where (to-from)<0.",
     )
 
-    ap.add_argument("--out-dir", default="outputs/reports/step15a_sfc_mirror")
+    ap.add_argument("--out-dir", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step15a_sfc_mirror")
     args = ap.parse_args()
 
     codes_csv = Path(args.codes_csv)
