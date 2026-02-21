@@ -20,6 +20,10 @@ def create_args():
                         help='Static meta data file for the whole video')
     parser.add_argument('--pickle_path', default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/data/raw/highD-dataset-v1.0/data/01.pickle", type=str,
                         help='Converted pickle file that contains corresponding information of the "input_path" file')
+    parser.add_argument('--sfc_codes_csv',
+                        default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step14_sfc_binary/sfc_binary_codes_long_hilbert.csv",
+                        type=str,
+                        help='Optional CSV containing per-frame SFC binary codes used to print decoded 3x3 matrices.')
     # --- Settings ---
     parser.add_argument('--visualize', default=True, type=lambda x: (str(x).lower() == 'true'),
                         help='True if you want to visualize the data.')

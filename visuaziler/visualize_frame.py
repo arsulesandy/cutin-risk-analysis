@@ -1,5 +1,9 @@
 import os
+import re
+from collections import defaultdict
+
 import matplotlib as mpl
+import pandas as pd
 
 mpl.rcParams['savefig.dpi'] = 300
 import matplotlib.pyplot as plt
@@ -10,6 +14,13 @@ from matplotlib.widgets import Button, Slider
 
 
 class VisualizationPlot(object):
+    HILBERT_BIT_LAYOUT = (
+        (0, 1, 14, 15),
+        (3, 2, 13, 12),
+        (4, 7, 8, 11),
+        (5, 6, 9, 10),
+    )
+
     def __init__(self, arguments, read_tracks, static_info, meta_dictionary, fig=None):
         self.arguments = arguments
         self.tracks = read_tracks
@@ -21,15 +32,37 @@ class VisualizationPlot(object):
         self.changed_button = False
         self.rect_map = {}
         self.plotted_objects = []
+        self.sfc_codes_by_frame = self._load_sfc_codes_by_frame(
+            arguments.get("sfc_codes_csv"),
+            arguments.get("input_path"),
+        )
+        self.road_bottom = 0.40
+        self.road_top = 0.99
+        self.info_bottom = 0.14
+        self.info_height = 0.23
 
         # Create figure and axes
         if fig is None:
             self.fig, self.ax = plt.subplots(1, 1)
-            self.fig.set_size_inches(32, 4)
-            plt.subplots_adjust(left=0.0, right=1.0, bottom=0.20, top=1.0)
+            self.fig.set_size_inches(32, 6)
         else:
             self.fig = fig
             self.ax = self.fig.gca()
+        self.ax.set_position([0.0, self.road_bottom, 1.0, self.road_top - self.road_bottom])
+
+        self.ax_sfc_info = self.fig.add_axes([0.02, self.info_bottom, 0.96, self.info_height])
+        self.ax_sfc_info.set_axis_off()
+        self.sfc_info_text = self.ax_sfc_info.text(
+            0.0,
+            1.0,
+            "",
+            transform=self.ax_sfc_info.transAxes,
+            ha="left",
+            va="top",
+            fontsize=9,
+            fontfamily="monospace",
+            color="black",
+        )
 
         # Check whether to use the given background image or to use the virtual created lanes
         background_image_path = arguments["background_image"]
@@ -269,6 +302,95 @@ class VisualizationPlot(object):
                 # Save the plotted objects in a list
         self.fig.canvas.mpl_connect('pick_event', self.on_click)
         self.plotted_objects = plotted_objects
+        self._update_sfc_matrix_overlay()
+
+    @staticmethod
+    def _infer_recording_id(track_csv_path):
+        if not track_csv_path:
+            return None
+        file_name = os.path.basename(track_csv_path)
+        match = re.match(r"^(\d+)_tracks\.csv$", file_name)
+        if match is None:
+            return None
+        return int(match.group(1))
+
+    def _load_sfc_codes_by_frame(self, sfc_codes_csv, track_csv_path):
+        if not sfc_codes_csv or not os.path.exists(sfc_codes_csv):
+            return {}
+
+        usecols = ["event_id", "recording_id", "cutter_id", "stage", "frame", "code", "code_hex"]
+        try:
+            df = pd.read_csv(sfc_codes_csv, usecols=usecols)
+        except Exception:
+            return {}
+
+        if "frame" not in df.columns or "code" not in df.columns:
+            return {}
+
+        recording_id = self._infer_recording_id(track_csv_path)
+        if recording_id is not None and "recording_id" in df.columns:
+            rec_values = pd.to_numeric(df["recording_id"], errors="coerce")
+            df = df[rec_values == recording_id]
+
+        df = df.copy()
+        df["frame"] = pd.to_numeric(df["frame"], errors="coerce")
+        df["code"] = pd.to_numeric(df["code"], errors="coerce")
+        df = df.dropna(subset=["frame", "code"])
+        if df.empty:
+            return {}
+
+        df["frame"] = df["frame"].astype(int)
+        df["code"] = df["code"].astype(int)
+
+        codes_by_frame = defaultdict(list)
+        for row in df.itertuples(index=False):
+            code_hex_value = getattr(row, "code_hex", None)
+            if pd.isna(code_hex_value):
+                code_hex_value = "{:04x}".format(int(row.code))
+            codes_by_frame[int(row.frame)].append(
+                {
+                    "event_id": getattr(row, "event_id", None),
+                    "cutter_id": getattr(row, "cutter_id", None),
+                    "stage": getattr(row, "stage", None),
+                    "code": int(row.code),
+                    "code_hex": str(code_hex_value),
+                }
+            )
+        return dict(codes_by_frame)
+
+    @classmethod
+    def _decode_code_to_3x3_matrix(cls, code):
+        return [
+            [(int(code) >> cls.HILBERT_BIT_LAYOUT[r][c]) & 1 for c in range(3)]
+            for r in range(3)
+        ]
+
+    def _build_sfc_matrix_text(self):
+        frame = int(self.current_frame)
+        frame_entries = self.sfc_codes_by_frame.get(frame)
+        if not frame_entries:
+            return "Frame {} SFC matrix: no code".format(frame)
+
+        lines = ["Frame {} SFC 3x3 matrix/matrices:".format(frame)]
+        for entry in frame_entries:
+            matrix = self._decode_code_to_3x3_matrix(entry["code"])
+            lines.append(
+                "event_id={}, cutter_id={}, stage={}, code={}, code_hex={}".format(
+                    entry.get("event_id"),
+                    entry.get("cutter_id"),
+                    entry.get("stage"),
+                    entry["code"],
+                    entry.get("code_hex"),
+                )
+            )
+            lines.extend(" ".join(str(cell) for cell in row) for row in matrix)
+            lines.append("")
+        return "\n".join(lines).rstrip()
+
+    def _update_sfc_matrix_overlay(self):
+        if not hasattr(self, "sfc_info_text"):
+            return
+        self.sfc_info_text.set_text(self._build_sfc_matrix_text())
 
     def plot_highway(self):
         # Initialization
