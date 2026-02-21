@@ -21,17 +21,34 @@ class VisualizationPlot(object):
         (5, 6, 9, 10),
     )
 
-    def __init__(self, arguments, read_tracks, static_info, meta_dictionary, fig=None):
+    def __init__(
+            self,
+            arguments,
+            read_tracks,
+            static_info,
+            meta_dictionary,
+            recording_loader=None,
+            recording_options=None,
+            fig=None,
+    ):
         self.arguments = arguments
         self.tracks = read_tracks
         self.static_info = static_info
         self.meta_dictionary = meta_dictionary
-        last_track = self.tracks[len(self.tracks) - 1]
-        self.maximum_frames = self.static_info[last_track[TRACK_ID][0]][FINAL_FRAME] - 1
+        self.recording_loader = recording_loader
+        self.recording_options = self._normalize_recording_options(recording_options)
+        self.active_recording_id = self._resolve_recording_id(arguments)
+        if self.active_recording_id and self.active_recording_id not in self.recording_options:
+            self.recording_options.append(self.active_recording_id)
+            self.recording_options = sorted(self.recording_options)
+        self.selected_recording_id = self.active_recording_id
+        self.maximum_frames = self._compute_maximum_frame()
         self.current_frame = 1
         self.changed_button = False
         self.rect_map = {}
         self.plotted_objects = []
+        self.pick_event_cid = None
+        self.ax_color = 'lightgoldenrodyellow'
         self.sfc_codes_by_frame = self._load_sfc_codes_by_frame(
             arguments.get("sfc_codes_csv"),
             arguments.get("input_path"),
@@ -64,57 +81,53 @@ class VisualizationPlot(object):
             color="black",
         )
 
-        # Check whether to use the given background image or to use the virtual created lanes
-        background_image_path = arguments["background_image"]
-        if background_image_path is not None and os.path.exists(background_image_path):
-            # Plot the image
-            self.background_image = imread(background_image_path)
-            self.y_sign = 1
-            im = self.background_image[:, :, :]
-            self.ax.imshow(im)
-        else:
-            # Create lane markings
-            self.background_image = None
-            self.y_sign = -1
-            self.outer_line_thickness = .2
-            self.lane_color = "white"
-            self.plot_highway()
-        self.plot_highway_information()
+        self._draw_background()
 
-        # Initialize the plot with the bounding boxes of the first frame
-        self.update_figure()
-
-        ax_color = 'lightgoldenrodyellow'
         # Define axes for the widgets
         button_y = 0.02
         button_height = 0.055
         long_button_width = 0.09
         short_button_width = 0.072
         control_gap = 0.01
-        slider_y = 0.085
+        slider_y = 0.080
         slider_x = 0.255
         slider_width = 0.498
+        recording_slider_y = 0.118
+        recording_slider_x = 0.02
+        recording_slider_width = 0.19
+        recording_button_x = recording_slider_x + recording_slider_width + control_gap
+        recording_button_width = 0.09
+        recording_button_height = 0.04
         next_button_x = 0.808
         next2_button_x = next_button_x + short_button_width + 0.012
 
         self.ax_button_previous2 = self.fig.add_axes([0.02, button_y, long_button_width, button_height])
         self.ax_button_previous = self.fig.add_axes(
             [0.02 + long_button_width + control_gap, button_y, short_button_width, button_height])
-        self.ax_slider = self.fig.add_axes([slider_x, slider_y, slider_width, 0.03], facecolor=ax_color)
+        self.ax_slider = self.fig.add_axes([slider_x, slider_y, slider_width, 0.03], facecolor=self.ax_color)
         self.ax_button_next = self.fig.add_axes([next_button_x, button_y, short_button_width, button_height])
         self.ax_button_next2 = self.fig.add_axes([next2_button_x, button_y, long_button_width, button_height])
+        self.ax_recording_slider = self.fig.add_axes(
+            [recording_slider_x, recording_slider_y, recording_slider_width, 0.03],
+            facecolor=self.ax_color,
+        )
+        self.ax_recording_button = self.fig.add_axes(
+            [recording_button_x, recording_slider_y - 0.005, recording_button_width, recording_button_height]
+        )
 
         # Define the widgets
-        self.frame_slider = Slider(self.ax_slider, 'Frame', 1, self.maximum_frames,
-                                   valinit=self.current_frame, valfmt='%s', valstep=1)
+        self.frame_slider = self._build_frame_slider()
         self.button_previous2 = Button(self.ax_button_previous2, 'Previous x5')
         self.button_previous = Button(self.ax_button_previous, 'Previous')
         self.button_next = Button(self.ax_button_next, 'Next')
         self.button_next2 = Button(self.ax_button_next2, 'Next x5')
+        self.button_load_recording = Button(self.ax_recording_button, 'Load rec')
+        self.recording_slider = self._build_recording_slider()
         self.button_previous2.label.set_fontsize(8)
         self.button_previous.label.set_fontsize(8)
         self.button_next.label.set_fontsize(8)
         self.button_next2.label.set_fontsize(8)
+        self.button_load_recording.label.set_fontsize(8)
 
         # Define the callbacks for the widgets' actions
         self.frame_slider.on_changed(self.update_slider)
@@ -122,12 +135,160 @@ class VisualizationPlot(object):
         self.button_next.on_clicked(self.update_button_next)
         self.button_previous2.on_clicked(self.update_button_previous2)
         self.button_next2.on_clicked(self.update_button_next2)
+        self.button_load_recording.on_clicked(self.update_button_load_recording)
 
+        # Initialize the plot with the bounding boxes of the first frame
+        self.update_figure()
         self.ax.set_autoscale_on(False)
+
+    @staticmethod
+    def _normalize_recording_id(recording_id):
+        rid = str(recording_id).strip()
+        if not rid:
+            return None
+        if rid.isdigit():
+            return "{:02d}".format(int(rid))
+        return rid
+
+    def _normalize_recording_options(self, recording_options):
+        if not recording_options:
+            return []
+        normalized = []
+        for rid in recording_options:
+            norm_rid = self._normalize_recording_id(rid)
+            if norm_rid is not None:
+                normalized.append(norm_rid)
+        return sorted(set(normalized))
+
+    def _resolve_recording_id(self, arguments):
+        from_path = self._infer_recording_id(arguments.get("input_path"))
+        if from_path is not None:
+            return "{:02d}".format(int(from_path))
+        return self._normalize_recording_id(arguments.get("recording_id"))
+
+    @staticmethod
+    def _track_id_as_int(track):
+        raw_track_id = track[TRACK_ID]
+        if isinstance(raw_track_id, (list, tuple)):
+            return int(raw_track_id[0])
+        if hasattr(raw_track_id, "__len__") and not isinstance(raw_track_id, (str, bytes)):
+            return int(raw_track_id[0])
+        return int(raw_track_id)
+
+    def _compute_maximum_frame(self):
+        if self.static_info is None or self.tracks is None:
+            return 1
+        max_frame = 1
+        for track in self.tracks:
+            try:
+                track_id = self._track_id_as_int(track)
+                final_frame = int(self.static_info[track_id][FINAL_FRAME]) - 1
+                if final_frame > max_frame:
+                    max_frame = final_frame
+            except Exception:
+                continue
+        return max(1, max_frame)
+
+    def _draw_background(self):
+        self.ax.clear()
+        self.ax.set_position([0.0, self.road_bottom, 1.0, self.road_top - self.road_bottom])
+
+        background_image_path = self.arguments.get("background_image")
+        if background_image_path is not None and os.path.exists(background_image_path):
+            self.background_image = imread(background_image_path)
+            self.y_sign = 1
+            self.ax.imshow(self.background_image[:, :, :])
+        else:
+            self.background_image = None
+            self.y_sign = -1
+            self.outer_line_thickness = .2
+            self.lane_color = "white"
+            self.plot_highway()
+        self.plot_highway_information()
+        self.ax.set_autoscale_on(False)
+
+    def _build_frame_slider(self):
+        self.ax_slider.cla()
+        self.ax_slider.set_facecolor(self.ax_color)
+        return Slider(
+            self.ax_slider,
+            'Frame',
+            1,
+            max(1, int(self.maximum_frames)),
+            valinit=max(1, int(self.current_frame)),
+            valfmt='%s',
+            valstep=1,
+        )
+
+    def _build_recording_slider(self):
+        self.ax_recording_slider.cla()
+        self.ax_recording_slider.set_facecolor(self.ax_color)
+        if not self.recording_options:
+            self.ax_recording_slider.set_axis_off()
+            return None
+
+        initial_recording = self.selected_recording_id
+        if initial_recording not in self.recording_options:
+            initial_recording = self.recording_options[0]
+        if len(self.recording_options) == 1:
+            self.ax_recording_slider.text(
+                0.0,
+                0.5,
+                "Recording {}".format(initial_recording),
+                transform=self.ax_recording_slider.transAxes,
+                ha="left",
+                va="center",
+                fontsize=8,
+            )
+            self.ax_recording_slider.set_axis_off()
+            self.selected_recording_id = initial_recording
+            return None
+        initial_index = self.recording_options.index(initial_recording) + 1
+
+        recording_slider = Slider(
+            self.ax_recording_slider,
+            'Recording',
+            1,
+            len(self.recording_options),
+            valinit=initial_index,
+            valfmt='%0.0f',
+            valstep=1,
+        )
+        recording_slider.valtext.set_text(initial_recording)
+        recording_slider.label.set_fontsize(8)
+        recording_slider.on_changed(self.update_recording_slider)
+        self.selected_recording_id = initial_recording
+        return recording_slider
+
+    def _reload_recording(self, loaded_arguments, loaded_tracks, loaded_static_info, loaded_meta_dictionary):
+        self.remove_patches()
+        self.arguments = loaded_arguments
+        self.tracks = loaded_tracks
+        self.static_info = loaded_static_info
+        self.meta_dictionary = loaded_meta_dictionary
+        self.active_recording_id = self._resolve_recording_id(loaded_arguments)
+        self.selected_recording_id = self.active_recording_id
+        self.maximum_frames = self._compute_maximum_frame()
+        self.current_frame = 1
+        self.sfc_codes_by_frame = self._load_sfc_codes_by_frame(
+            loaded_arguments.get("sfc_codes_csv"),
+            loaded_arguments.get("input_path"),
+        )
+        self._draw_background()
+        self.frame_slider = self._build_frame_slider()
+        self.frame_slider.on_changed(self.update_slider)
+        if self.recording_slider is not None:
+            selected_index = 1
+            if self.selected_recording_id in self.recording_options:
+                selected_index = self.recording_options.index(self.selected_recording_id) + 1
+            self.recording_slider.set_val(selected_index)
+            self.recording_slider.valtext.set_text(self.selected_recording_id)
+        self.update_figure()
+        self.fig.canvas.draw_idle()
 
     def update_slider(self, value):
         if not self.changed_button:
-            self.current_frame = value
+            self.current_frame = int(value)
             self.remove_patches()
             self.update_figure()
             self.fig.canvas.draw_idle()
@@ -165,8 +326,33 @@ class VisualizationPlot(object):
         else:
             print("There are no frames available with an index lower than 1.")
 
+    def update_recording_slider(self, value):
+        if self.recording_slider is None or not self.recording_options:
+            return
+        slider_index = int(round(value))
+        slider_index = max(1, min(slider_index, len(self.recording_options)))
+        self.selected_recording_id = self.recording_options[slider_index - 1]
+        self.recording_slider.valtext.set_text(self.selected_recording_id)
+
+    def update_button_load_recording(self, _):
+        if self.recording_loader is None:
+            print("Recording loader is not configured.")
+            return
+        if self.selected_recording_id is None:
+            print("No recording selected.")
+            return
+        try:
+            loaded = self.recording_loader(self.selected_recording_id)
+            loaded_arguments, loaded_tracks, loaded_static_info, loaded_meta_dictionary = loaded
+        except Exception as exc:
+            print("Failed to load recording {}: {}".format(self.selected_recording_id, exc))
+            return
+        print("Loaded recording {}.".format(self.selected_recording_id))
+        self._reload_recording(loaded_arguments, loaded_tracks, loaded_static_info, loaded_meta_dictionary)
+
     def trigger_update(self):
         self.remove_patches()
+        self.current_frame = int(max(1, min(self.current_frame, self.maximum_frames)))
         self.update_figure()
         self.frame_slider.set_val(self.current_frame)
         self.fig.canvas.draw_idle()
@@ -184,7 +370,7 @@ class VisualizationPlot(object):
         plotted_objects = []
         for track in self.tracks:
             # Get the id of the current track
-            track_id = track[TRACK_ID][0]
+            track_id = self._track_id_as_int(track)
             static_track_information = self.static_info[track_id]
             # Get the initial and final frame of the track and check whether the current chosen frame is within these
             # bounds
@@ -193,12 +379,12 @@ class VisualizationPlot(object):
             if initial_frame <= self.current_frame < final_frame:
                 # If the current frame is within these bounds, we can now determine the internal track index for the
                 # current frame.
-                current_index = self.current_frame - initial_frame
+                current_index = int(self.current_frame - initial_frame)
                 # Get the bounding box from the track information with the determined index
                 try:
                     bounding_box = np.array(track[BBOX][current_index])
                     current_velocity = track[X_VELOCITY][current_index]
-                    if self.arguments["background_image"] is not None:
+                    if self.background_image is not None:
                         bounding_box /= 0.10106
                         bounding_box /= 4
                     y_position = self.y_sign * bounding_box[1]
@@ -283,7 +469,7 @@ class VisualizationPlot(object):
                 if self.arguments["plotTrackingLines"]:
                     relevant_bounding_boxes = np.array(track[BBOX][0:current_index, :])
                     if relevant_bounding_boxes.shape[0] > 0:
-                        if self.arguments["background_image"] is not None:
+                        if self.background_image is not None:
                             relevant_bounding_boxes /= 0.10106
                             relevant_bounding_boxes /= 4
                         sign = 1 if self.background_image is not None else self.y_sign
@@ -300,7 +486,9 @@ class VisualizationPlot(object):
                         plotted_objects.append(plotted_centroids)
 
                 # Save the plotted objects in a list
-        self.fig.canvas.mpl_connect('pick_event', self.on_click)
+        if self.pick_event_cid is not None:
+            self.fig.canvas.mpl_disconnect(self.pick_event_cid)
+        self.pick_event_cid = self.fig.canvas.mpl_connect('pick_event', self.on_click)
         self.plotted_objects = plotted_objects
         self._update_sfc_matrix_overlay()
 
@@ -450,7 +638,7 @@ class VisualizationPlot(object):
                 track_id = int(text_value[id_start_index + 2:].split("|")[0])
             selected_track = None
             for track in self.tracks:
-                if track[TRACK_ID] == track_id:
+                if self._track_id_as_int(track) == track_id:
                     selected_track = track
                     break
             if selected_track is None:
@@ -519,12 +707,18 @@ class VisualizationPlot(object):
         return self.fig
 
     def remove_patches(self, ):
-        self.fig.canvas.mpl_disconnect('pick_event')
+        if self.pick_event_cid is not None:
+            self.fig.canvas.mpl_disconnect(self.pick_event_cid)
+            self.pick_event_cid = None
         for figure_object in self.plotted_objects:
-            if isinstance(figure_object, list):
-                figure_object[0].remove()
-            else:
-                figure_object.remove()
+            try:
+                if isinstance(figure_object, list):
+                    figure_object[0].remove()
+                else:
+                    figure_object.remove()
+            except Exception:
+                continue
+        self.plotted_objects = []
 
     @staticmethod
     def show():
