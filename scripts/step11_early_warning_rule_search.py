@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from cutin_risk.paths import output_path
 
 
 @dataclass(frozen=True)
@@ -63,7 +64,7 @@ def main() -> None:
     parser.add_argument(
         "--merged-csv",
         type=str,
-        default="outputs/reports/step9_batch/cutin_stage_features_merged.csv",
+        default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
     )
     parser.add_argument("--thw-risk", type=float, default=0.7)
     parser.add_argument("--lat-min", type=float, default=0.6)
@@ -72,7 +73,7 @@ def main() -> None:
     parser.add_argument("--spd-min", type=float, default=0.0)
     parser.add_argument("--spd-max", type=float, default=10.0)
     parser.add_argument("--spd-step", type=float, default=0.25)
-    parser.add_argument("--out-dir", type=str, default="outputs/reports/step11_warning")
+    parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step11_warning")))
     args = parser.parse_args()
 
     df = pd.read_csv(args.merged_csv)

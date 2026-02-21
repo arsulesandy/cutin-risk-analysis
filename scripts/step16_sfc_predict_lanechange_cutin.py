@@ -55,6 +55,7 @@ from sklearn.preprocessing import StandardScaler
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
+from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_index
 
 
@@ -836,9 +837,9 @@ def loocv_eval(df: pd.DataFrame, label_col: str) -> pd.DataFrame:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset-root", type=str, default="data/raw/highD-dataset-v1.0/data")
+    parser.add_argument("--dataset-root", type=str, default=str(dataset_root_path()))
     parser.add_argument("--recordings", type=str, default="01,02,03,04,05")
-    parser.add_argument("--out-dir", type=str, default="outputs/reports/step16_sfc_predict")
+    parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step16_sfc_predict")))
 
     parser.add_argument("--decision-seconds", type=float, default=2.0)
     parser.add_argument("--ahead-m", type=float, default=50.0)

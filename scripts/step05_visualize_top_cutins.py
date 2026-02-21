@@ -20,6 +20,7 @@ from cutin_risk.indicators.surrogate_safety import (
     infer_direction_sign_map,
     compute_pair_timeseries,
 )
+from cutin_risk.paths import dataset_root_path, output_path
 
 
 def _finite_min(values: pd.Series) -> float:
@@ -91,7 +92,7 @@ def main() -> None:
     parser.add_argument(
         "--dataset-root",
         type=str,
-        default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/data/raw/highD-dataset-v1.0/data",
+        default=str(dataset_root_path()),
         help="Directory that contains <recording>_tracks.csv, <recording>_tracksMeta.csv, <recording>_recordingMeta.csv",
     )
     parser.add_argument("--recording-id", type=str, default="01", help="Recording id (e.g., 01)")
@@ -99,7 +100,12 @@ def main() -> None:
     parser.add_argument("--pre-seconds", type=float, default=2.0, help="Seconds before relation start")
     parser.add_argument("--post-seconds", type=float, default=3.0, help="Seconds after relation start")
     parser.add_argument("--ttc-clip", type=float, default=60.0, help="Clip TTC in plots to this value (seconds)")
-    parser.add_argument("--out-dir", type=str, default="outputs/figures", help="Base output directory for figures")
+    parser.add_argument(
+        "--out-dir",
+        type=str,
+        default=str(output_path("figures")),
+        help="Base output directory for figures",
+    )
     parser.add_argument("--show", action="store_true", help="Show plots interactively in addition to saving")
     args = parser.parse_args()
 

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from cutin_risk.paths import output_path
 
 
 def finite_count(s: pd.Series) -> int:
@@ -17,11 +18,11 @@ def main() -> None:
     parser.add_argument(
         "--merged-csv",
         type=str,
-        default="outputs/reports/step9_batch/cutin_stage_features_merged.csv",
+        default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
     )
     parser.add_argument("--thw-risk", type=float, default=0.7, help="Risk threshold for execution_thw_min.")
     parser.add_argument("--thw-very-risk", type=float, default=0.5, help="Very-risk threshold for execution_thw_min.")
-    parser.add_argument("--out-dir", type=str, default="outputs/reports/step10_risk")
+    parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step10_risk")))
 
     args = parser.parse_args()
 

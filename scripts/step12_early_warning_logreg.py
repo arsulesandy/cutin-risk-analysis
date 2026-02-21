@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from cutin_risk.paths import output_path
 
 
 @dataclass(frozen=True)
@@ -60,10 +61,10 @@ def main() -> None:
     parser.add_argument(
         "--merged-csv",
         type=str,
-        default="outputs/reports/step9_batch/cutin_stage_features_merged.csv",
+        default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
     )
     parser.add_argument("--thw-risk", type=float, default=0.7)
-    parser.add_argument("--out-dir", type=str, default="outputs/reports/step12_warning_logreg")
+    parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step12_warning_logreg")))
     args = parser.parse_args()
 
     # Lazy import so the script fails with a clear message if sklearn isn't installed.

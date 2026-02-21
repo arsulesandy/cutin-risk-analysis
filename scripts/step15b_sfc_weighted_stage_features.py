@@ -8,6 +8,7 @@ import pandas as pd
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
+from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_index
 
 from cutin_risk.encoding.sfc_binary import build_lane_snapshots
@@ -62,9 +63,9 @@ def mirror_3x3(g3: np.ndarray) -> np.ndarray:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Step 15B: Weighted SFC stage features (distance or TTC).")
-    ap.add_argument("--events-csv", default="outputs/reports/step9_batch/cutin_stage_features_merged.csv")
-    ap.add_argument("--dataset-root", default="data/raw/highD-dataset-v1.0/data")
-    ap.add_argument("--out-dir", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step15b_sfc_weighted")
+    ap.add_argument("--events-csv", default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")))
+    ap.add_argument("--dataset-root", default=str(dataset_root_path()))
+    ap.add_argument("--out-dir", default=str(output_path("reports/step15b_sfc_weighted")))
 
     ap.add_argument("--mode", choices=["distance", "ttc"], default="distance")
     ap.add_argument("--order", choices=["hilbert", "morton"], default="hilbert")

@@ -8,6 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from cutin_risk.encoding.sfc_binary import decode_grid_4x4_bits
+from cutin_risk.paths import output_path, step14_codes_csv_path
 
 
 def mean_grid(df: pd.DataFrame, *, order: str) -> np.ndarray:
@@ -35,8 +36,8 @@ def plot_grid(g: np.ndarray, title: str, out: Path) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--codes-csv", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step14_sfc_binary/sfc_binary_codes_long_hilbert.csv")
-    ap.add_argument("--out-dir", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step14_sfc_binary_report")
+    ap.add_argument("--codes-csv", default=str(step14_codes_csv_path()))
+    ap.add_argument("--out-dir", default=str(output_path("reports/step14_sfc_binary_report")))
     args = ap.parse_args()
 
     codes_csv = Path(args.codes_csv)

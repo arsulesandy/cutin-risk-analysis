@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from pathlib import Path
 from collections import Counter
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
 from cutin_risk.detection.lane_change import detect_lane_changes, LaneChangeOptions
+from cutin_risk.paths import dataset_root_path
 
 
 def main() -> None:
-    root = Path("/Users/sandeep/IdeaProjects/cutin-risk-analysis/data/raw/highD-dataset-v1.0/data")
+    root = dataset_root_path()
     rec = load_highd_recording(root, "01")
     df = build_tracking_table(rec)
 

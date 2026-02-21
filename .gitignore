@@ -218,3 +218,4 @@ data/.DS_Store
 .DS_Store
 /outputs
 /scripts/outputs
+configs/paths.local.json

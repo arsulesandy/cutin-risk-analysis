@@ -8,6 +8,7 @@ import pandas as pd
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
+from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_index
 
 from cutin_risk.encoding.sfc_binary import (
@@ -66,9 +67,9 @@ def stage_ranges(t0: int, fr: int, *, pre4: int, pre2: int, post2: int) -> list[
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Step 14: Binary SFC encoding for cut-in events.")
-    ap.add_argument("--merged-csv", default="/outputs/reports/step9_batch/cutin_stage_features_merged.csv")
-    ap.add_argument("--dataset-root", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/data/raw/highD-dataset-v1.0/data")
-    ap.add_argument("--out-dir", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step14_sfc_binary")
+    ap.add_argument("--merged-csv", default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")))
+    ap.add_argument("--dataset-root", default=str(dataset_root_path()))
+    ap.add_argument("--out-dir", default=str(output_path("reports/step14_sfc_binary")))
     ap.add_argument("--risk-thw", type=float, default=0.70)
 
     ap.add_argument("--sfc-order", choices=["hilbert", "morton"], default="hilbert")

@@ -6,6 +6,7 @@ import logging
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table, BuildOptions
+from cutin_risk.paths import dataset_root_path
 from cutin_risk.preprocessing.quality_checks import (
     compute_basic_stats,
     check_duplicates_id_frame,
@@ -62,9 +63,7 @@ def process_recording(root: Path, rec_id: str) -> bool:
 
 
 def main() -> None:
-    root = Path(
-        "/Users/sandeep/IdeaProjects/cutin-risk-analysis/data/raw/highD-dataset-v1.0/data"
-    )
+    root = dataset_root_path()
 
     failed: List[str] = []
 

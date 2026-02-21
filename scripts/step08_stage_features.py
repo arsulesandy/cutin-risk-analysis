@@ -26,6 +26,7 @@ from cutin_risk.indicators.surrogate_safety import (
     infer_direction_sign_map,
     compute_pair_timeseries,
 )
+from cutin_risk.paths import dataset_root_path, output_path
 
 
 @dataclass(frozen=True)
@@ -130,14 +131,14 @@ def _accumulate_by_offset(acc: dict[int, list[float]], offsets: np.ndarray, valu
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Step 8: stage-based analysis around cut-in events.")
-    parser.add_argument("--dataset-root", type=str, default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/data/raw/highD-dataset-v1.0/data")
+    parser.add_argument("--dataset-root", type=str, default=str(dataset_root_path()))
     parser.add_argument("--recording-id", type=str, default="01")
 
     parser.add_argument("--pre-seconds", type=float, default=4.0)
     parser.add_argument("--post-seconds", type=float, default=4.0)
 
     parser.add_argument("--make-plot", action="store_true", help="Save median TTC curve aligned at t0", default=True)
-    parser.add_argument("--out-dir", type=str, default="outputs")
+    parser.add_argument("--out-dir", type=str, default=str(output_path(".")))
 
     args = parser.parse_args()
 

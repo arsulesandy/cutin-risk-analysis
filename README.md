@@ -104,3 +104,30 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -U pip
 pip install -e ".[dev]"
+```
+
+### Path configuration
+
+All scripts now resolve default paths from `configs/paths.json`.
+
+To set machine-specific paths without committing them, create `configs/paths.local.json`:
+
+```json
+{
+  "paths": {
+    "dataset_root": "/absolute/path/to/highD/data",
+    "outputs_root": "outputs"
+  }
+}
+```
+
+Config precedence is:
+1. Environment variables (highest priority)
+2. `configs/paths.local.json`
+3. `configs/paths.json` (default, committed)
+
+Supported environment variables:
+- `CUTIN_PATHS_FILE` (custom JSON config location)
+- `CUTIN_DATASET_ROOT`
+- `CUTIN_OUTPUTS_ROOT`
+- `CUTIN_STEP14_CODES_CSV`

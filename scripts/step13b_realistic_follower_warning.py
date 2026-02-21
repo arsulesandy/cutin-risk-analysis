@@ -31,6 +31,7 @@ import pandas as pd
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
+from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import infer_lane_index, parse_lane_markings
 
 
@@ -198,12 +199,12 @@ def main() -> None:
     parser.add_argument(
         "--merged-csv",
         type=str,
-        default="outputs/reports/step9_batch/cutin_stage_features_merged.csv",
+        default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
     )
     parser.add_argument(
         "--dataset-root",
         type=str,
-        default="data/raw/highD-dataset-v1.0/data",
+        default=str(dataset_root_path()),
     )
     parser.add_argument("--thw-risk", type=float, default=0.7)
 
@@ -222,7 +223,7 @@ def main() -> None:
     parser.add_argument("--spd-max", type=float, default=10.0)
     parser.add_argument("--spd-step", type=float, default=0.25)
 
-    parser.add_argument("--out-dir", type=str, default="outputs/reports/step13b_warning")
+    parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step13b_warning")))
     args = parser.parse_args()
 
     merged_csv = Path(args.merged_csv)

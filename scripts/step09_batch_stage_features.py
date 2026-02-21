@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+from cutin_risk.paths import dataset_root_path, output_path, project_root
 
 
 def parse_recordings_arg(value: str) -> list[str]:
@@ -36,12 +37,12 @@ def main() -> None:
     parser.add_argument(
         "--dataset-root",
         type=str,
-        default="data/raw/highD-dataset-v1.0/data",
+        default=str(dataset_root_path()),
     )
     parser.add_argument(
         "--out-dir",
         type=str,
-        default="outputs/reports/step9_batch",
+        default=str(output_path("reports/step9_batch")),
     )
     parser.add_argument(
         "--make-plot",
@@ -55,6 +56,7 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     recordings = parse_recordings_arg(args.recordings)
+    step8_script = project_root() / "scripts" / "step08_stage_features.py"
 
     # We call your existing working Step 8 script, because it is already validated.
     # It will write one CSV per recording in outputs/reports/step8_recording_XX/.
@@ -64,7 +66,7 @@ def main() -> None:
     for rid in recordings:
         cmd = [
             sys.executable,
-            "scripts/step08_stage_features.py",
+            str(step8_script),
             "--dataset-root",
             args.dataset_root,
             "--recording-id",
@@ -80,7 +82,7 @@ def main() -> None:
             continue
 
         # Find the newest CSV that stage_features produced for this recording
-        step8_dir = Path("outputs") / "reports" / f"step8_recording_{rid}"
+        step8_dir = output_path(f"reports/step8_recording_{rid}")
         csvs = sorted(step8_dir.glob("cutin_stage_features_*.csv"))
         if not csvs:
             print(f"[WARN] No CSV produced for recording {rid} (unexpected).")

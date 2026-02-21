@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from cutin_risk.encoding.sfc_binary import decode_grid_4x4_bits, encode_grid_4x4_bits
+from cutin_risk.paths import output_path
 
 
 def normalize_recording_id(v: object) -> str:
@@ -28,7 +29,7 @@ def main() -> None:
     ap.add_argument("--codes-csv", required=True, help="Step14 long codes CSV (binary).")
     ap.add_argument(
         "--events-csv",
-        default="outputs/reports/step9_batch/cutin_stage_features_merged.csv",
+        default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
         help="Merged event table containing from_lane and to_lane.",
     )
     ap.add_argument("--from-col", default="from_lane")
@@ -41,7 +42,7 @@ def main() -> None:
         help="Canonical lane-change direction. If 'positive', mirror events where (to-from)<0.",
     )
 
-    ap.add_argument("--out-dir", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step15a_sfc_mirror")
+    ap.add_argument("--out-dir", default=str(output_path("reports/step15a_sfc_mirror")))
     args = ap.parse_args()
 
     codes_csv = Path(args.codes_csv)

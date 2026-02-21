@@ -12,6 +12,7 @@ from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_inde
 from cutin_risk.reconstruction.neighbors import reconstruct_same_lane_neighbors, NeighborReconstructionOptions
 from cutin_risk.detection.lane_change import detect_lane_changes, LaneChangeOptions
 from cutin_risk.detection.cutin import detect_cutins, CutInOptions
+from cutin_risk.paths import dataset_root_path
 
 
 def _norm_neighbor(s: pd.Series) -> pd.Series:
@@ -96,7 +97,7 @@ def _match_cutins(true_events, pred_events, *, frame_tolerance: int = 10) -> dic
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Step 7: infer lanes from y, reconstruct neighbors, compare cut-ins.")
-    parser.add_argument("--dataset-root", type=str, default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/data/raw/highD-dataset-v1.0/data")
+    parser.add_argument("--dataset-root", type=str, default=str(dataset_root_path()))
     parser.add_argument("--recording-id", type=str, default="01")
     parser.add_argument("--frame-tolerance", type=int, default=10)
     args = parser.parse_args()

@@ -10,6 +10,7 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+from cutin_risk.paths import output_path
 
 
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
@@ -145,7 +146,7 @@ def main() -> None:
     ap.add_argument("--threshold-strategy", choices=["fixed", "train_opt"], default="train_opt")
     ap.add_argument("--fixed-threshold", type=float, default=0.5)
 
-    ap.add_argument("--out-dir", default="/Users/sandeep/IdeaProjects/cutin-risk-analysis/outputs/reports/step15c_sfc_prediction")
+    ap.add_argument("--out-dir", default=str(output_path("reports/step15c_sfc_prediction")))
     args = ap.parse_args()
 
     input_csv = Path(args.input_csv)
