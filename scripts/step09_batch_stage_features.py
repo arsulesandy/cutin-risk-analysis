@@ -8,7 +8,9 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.paths import dataset_root_path, output_path, project_root
+from cutin_risk.thesis_config import thesis_str
 
 
 def parse_recordings_arg(value: str) -> list[str]:
@@ -33,7 +35,7 @@ def main() -> None:
     parser.add_argument(
         "--recordings",
         type=str,
-        default="1-10",
+        default=thesis_str("step09.recordings", "1-10"),
         help="Examples: '01', '01,02,03', '1-10', or 'all'",
     )
     parser.add_argument(
@@ -65,7 +67,11 @@ def main() -> None:
     # Then we merge them into one batch file here.
     produced_csvs: list[Path] = []
 
-    for rid in recordings:
+    for _, _, rid in iter_with_progress(
+        recordings,
+        label="Step 09 recordings",
+        item_name="recording",
+    ):
         cmd = [
             sys.executable,
             str(step8_script),

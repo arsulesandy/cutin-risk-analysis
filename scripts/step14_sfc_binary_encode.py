@@ -10,6 +10,7 @@ import pandas as pd
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
+from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_index
 
@@ -19,6 +20,7 @@ from cutin_risk.encoding.sfc_binary import (
     encode_frame_binary_sfc,
     SFCOrder,
 )
+from cutin_risk.thesis_config import thesis_float, thesis_str
 
 
 def normalize_recording_id(v: object) -> str:
@@ -72,16 +74,24 @@ def main() -> None:
     ap.add_argument("--merged-csv", default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")))
     ap.add_argument("--dataset-root", default=str(dataset_root_path()))
     ap.add_argument("--out-dir", default=str(output_path("reports/step14_sfc_binary")))
-    ap.add_argument("--risk-thw", type=float, default=0.70)
+    ap.add_argument("--risk-thw", type=float, default=thesis_float("step14.risk_thw", 0.70, min_value=0.0))
 
-    ap.add_argument("--sfc-order", choices=["hilbert", "morton"], default="hilbert")
-    ap.add_argument("--alongside-thresh", type=float, default=5.0)
-    ap.add_argument("--range-ahead", type=float, default=150.0)
-    ap.add_argument("--range-behind", type=float, default=150.0)
+    ap.add_argument(
+        "--sfc-order",
+        choices=["hilbert", "morton"],
+        default=thesis_str("step14.sfc_order", "hilbert", allowed={"hilbert", "morton"}),
+    )
+    ap.add_argument(
+        "--alongside-thresh",
+        type=float,
+        default=thesis_float("step14.alongside_thresh", 5.0, min_value=0.0),
+    )
+    ap.add_argument("--range-ahead", type=float, default=thesis_float("step14.range_ahead", 150.0, min_value=0.0))
+    ap.add_argument("--range-behind", type=float, default=thesis_float("step14.range_behind", 150.0, min_value=0.0))
 
-    ap.add_argument("--pre4-seconds", type=float, default=4.0)
-    ap.add_argument("--pre2-seconds", type=float, default=2.0)
-    ap.add_argument("--post2-seconds", type=float, default=2.0)
+    ap.add_argument("--pre4-seconds", type=float, default=thesis_float("step14.pre4_seconds", 4.0, min_value=0.0))
+    ap.add_argument("--pre2-seconds", type=float, default=thesis_float("step14.pre2_seconds", 2.0, min_value=0.0))
+    ap.add_argument("--post2-seconds", type=float, default=thesis_float("step14.post2_seconds", 2.0, min_value=0.0))
 
     args = ap.parse_args()
 
@@ -120,7 +130,12 @@ def main() -> None:
     rows: list[dict[str, object]] = []
     event_id = 0
 
-    for rid in sorted(events["recording_id"].unique().tolist()):
+    recording_ids = sorted(events["recording_id"].unique().tolist())
+    for _, _, rid in iter_with_progress(
+        recording_ids,
+        label="Step 14 recordings",
+        item_name="recording",
+    ):
         ev_r = events.loc[events["recording_id"] == rid].copy()
         if ev_r.empty:
             continue

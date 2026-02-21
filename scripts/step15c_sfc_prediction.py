@@ -12,7 +12,9 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.paths import output_path
+from cutin_risk.thesis_config import thesis_float, thesis_int, thesis_optional_float, thesis_str
 
 
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
@@ -43,7 +45,11 @@ def find_threshold(y_true: np.ndarray, prob: np.ndarray, *, beta: float, min_rec
     best_thr = 0.5
     best_score = -1.0
 
-    for thr in np.linspace(0.05, 0.95, 91):
+    thr_min = thesis_float("step15c.threshold_grid_min", 0.05)
+    thr_max = thesis_float("step15c.threshold_grid_max", 0.95)
+    thr_steps = thesis_int("step15c.threshold_grid_steps", 91, min_value=2)
+
+    for thr in np.linspace(thr_min, thr_max, thr_steps):
         pred = prob >= thr
         m = compute_metrics(y_true, pred)
         if min_recall is not None and m["recall"] < float(min_recall):
@@ -135,18 +141,26 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Step 15C: Predict execution-stage risk using decision-stage SFC signature.")
     ap.add_argument("--input-type", choices=["binary-long", "weighted-wide"], required=True)
     ap.add_argument("--input-csv", required=True)
-    ap.add_argument("--stage", default="decision")
+    ap.add_argument("--stage", default=thesis_str("step15c.stage", "decision"))
 
-    ap.add_argument("--min-frames", type=int, default=10)  # binary-long only
+    ap.add_argument("--min-frames", type=int, default=thesis_int("step15c.min_frames", 10, min_value=1))  # binary-long only
 
-    ap.add_argument("--C", type=float, default=1.0)
-    ap.add_argument("--class-weight", choices=["none", "balanced"], default="none")
+    ap.add_argument("--C", type=float, default=thesis_float("step15c.c", 1.0, min_value=1e-12))
+    ap.add_argument(
+        "--class-weight",
+        choices=["none", "balanced"],
+        default=thesis_str("step15c.class_weight", "none", allowed={"none", "balanced"}),
+    )
 
-    ap.add_argument("--beta", type=float, default=1.0)
-    ap.add_argument("--min-recall", type=float, default=None)
+    ap.add_argument("--beta", type=float, default=thesis_float("step15c.beta", 1.0, min_value=1e-12))
+    ap.add_argument("--min-recall", type=float, default=thesis_optional_float("step15c.min_recall", None, min_value=0.0))
 
-    ap.add_argument("--threshold-strategy", choices=["fixed", "train_opt"], default="train_opt")
-    ap.add_argument("--fixed-threshold", type=float, default=0.5)
+    ap.add_argument(
+        "--threshold-strategy",
+        choices=["fixed", "train_opt"],
+        default=thesis_str("step15c.threshold_strategy", "train_opt", allowed={"fixed", "train_opt"}),
+    )
+    ap.add_argument("--fixed-threshold", type=float, default=thesis_float("step15c.fixed_threshold", 0.5))
 
     ap.add_argument("--out-dir", default=str(output_path("reports/step15c_sfc_prediction")))
     args = ap.parse_args()
@@ -177,14 +191,26 @@ def main() -> None:
     pipe = Pipeline(
         steps=[
             ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(C=float(args.C), max_iter=2000, class_weight=class_weight)),
+            (
+                "clf",
+                LogisticRegression(
+                    C=float(args.C),
+                    max_iter=thesis_int("step15c.logreg_max_iter", 2000, min_value=1),
+                    class_weight=class_weight,
+                ),
+            ),
         ]
     )
 
     rows = []
     micro = {"tp": 0, "fp": 0, "fn": 0, "tn": 0}
 
-    for held in sorted(np.unique(recs)):
+    heldout_recordings = sorted(np.unique(recs).tolist())
+    for _, _, held in iter_with_progress(
+        heldout_recordings,
+        label="Step 15C LOO folds",
+        item_name="heldout_recording",
+    ):
         train_mask = recs != held
         test_mask = recs == held
 

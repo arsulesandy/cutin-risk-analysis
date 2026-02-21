@@ -18,9 +18,20 @@ The implementation is dataset-agnostic and supports configurable column names.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import pandas as pd
 
+from .config import (
+    cutin_default_max_relation_delay_frames,
+    cutin_default_min_relation_frames,
+    cutin_default_no_neighbor_ids,
+    cutin_default_precheck_frames,
+    cutin_default_require_lane_match,
+    cutin_default_require_new_follower,
+    cutin_default_require_preceding_consistency,
+    cutin_default_search_window_frames,
+    cutin_default_start_offset_frames,
+)
 from .events import LaneChangeEvent, CutInEvent
 
 
@@ -66,18 +77,18 @@ class CutInOptions:
         Base column names.
     """
 
-    search_window_frames: int = 50
-    start_offset_frames: int = 0
-    max_relation_delay_frames: int = 15
-    min_relation_frames: int = 10
+    search_window_frames: int = field(default_factory=cutin_default_search_window_frames)
+    start_offset_frames: int = field(default_factory=cutin_default_start_offset_frames)
+    max_relation_delay_frames: int = field(default_factory=cutin_default_max_relation_delay_frames)
+    min_relation_frames: int = field(default_factory=cutin_default_min_relation_frames)
 
-    require_new_follower: bool = True
-    precheck_frames: int = 25
+    require_new_follower: bool = field(default_factory=cutin_default_require_new_follower)
+    precheck_frames: int = field(default_factory=cutin_default_precheck_frames)
 
-    no_neighbor_ids: tuple[int, ...] = (0, -1)
+    no_neighbor_ids: tuple[int, ...] = field(default_factory=cutin_default_no_neighbor_ids)
 
-    require_lane_match: bool = True
-    require_preceding_consistency: bool = True
+    require_lane_match: bool = field(default_factory=cutin_default_require_lane_match)
+    require_preceding_consistency: bool = field(default_factory=cutin_default_require_preceding_consistency)
 
     lane_col: str = "laneId"
     following_col: str = "followingId"

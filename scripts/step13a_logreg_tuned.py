@@ -8,7 +8,15 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.paths import output_path
+from cutin_risk.thesis_config import (
+    thesis_bool,
+    thesis_float,
+    thesis_int,
+    thesis_optional_float,
+    thesis_str,
+)
 
 
 @dataclass(frozen=True)
@@ -60,7 +68,12 @@ def pick_threshold(
     - If min_recall is provided, maximize precision subject to recall >= min_recall.
     - Otherwise, maximize F_beta (beta < 1 favors precision, beta > 1 favors recall).
     """
-    thresholds = np.linspace(0.05, 0.95, 91, dtype=float)
+    thresholds = np.linspace(
+        thesis_float("step13a.threshold_grid_min", 0.05),
+        thesis_float("step13a.threshold_grid_max", 0.95),
+        thesis_int("step13a.threshold_grid_steps", 91, min_value=2),
+        dtype=float,
+    )
 
     best_thr = 0.5
     best_key = None
@@ -98,37 +111,43 @@ def main() -> None:
         type=str,
         default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
     )
-    parser.add_argument("--thw-risk", type=float, default=0.7)
+    parser.add_argument("--thw-risk", type=float, default=thesis_float("risk_label.thw_risk", 0.7, min_value=0.0))
 
     parser.add_argument(
         "--feature-set",
         choices=["core", "full"],
-        default="full",
+        default=thesis_str("step13a.feature_set", "full", allowed={"core", "full"}),
         help="core=2 features (lat_v, speed_delta). full=adds acc_delta and dy_abs.",
     )
     parser.add_argument(
         "--with-interaction",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=thesis_bool("step13a.with_interaction", False),
         help="Add decision_lat_v * decision_speed_delta as an extra feature.",
     )
 
     parser.add_argument(
         "--class-weight",
         choices=["none", "balanced"],
-        default="none",
+        default=thesis_str("step13a.class_weight", "none", allowed={"none", "balanced"}),
         help="Use class_weight=None (default) or class_weight='balanced'.",
     )
-    parser.add_argument("--C", type=float, default=1.0, help="Inverse regularization strength.")
+    parser.add_argument(
+        "--C",
+        type=float,
+        default=thesis_float("step13a.c", 1.0, min_value=1e-12),
+        help="Inverse regularization strength.",
+    )
     parser.add_argument(
         "--beta",
         type=float,
-        default=0.5,
+        default=thesis_float("step13a.beta", 0.5, min_value=1e-12),
         help="Optimize F_beta on train when min_recall is not set (beta<1 favors precision).",
     )
     parser.add_argument(
         "--min-recall",
         type=float,
-        default=None,
+        default=thesis_optional_float("step13a.min_recall", None, min_value=0.0),
         help="If set, choose threshold to maximize precision while keeping recall >= min_recall (train set).",
     )
 
@@ -183,6 +202,12 @@ def main() -> None:
         raise ValueError("No usable rows after dropping NaNs. Check your merged CSV and column names.")
 
     class_weight = None if args.class_weight == "none" else "balanced"
+    logreg_solver = thesis_str(
+        "step13a.logreg_solver",
+        "lbfgs",
+        allowed={"lbfgs", "liblinear", "newton-cg", "newton-cholesky", "sag", "saga"},
+    )
+    logreg_max_iter = thesis_int("step13a.logreg_max_iter", 4000, min_value=1)
 
     model = Pipeline(
         steps=[
@@ -190,10 +215,10 @@ def main() -> None:
             (
                 "clf",
                 LogisticRegression(
-                    max_iter=4000,
+                    max_iter=logreg_max_iter,
                     class_weight=class_weight,
                     C=float(args.C),
-                    solver="lbfgs",
+                    solver=logreg_solver,
                 ),
             ),
         ]
@@ -210,7 +235,11 @@ def main() -> None:
     print(f"class_weight: {args.class_weight} | C: {args.C} | beta: {args.beta} | min_recall: {args.min_recall}")
     print()
 
-    for rid in records:
+    for _, _, rid in iter_with_progress(
+        records,
+        label="Step 13A LOO folds",
+        item_name="heldout_recording",
+    ):
         train = keep[keep["recording_id"] != rid]
         test = keep[keep["recording_id"] == rid]
 

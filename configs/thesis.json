@@ -1,0 +1,186 @@
+{
+  "pipeline": {
+    "recordings_batch": "1-10",
+    "recordings_step16": "01,02,03,04,05",
+    "thw_risk": 0.7,
+    "ci_bootstrap": 3000,
+    "ci_seed": 7
+  },
+  "risk_label": {
+    "thw_risk": 0.7,
+    "thw_very_risk": 0.5
+  },
+  "step01": {
+    "neighbor_integrity_sample_n": 3000
+  },
+  "step04": {
+    "pre_frames": 50,
+    "post_frames": 75,
+    "validation_sample_n": 20000,
+    "validation_random_state": 7
+  },
+  "indicators": {
+    "position_reference": "rear",
+    "min_speed": 0.1,
+    "closing_speed_epsilon": 1e-06
+  },
+  "step05": {
+    "recording_id": "01",
+    "top_k": 3,
+    "pre_seconds": 2.0,
+    "post_seconds": 3.0,
+    "ttc_clip": 60.0
+  },
+  "step06": {
+    "recording_id": "01",
+    "frame_tolerance": 10,
+    "mismatch_examples": 10
+  },
+  "step07": {
+    "recording_id": "01",
+    "frame_tolerance": 10
+  },
+  "step08": {
+    "recording_id": "01",
+    "pre_seconds": 4.0,
+    "post_seconds": 4.0,
+    "make_plot": true,
+    "stages": {
+      "intention": {
+        "start_s": -4.0,
+        "end_s": -2.0
+      },
+      "decision": {
+        "start_s": -2.0,
+        "end_s": 0.0
+      },
+      "execution": {
+        "start_s": 0.0,
+        "end_s": 2.0
+      },
+      "recovery": {
+        "start_s": 2.0,
+        "end_s": 4.0
+      }
+    }
+  },
+  "step09": {
+    "recordings": "1-10"
+  },
+  "step11": {
+    "lat_min": 0.6,
+    "lat_max": 1.6,
+    "lat_step": 0.05,
+    "spd_min": 0.0,
+    "spd_max": 10.0,
+    "spd_step": 0.25
+  },
+  "step12": {
+    "threshold_grid_min": 0.05,
+    "threshold_grid_max": 0.95,
+    "threshold_grid_steps": 91,
+    "logreg": {
+      "class_weight": "none",
+      "solver": "lbfgs",
+      "max_iter": 2000,
+      "c": 1.0
+    }
+  },
+  "step13a": {
+    "feature_set": "full",
+    "with_interaction": false,
+    "class_weight": "none",
+    "c": 1.0,
+    "logreg_solver": "lbfgs",
+    "logreg_max_iter": 4000,
+    "beta": 0.5,
+    "min_recall": null,
+    "threshold_grid_min": 0.05,
+    "threshold_grid_max": 0.95,
+    "threshold_grid_steps": 91
+  },
+  "step13b": {
+    "decision_seconds": 2.0,
+    "lane_col": "laneIndex_xy",
+    "baseline_lat_thr": 0.8,
+    "baseline_spd_thr": 1.25,
+    "lat_min": 0.6,
+    "lat_max": 1.6,
+    "lat_step": 0.05,
+    "spd_min": 0.0,
+    "spd_max": 10.0,
+    "spd_step": 0.25
+  },
+  "step14": {
+    "risk_thw": 0.7,
+    "sfc_order": "hilbert",
+    "alongside_thresh": 5.0,
+    "range_ahead": 150.0,
+    "range_behind": 150.0,
+    "pre4_seconds": 4.0,
+    "pre2_seconds": 2.0,
+    "post2_seconds": 2.0
+  },
+  "step15a": {
+    "from_col": "from_lane",
+    "to_col": "to_lane",
+    "canonical_direction": "positive"
+  },
+  "step15b": {
+    "mode": "distance",
+    "order": "hilbert",
+    "risk_thw": 0.7,
+    "pre4_seconds": 4.0,
+    "pre2_seconds": 2.0,
+    "post2_seconds": 2.0,
+    "alongside_thresh": 5.0,
+    "range_ahead": 150.0,
+    "range_behind": 150.0,
+    "ttc_max": 10.0,
+    "from_col": "from_lane",
+    "to_col": "to_lane",
+    "canonical_direction": "positive"
+  },
+  "step15c": {
+    "stage": "decision",
+    "min_frames": 10,
+    "c": 1.0,
+    "class_weight": "none",
+    "beta": 1.0,
+    "min_recall": null,
+    "threshold_strategy": "train_opt",
+    "fixed_threshold": 0.5,
+    "threshold_grid_min": 0.05,
+    "threshold_grid_max": 0.95,
+    "threshold_grid_steps": 91,
+    "logreg_max_iter": 2000
+  },
+  "step16": {
+    "recordings": "01,02,03,04,05",
+    "decision_seconds": 2.0,
+    "ahead_m": 50.0,
+    "behind_m": 50.0,
+    "alongside_m": 10.0,
+    "seed": 0,
+    "min_relation_frames": 19,
+    "max_relation_frames": 50,
+    "mirror_enabled": true,
+    "threshold_grid_min": 0.05,
+    "threshold_grid_max": 0.95,
+    "threshold_grid_steps": 91,
+    "logreg_max_iter": 2000,
+    "logreg_c": 1.0,
+    "negative_to_positive_ratio": 1.0,
+    "negative_sampling_max_attempts_base": 20000,
+    "negative_sampling_max_attempts_per_negative": 20
+  },
+  "step17": {
+    "thw_risk": 0.7,
+    "step15c_stage": "decision",
+    "step15c_min_frames": 10
+  },
+  "step18": {
+    "n_bootstrap": 3000,
+    "seed": 7
+  }
+}

@@ -11,7 +11,9 @@ from pathlib import Path
 
 import pandas as pd
 
+from cutin_risk.io.markdown import markdown_table
 from cutin_risk.paths import output_path, project_root
+from cutin_risk.thesis_config import thesis_float, thesis_int, thesis_str
 
 
 def normalize_recording_id(value: object) -> str:
@@ -168,14 +170,17 @@ class AuditTarget:
 
 
 def _to_markdown_table(df: pd.DataFrame) -> str:
-    headers = df.columns.tolist()
+    headers = [str(c) for c in df.columns.tolist()]
     rows = df.astype(str).values.tolist()
-    out = []
-    out.append("| " + " | ".join(headers) + " |")
-    out.append("| " + " | ".join(["---"] * len(headers)) + " |")
-    for row in rows:
-        out.append("| " + " | ".join(row) + " |")
-    return "\n".join(out)
+    align: list[str] = []
+    for c in df.columns:
+        if pd.api.types.is_bool_dtype(df[c]):
+            align.append("left")
+        elif pd.api.types.is_numeric_dtype(df[c]):
+            align.append("right")
+        else:
+            align.append("left")
+    return markdown_table(headers=headers, rows=rows, align=align)
 
 
 def main() -> None:
@@ -185,9 +190,13 @@ def main() -> None:
         type=str,
         default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
     )
-    ap.add_argument("--thw-risk", type=float, default=0.7)
-    ap.add_argument("--step15c-stage", type=str, default="decision")
-    ap.add_argument("--step15c-min-frames", type=int, default=10)
+    ap.add_argument("--thw-risk", type=float, default=thesis_float("step17.thw_risk", 0.7, min_value=0.0))
+    ap.add_argument("--step15c-stage", type=str, default=thesis_str("step17.step15c_stage", "decision"))
+    ap.add_argument(
+        "--step15c-min-frames",
+        type=int,
+        default=thesis_int("step17.step15c_min_frames", 10, min_value=1),
+    )
     ap.add_argument("--out-dir", type=str, default=str(output_path("reports/final")))
     args = ap.parse_args()
 

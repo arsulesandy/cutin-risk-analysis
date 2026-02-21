@@ -1,0 +1,25 @@
+{
+  "detection": {
+    "lane_change": {
+      "min_stable_before_frames": 25,
+      "min_stable_after_frames": 25,
+      "ignore_lane_ids": [
+        0
+      ]
+    },
+    "cutin": {
+      "search_window_frames": 50,
+      "start_offset_frames": 0,
+      "max_relation_delay_frames": 15,
+      "min_relation_frames": 10,
+      "require_new_follower": true,
+      "precheck_frames": 25,
+      "no_neighbor_ids": [
+        0,
+        -1
+      ],
+      "require_lane_match": true,
+      "require_preceding_consistency": true
+    }
+  }
+}

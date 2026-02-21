@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -126,6 +127,44 @@ def outputs_root_path() -> Path:
 def output_path(relative_path: str | Path) -> Path:
     """Resolve a path under `outputs_root_path`."""
     return (outputs_root_path() / Path(relative_path)).resolve()
+
+
+def step_display_name(step: int | str) -> str:
+    """Normalize step identifiers into canonical display form, e.g. ``Step 02``."""
+    token = str(step).strip()
+    if not token:
+        raise ValueError("step must not be empty")
+
+    if token.lower().startswith("step"):
+        token = token[4:].strip()
+
+    compact = token.replace(" ", "").replace("_", "")
+    match = re.fullmatch(r"(\d+)([A-Za-z]?)", compact)
+    if match is None:
+        raise ValueError(f"Unsupported step identifier: {step!r}")
+
+    number = int(match.group(1))
+    suffix = match.group(2).upper()
+    return f"Step {number:02d}{suffix}"
+
+
+def step_output_dir(step: int | str, *, kind: str = "reports", create: bool = True) -> Path:
+    """
+    Resolve a step-specific output directory under ``outputs/reports`` or ``outputs/figures``.
+
+    Examples
+    --------
+    - ``step_output_dir(2, kind="reports")`` -> ``.../outputs/reports/Step 02``
+    - ``step_output_dir("03", kind="figures")`` -> ``.../outputs/figures/Step 03``
+    """
+    kind_norm = kind.strip().lower()
+    if kind_norm not in {"reports", "figures"}:
+        raise ValueError(f"kind must be 'reports' or 'figures', got: {kind!r}")
+
+    target = output_path(Path(kind_norm) / step_display_name(step))
+    if create:
+        target.mkdir(parents=True, exist_ok=True)
+    return target
 
 
 def step14_codes_csv_path() -> Path:

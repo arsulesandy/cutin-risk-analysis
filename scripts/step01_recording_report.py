@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import List
 import logging
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table, BuildOptions
-from cutin_risk.paths import dataset_root_path
+from cutin_risk.io.progress import iter_with_progress
+from cutin_risk.paths import dataset_root_path, step_output_dir
 from cutin_risk.preprocessing.quality_checks import (
     compute_basic_stats,
     check_duplicates_id_frame,
     check_time_monotonicity,
     sample_neighbor_id_integrity,
 )
+from cutin_risk.thesis_config import thesis_int
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -43,7 +46,10 @@ def process_recording(root: Path, rec_id: str) -> bool:
             len(check_time_monotonicity(df)),
         )
 
-        neigh = sample_neighbor_id_integrity(df, sample_n=3000)
+        neigh = sample_neighbor_id_integrity(
+            df,
+            sample_n=thesis_int("step01.neighbor_integrity_sample_n", 3000, min_value=1),
+        )
         if len(neigh) == 0:
             logger.info("Neighbor integrity: no neighbor columns found.")
         else:
@@ -66,17 +72,27 @@ def process_recording(root: Path, rec_id: str) -> bool:
 
 def main() -> None:
     root = dataset_root_path()
+    report_dir = step_output_dir(1, kind="reports")
+    step_output_dir(1, kind="figures")
 
     failed: List[str] = []
+    succeeded = 0
 
-    for i in range(1, 61):
-        rec_id = f"{i:02d}"
+    recordings = [f"{i:02d}" for i in range(1, 61)]
+    for _, _, rec_id in iter_with_progress(
+        recordings,
+        label="Step 01 recordings",
+        item_name="recording",
+        emit=logger.info,
+    ):
 
         logger.info(SEPARATOR)
         logger.info("")
 
         if not process_recording(root, rec_id):
             failed.append(rec_id)
+        else:
+            succeeded += 1
 
         logger.info("")
 
@@ -85,6 +101,26 @@ def main() -> None:
         logger.warning("Recordings that failed to process: %s", failed)
     else:
         logger.info("All recordings processed successfully.")
+
+    summary_path = report_dir / "recording_quality_summary.md"
+    summary_lines = [
+        "# Step 01 Recording Quality Summary",
+        "",
+        f"- Generated at: {datetime.now().isoformat(timespec='seconds')}",
+        f"- Dataset root: `{root}`",
+        "- Recordings attempted: 60",
+        f"- Recordings processed successfully: {succeeded}",
+        f"- Recordings failed: {len(failed)}",
+        "",
+        "## Failed recordings",
+    ]
+    if failed:
+        summary_lines.extend([f"- `{rid}`" for rid in failed])
+    else:
+        summary_lines.append("- None")
+
+    summary_path.write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
+    logger.info("Summary markdown written to %s", summary_path)
 
 
 if __name__ == "__main__":

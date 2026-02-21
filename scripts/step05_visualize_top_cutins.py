@@ -23,6 +23,7 @@ from cutin_risk.indicators.surrogate_safety import (
     compute_pair_timeseries,
 )
 from cutin_risk.paths import dataset_root_path, output_path
+from cutin_risk.thesis_config import thesis_float, thesis_int, thesis_str
 
 
 def _finite_min(values: pd.Series) -> float:
@@ -97,11 +98,36 @@ def main() -> None:
         default=str(dataset_root_path()),
         help="Directory that contains <recording>_tracks.csv, <recording>_tracksMeta.csv, <recording>_recordingMeta.csv",
     )
-    parser.add_argument("--recording-id", type=str, default="01", help="Recording id (e.g., 01)")
-    parser.add_argument("--top-k", type=int, default=3, help="Number of most-critical events to plot")
-    parser.add_argument("--pre-seconds", type=float, default=2.0, help="Seconds before relation start")
-    parser.add_argument("--post-seconds", type=float, default=3.0, help="Seconds after relation start")
-    parser.add_argument("--ttc-clip", type=float, default=60.0, help="Clip TTC in plots to this value (seconds)")
+    parser.add_argument(
+        "--recording-id",
+        type=str,
+        default=thesis_str("step05.recording_id", "01"),
+        help="Recording id (e.g., 01)",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=thesis_int("step05.top_k", 3, min_value=1),
+        help="Number of most-critical events to plot",
+    )
+    parser.add_argument(
+        "--pre-seconds",
+        type=float,
+        default=thesis_float("step05.pre_seconds", 2.0, min_value=0.0),
+        help="Seconds before relation start",
+    )
+    parser.add_argument(
+        "--post-seconds",
+        type=float,
+        default=thesis_float("step05.post_seconds", 3.0, min_value=0.0),
+        help="Seconds after relation start",
+    )
+    parser.add_argument(
+        "--ttc-clip",
+        type=float,
+        default=thesis_float("step05.ttc_clip", 60.0, min_value=0.0),
+        help="Clip TTC in plots to this value (seconds)",
+    )
     parser.add_argument(
         "--out-dir",
         type=str,
@@ -122,14 +148,14 @@ def main() -> None:
     # Step 2: lane changes
     lane_changes = detect_lane_changes(
         df,
-        options=LaneChangeOptions(min_stable_before_frames=25, min_stable_after_frames=25),
+        options=LaneChangeOptions(),
     )
 
     # Step 3: cut-ins
     cutins = detect_cutins(
         df,
         lane_changes,
-        options=CutInOptions(search_window_frames=50, min_relation_frames=10),
+        options=CutInOptions(),
     )
 
     print("== Step 5 ==")
@@ -143,8 +169,21 @@ def main() -> None:
 
     # Step 4 model: use the best-performing reference found during validation earlier.
     # Keep this explicit and consistent across runs.
-    model = LongitudinalModel(position_reference="rear")
-    ind_opt = IndicatorOptions()
+    model = LongitudinalModel(
+        position_reference=thesis_str(
+            "indicators.position_reference",
+            "rear",
+            allowed={"center", "rear"},
+        ),
+    )
+    ind_opt = IndicatorOptions(
+        min_speed=thesis_float("indicators.min_speed", 0.1, min_value=0.0),
+        closing_speed_epsilon=thesis_float(
+            "indicators.closing_speed_epsilon",
+            1e-6,
+            min_value=0.0,
+        ),
+    )
 
     sign_map = infer_direction_sign_map(df)
     indexed = df.set_index(["id", "frame"], drop=False)

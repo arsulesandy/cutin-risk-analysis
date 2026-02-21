@@ -10,7 +10,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from cutin_risk.io.markdown import markdown_table
 from cutin_risk.paths import output_path
+from cutin_risk.thesis_config import thesis_int
 
 
 def _safe_div(a: float, b: float) -> float:
@@ -91,14 +93,11 @@ def _bootstrap_micro(
 
 
 def _to_markdown_table(df: pd.DataFrame) -> str:
-    headers = df.columns.tolist()
+    headers = [str(c) for c in df.columns.tolist()]
     rows = df.astype(str).values.tolist()
-    out = []
-    out.append("| " + " | ".join(headers) + " |")
-    out.append("| " + " | ".join(["---"] * len(headers)) + " |")
-    for row in rows:
-        out.append("| " + " | ".join(row) + " |")
-    return "\n".join(out)
+    right_align_cols = {"point", "ci95", "n_folds"}
+    align = ["right" if h in right_align_cols else "left" for h in headers]
+    return markdown_table(headers=headers, rows=rows, align=align)
 
 
 @dataclass(frozen=True)
@@ -109,8 +108,8 @@ class ExperimentTarget:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Step 18: Bootstrap confidence intervals for LOO metrics.")
-    ap.add_argument("--n-bootstrap", type=int, default=3000)
-    ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--n-bootstrap", type=int, default=thesis_int("step18.n_bootstrap", 3000, min_value=1))
+    ap.add_argument("--seed", type=int, default=thesis_int("step18.seed", 7))
     ap.add_argument("--out-dir", type=str, default=str(output_path("reports/final")))
     args = ap.parse_args()
 

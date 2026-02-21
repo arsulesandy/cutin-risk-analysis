@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from cutin_risk.paths import output_path
+from cutin_risk.thesis_config import thesis_float
 
 
 def finite_count(s: pd.Series) -> int:
@@ -22,8 +23,18 @@ def main() -> None:
         type=str,
         default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
     )
-    parser.add_argument("--thw-risk", type=float, default=0.7, help="Risk threshold for execution_thw_min.")
-    parser.add_argument("--thw-very-risk", type=float, default=0.5, help="Very-risk threshold for execution_thw_min.")
+    parser.add_argument(
+        "--thw-risk",
+        type=float,
+        default=thesis_float("risk_label.thw_risk", 0.7, min_value=0.0),
+        help="Risk threshold for execution_thw_min.",
+    )
+    parser.add_argument(
+        "--thw-very-risk",
+        type=float,
+        default=thesis_float("risk_label.thw_very_risk", 0.5, min_value=0.0),
+        help="Very-risk threshold for execution_thw_min.",
+    )
     parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step10_risk")))
 
     args = parser.parse_args()

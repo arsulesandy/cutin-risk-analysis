@@ -13,6 +13,7 @@ from cutin_risk.detection.cutin import detect_cutins, CutInOptions
 from cutin_risk.detection.lane_change import detect_lane_changes, LaneChangeOptions
 from cutin_risk.paths import dataset_root_path
 from cutin_risk.reconstruction.neighbors import reconstruct_same_lane_neighbors
+from cutin_risk.thesis_config import thesis_int, thesis_str
 
 
 def _norm_neighbor(s: pd.Series, *, no_neighbor_ids: tuple[int, ...] = (0, -1)) -> pd.Series:
@@ -107,9 +108,17 @@ def _match_cutins(true_events, pred_events, *, frame_tolerance: int = 10) -> dic
 def main() -> None:
     parser = argparse.ArgumentParser(description="Step 6: reconstruct neighbors from geometry and evaluate vs highD.")
     parser.add_argument("--dataset-root", type=str, default=str(dataset_root_path()))
-    parser.add_argument("--recording-id", type=str, default="01")
-    parser.add_argument("--frame-tolerance", type=int, default=10)
-    parser.add_argument("--mismatch-examples", type=int, default=10)
+    parser.add_argument("--recording-id", type=str, default=thesis_str("step06.recording_id", "01"))
+    parser.add_argument(
+        "--frame-tolerance",
+        type=int,
+        default=thesis_int("step06.frame_tolerance", 10, min_value=0),
+    )
+    parser.add_argument(
+        "--mismatch-examples",
+        type=int,
+        default=thesis_int("step06.mismatch_examples", 10, min_value=0),
+    )
     args = parser.parse_args()
 
     rec = load_highd_recording(Path(args.dataset_root), args.recording_id)
@@ -155,7 +164,7 @@ def main() -> None:
     # - reconstructed neighbors (our *_xy columns)
     lane_changes = detect_lane_changes(
         df,
-        options=LaneChangeOptions(min_stable_before_frames=25, min_stable_after_frames=25),
+        options=LaneChangeOptions(),
     )
 
     cutins_oracle = detect_cutins(df, lane_changes, options=CutInOptions())
@@ -165,8 +174,6 @@ def main() -> None:
         options=CutInOptions(
             following_col="followingId_xy",
             preceding_col="precedingId_xy",
-            search_window_frames=50,
-            min_relation_frames=10,
         ),
     )
 

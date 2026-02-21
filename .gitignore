@@ -219,3 +219,5 @@ data/.DS_Store
 /outputs
 /scripts/outputs
 configs/paths.local.json
+configs/detection.local.json
+configs/thesis.local.json

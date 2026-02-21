@@ -8,7 +8,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.paths import output_path
+from cutin_risk.thesis_config import thesis_float, thesis_int, thesis_str
 
 
 @dataclass(frozen=True)
@@ -43,7 +45,12 @@ def _compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[int, int, 
 def _best_threshold_for_f1(y_true: np.ndarray, y_prob: np.ndarray) -> float:
     # Choose threshold on TRAIN set that maximizes F1.
     # We scan a fixed grid for stability/reproducibility.
-    thresholds = np.linspace(0.05, 0.95, 91, dtype=float)
+    thresholds = np.linspace(
+        thesis_float("step12.threshold_grid_min", 0.05),
+        thesis_float("step12.threshold_grid_max", 0.95),
+        thesis_int("step12.threshold_grid_steps", 91, min_value=2),
+        dtype=float,
+    )
 
     best_thr = 0.5
     best_f1 = -1.0
@@ -65,7 +72,7 @@ def main() -> None:
         type=str,
         default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
     )
-    parser.add_argument("--thw-risk", type=float, default=0.7)
+    parser.add_argument("--thw-risk", type=float, default=thesis_float("risk_label.thw_risk", 0.7, min_value=0.0))
     parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step12_warning_logreg")))
     args = parser.parse_args()
 
@@ -114,11 +121,33 @@ def main() -> None:
     X_all = keep[feature_cols].to_numpy(dtype=float)
     y_all = keep["risk_thw"].to_numpy(dtype=bool)
 
-    # Model: standardized features + logistic regression (balanced classes)
+    model_class_weight = thesis_str(
+        "step12.logreg.class_weight",
+        "none",
+        allowed={"none", "balanced"},
+    )
+    class_weight = None if model_class_weight == "none" else "balanced"
+    model_solver = thesis_str(
+        "step12.logreg.solver",
+        "lbfgs",
+        allowed={"lbfgs", "liblinear", "newton-cg", "newton-cholesky", "sag", "saga"},
+    )
+    model_max_iter = thesis_int("step12.logreg.max_iter", 2000, min_value=1)
+    model_c = thesis_float("step12.logreg.c", 1.0, min_value=1e-12)
+
+    # Model: standardized features + logistic regression
     model = Pipeline(
         steps=[
             ("scaler", StandardScaler()),
-            ("clf", LogisticRegression(max_iter=2000, class_weight=None, solver="lbfgs")),
+            (
+                "clf",
+                LogisticRegression(
+                    max_iter=model_max_iter,
+                    class_weight=class_weight,
+                    solver=model_solver,
+                    C=model_c,
+                ),
+            ),
         ]
     )
 
@@ -130,7 +159,11 @@ def main() -> None:
     print("Features:", ", ".join(feature_cols))
     print()
 
-    for rid in records:
+    for _, _, rid in iter_with_progress(
+        records,
+        label="Step 12 LOO folds",
+        item_name="heldout_recording",
+    ):
         train = keep[keep["recording_id"] != rid]
         test = keep[keep["recording_id"] == rid]
 

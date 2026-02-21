@@ -29,6 +29,7 @@ from cutin_risk.indicators.surrogate_safety import (
     compute_pair_timeseries,
 )
 from cutin_risk.paths import dataset_root_path, output_path
+from cutin_risk.thesis_config import thesis_bool, thesis_float, thesis_str
 
 
 @dataclass(frozen=True)
@@ -134,12 +135,17 @@ def _accumulate_by_offset(acc: dict[int, list[float]], offsets: np.ndarray, valu
 def main() -> None:
     parser = argparse.ArgumentParser(description="Step 8: stage-based analysis around cut-in events.")
     parser.add_argument("--dataset-root", type=str, default=str(dataset_root_path()))
-    parser.add_argument("--recording-id", type=str, default="01")
+    parser.add_argument("--recording-id", type=str, default=thesis_str("step08.recording_id", "01"))
 
-    parser.add_argument("--pre-seconds", type=float, default=4.0)
-    parser.add_argument("--post-seconds", type=float, default=4.0)
+    parser.add_argument("--pre-seconds", type=float, default=thesis_float("step08.pre_seconds", 4.0, min_value=0.0))
+    parser.add_argument("--post-seconds", type=float, default=thesis_float("step08.post_seconds", 4.0, min_value=0.0))
 
-    parser.add_argument("--make-plot", action="store_true", help="Save median TTC curve aligned at t0", default=True)
+    parser.add_argument(
+        "--make-plot",
+        action=argparse.BooleanOptionalAction,
+        help="Save median TTC curve aligned at t0",
+        default=thesis_bool("step08.make_plot", True),
+    )
     parser.add_argument("--out-dir", type=str, default=str(output_path(".")))
 
     args = parser.parse_args()
@@ -179,8 +185,6 @@ def main() -> None:
             lane_col="laneIndex_xy",
             following_col="followingId_xy_lane",
             preceding_col="precedingId_xy_lane",
-            search_window_frames=50,
-            min_relation_frames=10,
         ),
     )
 
@@ -197,15 +201,44 @@ def main() -> None:
 
     # Pair metrics setup
     sign_map = infer_direction_sign_map(df)
-    model = LongitudinalModel(position_reference="rear")
-    ind_opt = IndicatorOptions()
+    model = LongitudinalModel(
+        position_reference=thesis_str(
+            "indicators.position_reference",
+            "rear",
+            allowed={"center", "rear"},
+        ),
+    )
+    ind_opt = IndicatorOptions(
+        min_speed=thesis_float("indicators.min_speed", 0.1, min_value=0.0),
+        closing_speed_epsilon=thesis_float(
+            "indicators.closing_speed_epsilon",
+            1e-6,
+            min_value=0.0,
+        ),
+    )
 
     # Stage definitions (3-stage model, plus optional recovery in the full window)
     stages = [
-        Stage("intention", -4.0, -2.0),
-        Stage("decision", -2.0, 0.0),
-        Stage("execution", 0.0, 2.0),
-        Stage("recovery", 2.0, 4.0),
+        Stage(
+            "intention",
+            thesis_float("step08.stages.intention.start_s", -4.0),
+            thesis_float("step08.stages.intention.end_s", -2.0),
+        ),
+        Stage(
+            "decision",
+            thesis_float("step08.stages.decision.start_s", -2.0),
+            thesis_float("step08.stages.decision.end_s", 0.0),
+        ),
+        Stage(
+            "execution",
+            thesis_float("step08.stages.execution.start_s", 0.0),
+            thesis_float("step08.stages.execution.end_s", 2.0),
+        ),
+        Stage(
+            "recovery",
+            thesis_float("step08.stages.recovery.start_s", 2.0),
+            thesis_float("step08.stages.recovery.end_s", 4.0),
+        ),
     ]
 
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")

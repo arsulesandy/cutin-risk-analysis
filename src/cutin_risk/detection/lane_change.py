@@ -13,11 +13,16 @@ detector to run on:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
 
+from .config import (
+    lane_change_default_ignore_lane_ids,
+    lane_change_default_min_stable_after_frames,
+    lane_change_default_min_stable_before_frames,
+)
 from .events import LaneChangeEvent
 
 
@@ -36,9 +41,13 @@ class LaneChangeOptions:
     lane_col:
       Column used to represent lane membership (e.g., "laneId" or "laneIndex_xy").
     """
-    min_stable_before_frames: int = 25  # 1 second at 25 Hz
-    min_stable_after_frames: int = 25   # 1 second at 25 Hz
-    ignore_lane_ids: tuple[int, ...] = (0,)
+    min_stable_before_frames: int = field(
+        default_factory=lane_change_default_min_stable_before_frames
+    )
+    min_stable_after_frames: int = field(
+        default_factory=lane_change_default_min_stable_after_frames
+    )
+    ignore_lane_ids: tuple[int, ...] = field(default_factory=lane_change_default_ignore_lane_ids)
     lane_col: str = "laneId"
 
     id_col: str = "id"

@@ -9,6 +9,7 @@ import pandas as pd
 
 from cutin_risk.encoding.sfc_binary import decode_grid_4x4_bits, encode_grid_4x4_bits
 from cutin_risk.paths import output_path
+from cutin_risk.thesis_config import thesis_str
 
 
 def normalize_recording_id(v: object) -> str:
@@ -34,13 +35,13 @@ def main() -> None:
         default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
         help="Merged event table containing from_lane and to_lane.",
     )
-    ap.add_argument("--from-col", default="from_lane")
-    ap.add_argument("--to-col", default="to_lane")
+    ap.add_argument("--from-col", default=thesis_str("step15a.from_col", "from_lane"))
+    ap.add_argument("--to-col", default=thesis_str("step15a.to_col", "to_lane"))
 
     ap.add_argument(
         "--canonical-direction",
         choices=["positive", "negative"],
-        default="positive",
+        default=thesis_str("step15a.canonical_direction", "positive", allowed={"positive", "negative"}),
         help="Canonical lane-change direction. If 'positive', mirror events where (to-from)<0.",
     )
 

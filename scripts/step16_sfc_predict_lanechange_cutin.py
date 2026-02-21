@@ -42,7 +42,7 @@ Note:
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
@@ -55,8 +55,14 @@ from sklearn.preprocessing import StandardScaler
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
+from cutin_risk.detection.config import (
+    lane_change_default_min_stable_after_frames,
+    lane_change_default_min_stable_before_frames,
+)
+from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_index
+from cutin_risk.thesis_config import thesis_bool, thesis_float, thesis_int, thesis_str
 
 
 # ----------------------------
@@ -96,8 +102,8 @@ class CutInEvent:
 
 @dataclass(frozen=True)
 class LaneChangeOptions:
-    min_stable_before_frames: int = 25
-    min_stable_after_frames: int = 25
+    min_stable_before_frames: int = field(default_factory=lane_change_default_min_stable_before_frames)
+    min_stable_after_frames: int = field(default_factory=lane_change_default_min_stable_after_frames)
     ignore_lane_ids: tuple[int, ...] = (0,)
     lane_col: str = "laneId"
 
@@ -105,9 +111,13 @@ class LaneChangeOptions:
 @dataclass(frozen=True)
 class CutInOptions:
     # A cut-in is accepted if the follower relation persists >= min_relation_frames.
-    min_relation_frames: int = 19
+    min_relation_frames: int = field(
+        default_factory=lambda: thesis_int("step16.min_relation_frames", 19, min_value=1)
+    )
     # We cap the relation segment to keep computations stable (like your Step 3 report).
-    max_relation_frames: int = 50
+    max_relation_frames: int = field(
+        default_factory=lambda: thesis_int("step16.max_relation_frames", 50, min_value=1)
+    )
 
 
 @dataclass(frozen=True)
@@ -160,7 +170,11 @@ def best_threshold_for_f1(y_true: np.ndarray, prob: np.ndarray) -> float:
     # simple grid search
     best_thr = 0.5
     best_f1 = -1.0
-    for thr in np.linspace(0.05, 0.95, 91):
+    for thr in np.linspace(
+            thesis_float("step16.threshold_grid_min", 0.05),
+            thesis_float("step16.threshold_grid_max", 0.95),
+            thesis_int("step16.threshold_grid_steps", 91, min_value=2),
+    ):
         pred = prob >= thr
         m = compute_metrics(y_true, pred)
         if m.f1 > best_f1:
@@ -630,7 +644,10 @@ def sample_negative_lanechange_frames(
 
     neg: list[tuple[int, int]] = []
     attempts = 0
-    max_attempts = max(20000, 20 * n_neg)
+    max_attempts = max(
+        thesis_int("step16.negative_sampling_max_attempts_base", 20000, min_value=1),
+        thesis_int("step16.negative_sampling_max_attempts_per_negative", 20, min_value=1) * n_neg,
+    )
 
     while len(neg) < n_neg and attempts < max_attempts:
         attempts += 1
@@ -685,7 +702,15 @@ def build_datasets_for_recording(
 
     # build samples list
     lanechange_pos = [(lc.vehicle_id, lc.start_frame, True) for lc in lane_changes]
-    lanechange_neg_pairs = sample_negative_lanechange_frames(df, lane_changes, pre_frames=pre_frames, n_neg=len(lanechange_pos), seed=seed)
+    neg_ratio = thesis_float("step16.negative_to_positive_ratio", 1.0, min_value=0.0)
+    n_neg = int(round(len(lanechange_pos) * neg_ratio))
+    lanechange_neg_pairs = sample_negative_lanechange_frames(
+        df,
+        lane_changes,
+        pre_frames=pre_frames,
+        n_neg=n_neg,
+        seed=seed,
+    )
     lanechange_neg = [(vid, t0, False) for (vid, t0) in lanechange_neg_pairs]
 
     # cut-in samples: all lane changes
@@ -788,7 +813,11 @@ def loocv_eval(df: pd.DataFrame, label_col: str) -> pd.DataFrame:
 
     rows = []
 
-    for heldout in recs:
+    for _, _, heldout in iter_with_progress(
+        recs,
+        label=f"Step 16 LOOCV ({label_col})",
+        item_name="heldout_recording",
+    ):
         train = df[df["recording_id"].astype(str) != heldout]
         test = df[df["recording_id"].astype(str) == heldout]
 
@@ -800,7 +829,10 @@ def loocv_eval(df: pd.DataFrame, label_col: str) -> pd.DataFrame:
 
         model = make_pipeline(
             StandardScaler(with_mean=True, with_std=True),
-            LogisticRegression(max_iter=2000),
+            LogisticRegression(
+                C=thesis_float("step16.logreg_c", 1.0, min_value=1e-12),
+                max_iter=thesis_int("step16.logreg_max_iter", 2000, min_value=1),
+            ),
         )
         model.fit(X_tr, y_tr)
 
@@ -838,23 +870,36 @@ def loocv_eval(df: pd.DataFrame, label_col: str) -> pd.DataFrame:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-root", type=str, default=str(dataset_root_path()))
-    parser.add_argument("--recordings", type=str, default="01,02,03,04,05")
+    parser.add_argument("--recordings", type=str, default=thesis_str("step16.recordings", "01,02,03,04,05"))
     parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step16_sfc_predict")))
 
-    parser.add_argument("--decision-seconds", type=float, default=2.0)
-    parser.add_argument("--ahead-m", type=float, default=50.0)
-    parser.add_argument("--behind-m", type=float, default=50.0)
-    parser.add_argument("--alongside-m", type=float, default=10.0)
+    parser.add_argument("--decision-seconds", type=float, default=thesis_float("step16.decision_seconds", 2.0, min_value=0.0))
+    parser.add_argument("--ahead-m", type=float, default=thesis_float("step16.ahead_m", 50.0, min_value=0.0))
+    parser.add_argument("--behind-m", type=float, default=thesis_float("step16.behind_m", 50.0, min_value=0.0))
+    parser.add_argument("--alongside-m", type=float, default=thesis_float("step16.alongside_m", 10.0, min_value=0.0))
 
-    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--seed", type=int, default=thesis_int("step16.seed", 0, min_value=0))
 
     # lane change / cut-in definition knobs
-    parser.add_argument("--min-stable-before", type=int, default=25)
-    parser.add_argument("--min-stable-after", type=int, default=25)
-    parser.add_argument("--min-relation-frames", type=int, default=19)
-    parser.add_argument("--max-relation-frames", type=int, default=50)
+    parser.add_argument("--min-stable-before", type=int, default=lane_change_default_min_stable_before_frames())
+    parser.add_argument("--min-stable-after", type=int, default=lane_change_default_min_stable_after_frames())
+    parser.add_argument(
+        "--min-relation-frames",
+        type=int,
+        default=thesis_int("step16.min_relation_frames", 19, min_value=1),
+    )
+    parser.add_argument(
+        "--max-relation-frames",
+        type=int,
+        default=thesis_int("step16.max_relation_frames", 50, min_value=1),
+    )
 
-    parser.add_argument("--no-mirror", action="store_true", help="Disable mirroring of left lane changes.")
+    parser.add_argument(
+        "--mirror",
+        action=argparse.BooleanOptionalAction,
+        default=thesis_bool("step16.mirror_enabled", True),
+        help="Enable/disable mirroring of left lane changes.",
+    )
     args = parser.parse_args()
 
     dataset_root = Path(args.dataset_root)
@@ -876,14 +921,18 @@ def main() -> None:
         ahead_m=float(args.ahead_m),
         behind_m=float(args.behind_m),
         alongside_m=float(args.alongside_m),
-        mirror_left_to_right=(not args.no_mirror),
-        random_mirror_negatives=(not args.no_mirror),
+        mirror_left_to_right=bool(args.mirror),
+        random_mirror_negatives=bool(args.mirror),
     )
 
     all_lc = []
     all_ci = []
 
-    for rid in recordings:
+    for _, _, rid in iter_with_progress(
+        recordings,
+        label="Step 16 recordings",
+        item_name="recording",
+    ):
         print(f"=== Step 16: building datasets for recording {rid} ===")
         lc_df, ci_df = build_datasets_for_recording(
             dataset_root,

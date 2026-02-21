@@ -5,11 +5,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 PYTHON_BIN="${PYTHON_BIN:-python}"
-RECORDINGS_BATCH="${RECORDINGS_BATCH:-1-10}"
-RECORDINGS_STEP16="${RECORDINGS_STEP16:-01,02,03,04,05}"
-THW_RISK="${THW_RISK:-0.7}"
-CI_BOOTSTRAP="${CI_BOOTSTRAP:-3000}"
-CI_SEED="${CI_SEED:-7}"
+RECORDINGS_BATCH="${RECORDINGS_BATCH:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_str; print(thesis_str("pipeline.recordings_batch", "1-10"))')}"
+RECORDINGS_STEP16="${RECORDINGS_STEP16:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_str; print(thesis_str("pipeline.recordings_step16", "01,02,03,04,05"))')}"
+THW_RISK="${THW_RISK:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_float; print(thesis_float("pipeline.thw_risk", 0.7, min_value=0.0))')}"
+CI_BOOTSTRAP="${CI_BOOTSTRAP:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_int; print(thesis_int("pipeline.ci_bootstrap", 3000, min_value=1))')}"
+CI_SEED="${CI_SEED:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_int; print(thesis_int("pipeline.ci_seed", 7))')}"
 
 FINAL_DIR="outputs/reports/final"
 mkdir -p "$FINAL_DIR"
@@ -42,9 +42,10 @@ run_cmd "$PYTHON_BIN" scripts/step13b_realistic_follower_warning.py --thw-risk "
 
 run_cmd "$PYTHON_BIN" scripts/step14_sfc_binary_encode.py
 run_cmd "$PYTHON_BIN" scripts/step14_sfc_binary_report.py
-run_cmd "$PYTHON_BIN" scripts/step15a_sfc_mirror_normalize.py
-run_cmd "$PYTHON_BIN" scripts/step15b_sfc_weighted_stage_features.py --weight-mode distance
-run_cmd "$PYTHON_BIN" scripts/step15b_sfc_weighted_stage_features.py --weight-mode ttc
+run_cmd "$PYTHON_BIN" scripts/step15a_sfc_mirror_normalize.py \
+  --codes-csv outputs/reports/step14_sfc_binary/sfc_binary_codes_long_hilbert.csv
+run_cmd "$PYTHON_BIN" scripts/step15b_sfc_weighted_stage_features.py --mode distance
+run_cmd "$PYTHON_BIN" scripts/step15b_sfc_weighted_stage_features.py --mode ttc
 
 run_cmd "$PYTHON_BIN" scripts/step15c_sfc_prediction.py \
   --input-type binary-long \

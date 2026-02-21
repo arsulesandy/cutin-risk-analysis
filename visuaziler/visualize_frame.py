@@ -212,7 +212,7 @@ class VisualizationPlot(object):
             transform=self.ax_header.transAxes,
             ha="left",
             va="center",
-            fontsize=15,
+            fontsize=17,
             color=self.THEME["text_main"],
             fontweight="bold",
         )
@@ -223,7 +223,7 @@ class VisualizationPlot(object):
             transform=self.ax_header.transAxes,
             ha="left",
             va="center",
-            fontsize=9,
+            fontsize=10,
             color=self.THEME["text_muted"],
         )
         self.header_state_text = self.ax_header.text(
@@ -233,7 +233,7 @@ class VisualizationPlot(object):
             transform=self.ax_header.transAxes,
             ha="right",
             va="center",
-            fontsize=9.5,
+            fontsize=10.5,
             color=self.THEME["text_main"],
             fontweight="bold",
         )
@@ -330,7 +330,7 @@ class VisualizationPlot(object):
             transform=self.ax_sfc_info.transAxes,
             ha="left",
             va="top",
-            fontsize=8.5,
+            fontsize=9.7,
             fontfamily="monospace",
             color=self.THEME["text_main"],
         )
@@ -342,7 +342,7 @@ class VisualizationPlot(object):
             transform=self.ax_status.transAxes,
             ha="left",
             va="top",
-            fontsize=8.2,
+            fontsize=9.2,
             color=self.THEME["text_main"],
             linespacing=1.25,
         )
@@ -428,7 +428,7 @@ class VisualizationPlot(object):
                 transform=self.ax_status.transAxes,
                 ha="left",
                 va="center",
-                fontsize=6.6,
+                fontsize=7.6,
                 color=self.THEME["text_muted"],
                 zorder=3,
             )
@@ -547,7 +547,7 @@ class VisualizationPlot(object):
         button.color = self.THEME["button"]
         button.hovercolor = self.THEME["button_hover"]
         button.label.set_color(self.THEME["button_text"])
-        button.label.set_fontsize(9)
+        button.label.set_fontsize(10)
         for spine in button.ax.spines.values():
             spine.set_color(self.THEME["panel_edge"])
             spine.set_linewidth(0.9)
@@ -561,7 +561,7 @@ class VisualizationPlot(object):
         slider.valtext.set_position((0.988, 0.5))
         slider.valtext.set_ha("right")
         slider.valtext.set_va("center")
-        slider.valtext.set_fontsize(8.5)
+        slider.valtext.set_fontsize(9.3)
         slider.valtext.set_bbox(
             dict(boxstyle="round,pad=0.16", fc=self.THEME["panel"], ec=self.THEME["panel_edge"], lw=0.7, alpha=0.92)
         )
@@ -577,7 +577,7 @@ class VisualizationPlot(object):
             transform=ax.transAxes,
             ha="left",
             va="center",
-            fontsize=8.5,
+            fontsize=9.4,
             color=self.THEME["text_muted"],
             fontweight="bold",
             clip_on=False,
@@ -617,7 +617,7 @@ class VisualizationPlot(object):
                 transform=self.ax_recording_slider.transAxes,
                 ha="left",
                 va="center",
-                fontsize=9,
+                fontsize=10,
                 color=self.THEME["text_main"],
             )
             self.ax_recording_slider.set_axis_off()
@@ -1399,7 +1399,7 @@ class VisualizationPlot(object):
             transform=self.ax.transAxes,
             ha="center",
             va="top",
-            fontsize=9,
+            fontsize=10,
             color=self.THEME["text_main"],
             bbox=info_box_style,
             zorder=30,
@@ -1411,7 +1411,7 @@ class VisualizationPlot(object):
             transform=self.ax.transAxes,
             ha="center",
             va="bottom",
-            fontsize=9,
+            fontsize=10,
             color=self.THEME["text_main"],
             bbox=info_box_style,
             zorder=30,

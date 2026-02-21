@@ -131,3 +131,54 @@ Supported environment variables:
 - `CUTIN_DATASET_ROOT`
 - `CUTIN_OUTPUTS_ROOT`
 - `CUTIN_STEP14_CODES_CSV`
+
+### Detection configuration (thesis-sensitive defaults)
+
+Lane-change and cut-in defaults are resolved from `configs/detection.json`.
+To override locally without committing, create `configs/detection.local.json`:
+
+```json
+{
+  "detection": {
+    "lane_change": {
+      "min_stable_before_frames": 25,
+      "min_stable_after_frames": 25,
+      "ignore_lane_ids": [0]
+    },
+    "cutin": {
+      "search_window_frames": 50,
+      "start_offset_frames": 0,
+      "max_relation_delay_frames": 15,
+      "min_relation_frames": 10,
+      "require_new_follower": true,
+      "precheck_frames": 25,
+      "no_neighbor_ids": [0, -1],
+      "require_lane_match": true,
+      "require_preceding_consistency": true
+    }
+  }
+}
+```
+
+Detection config precedence is:
+1. `CUTIN_DETECTION_CONFIG_FILE` (custom JSON config location)
+2. `configs/detection.local.json`
+3. `configs/detection.json`
+4. Built-in defaults in code (used if config file is missing)
+
+### Thesis pipeline configuration
+
+Step-level thesis defaults are resolved from `configs/thesis.json`.
+To override locally without committing, create `configs/thesis.local.json`.
+
+Key groups include:
+- `pipeline` (recording subsets, THW label threshold, CI settings)
+- `risk_label` (risk/very-risk cutoffs)
+- `step04`..`step18` (window sizes, threshold grids, model hyperparameters, SFC options)
+- `indicators` (position reference, indicator numeric safeguards)
+
+Thesis config precedence is:
+1. `CUTIN_THESIS_CONFIG_FILE` (custom JSON config location)
+2. `configs/thesis.local.json`
+3. `configs/thesis.json`
+4. Built-in defaults in each script (used if config file is missing)

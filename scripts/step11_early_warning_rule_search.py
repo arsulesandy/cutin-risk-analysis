@@ -8,7 +8,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.paths import output_path
+from cutin_risk.thesis_config import thesis_float
 
 
 @dataclass(frozen=True)
@@ -68,13 +70,21 @@ def main() -> None:
         type=str,
         default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
     )
-    parser.add_argument("--thw-risk", type=float, default=0.7)
-    parser.add_argument("--lat-min", type=float, default=0.6)
-    parser.add_argument("--lat-max", type=float, default=1.6)
-    parser.add_argument("--lat-step", type=float, default=0.05)
-    parser.add_argument("--spd-min", type=float, default=0.0)
-    parser.add_argument("--spd-max", type=float, default=10.0)
-    parser.add_argument("--spd-step", type=float, default=0.25)
+    parser.add_argument("--thw-risk", type=float, default=thesis_float("risk_label.thw_risk", 0.7, min_value=0.0))
+    parser.add_argument("--lat-min", type=float, default=thesis_float("step11.lat_min", 0.6))
+    parser.add_argument("--lat-max", type=float, default=thesis_float("step11.lat_max", 1.6))
+    parser.add_argument(
+        "--lat-step",
+        type=float,
+        default=thesis_float("step11.lat_step", 0.05, min_value=1e-9),
+    )
+    parser.add_argument("--spd-min", type=float, default=thesis_float("step11.spd_min", 0.0))
+    parser.add_argument("--spd-max", type=float, default=thesis_float("step11.spd_max", 10.0))
+    parser.add_argument(
+        "--spd-step",
+        type=float,
+        default=thesis_float("step11.spd_step", 0.25, min_value=1e-9),
+    )
     parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step11_warning")))
     args = parser.parse_args()
 
@@ -119,7 +129,11 @@ def main() -> None:
     records = sorted(keep["recording_id"].astype(str).unique().tolist())
     loo_rows = []
 
-    for rid in records:
+    for _, _, rid in iter_with_progress(
+        records,
+        label="Step 11 LOO folds",
+        item_name="heldout_recording",
+    ):
         train = keep[keep["recording_id"].astype(str) != rid]
         test = keep[keep["recording_id"].astype(str) == rid]
 

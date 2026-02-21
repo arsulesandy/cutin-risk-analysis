@@ -31,8 +31,10 @@ import pandas as pd
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
+from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import infer_lane_index, parse_lane_markings
+from cutin_risk.thesis_config import thesis_float, thesis_str
 
 
 @dataclass(frozen=True)
@@ -206,22 +208,27 @@ def main() -> None:
         type=str,
         default=str(dataset_root_path()),
     )
-    parser.add_argument("--thw-risk", type=float, default=0.7)
+    parser.add_argument("--thw-risk", type=float, default=thesis_float("risk_label.thw_risk", 0.7, min_value=0.0))
 
-    parser.add_argument("--decision-seconds", type=float, default=2.0, help="Decision window length before t0.")
-    parser.add_argument("--lane-col", type=str, default="laneIndex_xy")
+    parser.add_argument(
+        "--decision-seconds",
+        type=float,
+        default=thesis_float("step13b.decision_seconds", 2.0, min_value=0.0),
+        help="Decision window length before t0.",
+    )
+    parser.add_argument("--lane-col", type=str, default=thesis_str("step13b.lane_col", "laneIndex_xy"))
 
     # Compare against Step 11 global rule thresholds (for reference)
-    parser.add_argument("--baseline-lat-thr", type=float, default=0.80)
-    parser.add_argument("--baseline-spd-thr", type=float, default=1.25)
+    parser.add_argument("--baseline-lat-thr", type=float, default=thesis_float("step13b.baseline_lat_thr", 0.80))
+    parser.add_argument("--baseline-spd-thr", type=float, default=thesis_float("step13b.baseline_spd_thr", 1.25))
 
     # Threshold search grid
-    parser.add_argument("--lat-min", type=float, default=0.6)
-    parser.add_argument("--lat-max", type=float, default=1.6)
-    parser.add_argument("--lat-step", type=float, default=0.05)
-    parser.add_argument("--spd-min", type=float, default=0.0)
-    parser.add_argument("--spd-max", type=float, default=10.0)
-    parser.add_argument("--spd-step", type=float, default=0.25)
+    parser.add_argument("--lat-min", type=float, default=thesis_float("step13b.lat_min", 0.6))
+    parser.add_argument("--lat-max", type=float, default=thesis_float("step13b.lat_max", 1.6))
+    parser.add_argument("--lat-step", type=float, default=thesis_float("step13b.lat_step", 0.05, min_value=1e-9))
+    parser.add_argument("--spd-min", type=float, default=thesis_float("step13b.spd_min", 0.0))
+    parser.add_argument("--spd-max", type=float, default=thesis_float("step13b.spd_max", 10.0))
+    parser.add_argument("--spd-step", type=float, default=thesis_float("step13b.spd_step", 0.25, min_value=1e-9))
 
     parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step13b_warning")))
     args = parser.parse_args()
@@ -260,7 +267,12 @@ def main() -> None:
 
     dataset_root = Path(args.dataset_root)
 
-    for rid in sorted(events["recording_id"].unique().tolist()):
+    recording_ids = sorted(events["recording_id"].unique().tolist())
+    for _, _, rid in iter_with_progress(
+        recording_ids,
+        label="Step 13B recordings",
+        item_name="recording",
+    ):
         ev_r = events.loc[events["recording_id"] == rid].copy()
         if ev_r.empty:
             continue
@@ -474,7 +486,11 @@ def main() -> None:
 
     micro_tp = micro_fp = micro_fn = micro_tn = 0
 
-    for r in recs:
+    for _, _, r in iter_with_progress(
+        recs,
+        label="Step 13B LOO folds",
+        item_name="heldout_recording",
+    ):
         train = use[use["recording_id"].astype(str) != r]
         test = use[use["recording_id"].astype(str) == r]
 
