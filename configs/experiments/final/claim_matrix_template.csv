@@ -1,0 +1,6 @@
+claim_id,claim_text,metric,split_protocol,artifact_path,status
+C1,Early warning models improve over simple threshold baselines,AUROC|AUPRC|F1,leave-one-recording-out,outputs/reports/final/baseline_comparison.csv,todo
+C2,SFC-based representation improves predictive performance,AUROC|AUPRC|Recall@precision,leave-one-recording-out,outputs/reports/final/ablation_results.csv,todo
+C3,Stage-aware features capture risk evolution better than single-point metrics,F1|lead_time,leave-one-recording-out,outputs/reports/final/ablation_results.csv,todo
+C4,Model outputs are reliable for thresholding decisions,Brier|ECE|calibration_curve,leave-one-recording-out,outputs/reports/final/calibration_summary.csv,todo
+C5,Results are robust and not due to split leakage,split_audit_pass_rate,recording-level disjoint split,outputs/reports/final/split_audit.md,todo
