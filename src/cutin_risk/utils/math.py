@@ -1,3 +1,5 @@
+"""Small mathematical helpers shared across modules."""
+
 from __future__ import annotations
 
 

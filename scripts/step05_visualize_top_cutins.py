@@ -1,3 +1,5 @@
+"""Step 05: visualize selected high-risk cut-ins and export diagnostic plots."""
+
 from __future__ import annotations
 
 import argparse

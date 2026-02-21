@@ -1,3 +1,5 @@
+"""Abstract adapter contract for integrating trajectory datasets."""
+
 from __future__ import annotations
 
 

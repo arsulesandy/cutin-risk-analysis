@@ -1,3 +1,5 @@
+"""Step 06: evaluate geometry-based neighbor reconstruction against dataset neighbors."""
+
 from __future__ import annotations
 
 import argparse

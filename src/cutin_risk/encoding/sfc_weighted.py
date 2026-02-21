@@ -1,3 +1,9 @@
+"""Weighted SFC features for local traffic context around cut-in events.
+
+Compared with binary SFC encoding, this module assigns each occupied cell a score
+based on distance or TTC-like urgency before vectorizing in SFC order.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,6 +19,7 @@ ValueMode = Literal["distance", "ttc"]
 
 @dataclass(frozen=True)
 class WeightedSFCOptions:
+    """Configuration for weighted 3x3 grid extraction and score shaping."""
     lane_col: str = "laneIndex_xy"
     sign_col: str = "sign"
     s_col: str = "s"
@@ -30,10 +37,12 @@ class WeightedSFCOptions:
 
 
 def _lane_key(frame: int, lane: int, sign: int) -> tuple[int, int, int]:
+    """Canonical dictionary key for a weighted-grid snapshot lookup."""
     return (int(frame), int(lane), int(sign))
 
 
 def _nearest_ahead(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float) -> tuple[int, float]:
+    """Return nearest vehicle ahead and its forward distance from ego position."""
     pos = int(np.searchsorted(s_sorted, s0, side="right"))
     if pos >= len(s_sorted):
         return 0, float("inf")
@@ -41,6 +50,7 @@ def _nearest_ahead(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float) -> t
 
 
 def _nearest_behind(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float) -> tuple[int, float]:
+    """Return nearest vehicle behind and its backward distance from ego position."""
     pos = int(np.searchsorted(s_sorted, s0, side="left"))
     idx = pos - 1
     if idx < 0:
@@ -49,6 +59,7 @@ def _nearest_behind(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float) -> 
 
 
 def _nearest_alongside(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float, *, thresh: float) -> tuple[int, float]:
+    """Return nearest alongside candidate inside a symmetric longitudinal threshold."""
     pos = int(np.searchsorted(s_sorted, s0, side="left"))
     best_id = 0
     best_abs = float("inf")
@@ -65,6 +76,7 @@ def _nearest_alongside(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float, 
 
 
 def _distance_score(ds: float, rng: Optional[float]) -> float:
+    """Map distance to [0, 1] with linear gate or exponential fallback."""
     if not np.isfinite(ds):
         return 0.0
     if rng is None:
@@ -76,6 +88,7 @@ def _distance_score(ds: float, rng: Optional[float]) -> float:
 
 
 def _ttc_score(ds: float, v_rel: float, *, ttc_max: float) -> float:
+    """Map TTC proxy to [0, 1], where lower TTC yields higher risk score."""
     if not (np.isfinite(ds) and np.isfinite(v_rel)):
         return 0.0
     if v_rel <= 0:

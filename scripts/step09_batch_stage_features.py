@@ -1,3 +1,5 @@
+"""Step 09: batch runner that executes Step 08 across many recordings."""
+
 from __future__ import annotations
 
 import argparse

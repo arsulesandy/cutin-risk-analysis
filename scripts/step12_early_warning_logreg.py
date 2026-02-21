@@ -1,3 +1,5 @@
+"""Step 12: baseline logistic-regression model for early warning prediction."""
+
 from __future__ import annotations
 
 import argparse

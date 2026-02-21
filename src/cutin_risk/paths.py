@@ -1,3 +1,13 @@
+"""Path resolution helpers used by scripts and library entry points.
+
+Configuration precedence for each named path is:
+1. Environment variable `CUTIN_<NAME>`
+2. JSON configuration file value (`configs/paths.local.json` preferred)
+3. Built-in default
+
+All relative paths are resolved against the project root.
+"""
+
 from __future__ import annotations
 
 import json
@@ -8,6 +18,7 @@ from typing import Any
 
 
 def _normalize_recording_id(recording_id: str) -> str:
+    """Normalize highD recording ids to two digits where possible."""
     rid = str(recording_id).strip()
     return f"{int(rid):02d}" if rid.isdigit() else rid
 
@@ -26,6 +37,7 @@ def project_root() -> Path:
 
 
 def _config_file_path() -> Path:
+    """Resolve the active path configuration file."""
     env_path = os.environ.get("CUTIN_PATHS_FILE")
     if env_path:
         p = Path(env_path).expanduser()
@@ -40,6 +52,10 @@ def _config_file_path() -> Path:
 
 @lru_cache(maxsize=1)
 def _load_config() -> dict[str, Any]:
+    """Load JSON config once per process.
+
+    Returns an empty dict when no config file exists or is empty.
+    """
     cfg_path = _config_file_path()
     if not cfg_path.exists():
         return {}
@@ -60,6 +76,7 @@ def _load_config() -> dict[str, Any]:
 
 
 def _value_from_config(name: str) -> str | None:
+    """Read a path-like value from the loaded config structure."""
     cfg = _load_config()
 
     paths_block = cfg.get("paths")
@@ -75,6 +92,7 @@ def _value_from_config(name: str) -> str | None:
 
 
 def _resolve_to_project(path_like: str | Path) -> Path:
+    """Resolve path to absolute location relative to project root when needed."""
     p = Path(path_like).expanduser()
     if p.is_absolute():
         return p
@@ -82,6 +100,7 @@ def _resolve_to_project(path_like: str | Path) -> Path:
 
 
 def configured_path(name: str, default: str | Path) -> Path:
+    """Resolve a named configured path with env > config > default precedence."""
     env_name = f"CUTIN_{name.upper()}"
     env_value = os.environ.get(env_name)
     if env_value and env_value.strip():
@@ -95,18 +114,22 @@ def configured_path(name: str, default: str | Path) -> Path:
 
 
 def dataset_root_path() -> Path:
+    """Return the configured root directory containing highD CSV files."""
     return configured_path("dataset_root", "data/raw/highD-dataset-v1.0/data")
 
 
 def outputs_root_path() -> Path:
+    """Return the configured root directory for generated outputs."""
     return configured_path("outputs_root", "outputs")
 
 
 def output_path(relative_path: str | Path) -> Path:
+    """Resolve a path under `outputs_root_path`."""
     return (outputs_root_path() / Path(relative_path)).resolve()
 
 
 def step14_codes_csv_path() -> Path:
+    """Return path to Step-14 binary SFC code table."""
     return configured_path(
         "step14_codes_csv",
         output_path("reports/step14_sfc_binary/sfc_binary_codes_long_hilbert.csv"),
@@ -114,25 +137,30 @@ def step14_codes_csv_path() -> Path:
 
 
 def highd_tracks_csv(recording_id: str = "01") -> Path:
+    """Return `<recording>_tracks.csv` path for a highD recording."""
     rid = _normalize_recording_id(recording_id)
     return dataset_root_path() / f"{rid}_tracks.csv"
 
 
 def highd_tracks_meta_csv(recording_id: str = "01") -> Path:
+    """Return `<recording>_tracksMeta.csv` path for a highD recording."""
     rid = _normalize_recording_id(recording_id)
     return dataset_root_path() / f"{rid}_tracksMeta.csv"
 
 
 def highd_recording_meta_csv(recording_id: str = "01") -> Path:
+    """Return `<recording>_recordingMeta.csv` path for a highD recording."""
     rid = _normalize_recording_id(recording_id)
     return dataset_root_path() / f"{rid}_recordingMeta.csv"
 
 
 def highd_pickle_path(recording_id: str = "01") -> Path:
+    """Return `<recording>.pickle` path under dataset root."""
     rid = _normalize_recording_id(recording_id)
     return dataset_root_path() / f"{rid}.pickle"
 
 
 def highd_background_image(recording_id: str = "01") -> Path:
+    """Return `<recording>_highway.png` background image path."""
     rid = _normalize_recording_id(recording_id)
     return dataset_root_path() / f"{rid}_highway.png"

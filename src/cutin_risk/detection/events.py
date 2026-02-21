@@ -1,3 +1,5 @@
+"""Dataclasses used to exchange lane-change and cut-in events across modules."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,6 +7,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class LaneChangeEvent:
+    """Detected lane-change interval for one vehicle."""
     vehicle_id: int
     from_lane: int
     to_lane: int

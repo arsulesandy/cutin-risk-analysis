@@ -1,3 +1,5 @@
+"""Step 15B: build weighted SFC stage features using distance or TTC scores."""
+
 from __future__ import annotations
 
 import argparse

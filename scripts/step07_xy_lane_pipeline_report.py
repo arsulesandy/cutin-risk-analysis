@@ -1,3 +1,5 @@
+"""Step 07: run detection pipeline with inferred lanes and reconstructed neighbors."""
+
 from __future__ import annotations
 
 import argparse

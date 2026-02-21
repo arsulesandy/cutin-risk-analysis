@@ -1,3 +1,5 @@
+"""Utility helpers shared by indicator implementations."""
+
 from __future__ import annotations
 
 

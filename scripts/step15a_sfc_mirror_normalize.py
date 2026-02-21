@@ -1,3 +1,5 @@
+"""Step 15A: mirror-normalize binary SFC codes to canonical lane-change direction."""
+
 from __future__ import annotations
 
 import argparse

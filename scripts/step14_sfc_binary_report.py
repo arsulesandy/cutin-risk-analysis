@@ -1,3 +1,5 @@
+"""Step 14 report: decode and aggregate binary SFC codes into occupancy heatmaps."""
+
 from __future__ import annotations
 
 import argparse

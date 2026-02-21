@@ -1,3 +1,5 @@
+"""Shared dataclasses representing trajectory and scenario primitives."""
+
 from __future__ import annotations
 from dataclasses import dataclass
 
@@ -13,6 +15,6 @@ class TrajectoryPoint:
 
 @dataclass
 class Scenario:
-    """Placeholder scenario container."""
+    """Minimal scenario descriptor used in prototype APIs."""
     track_id: int
     description: str

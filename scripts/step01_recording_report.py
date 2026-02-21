@@ -1,3 +1,5 @@
+"""Step 01: per-recording schema and quality report for normalized highD tables."""
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Lane inference from lateral position (y) using per-recording lane markings.
 
@@ -10,6 +8,8 @@ This module does NOT use dataset laneId as input. It infers a lane index based o
 Later, if you want to go fully dataset-agnostic, you can replace markings-based lane
 assignment with clustering on y.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal
@@ -30,6 +30,7 @@ class LaneMarkings:
 
 @dataclass(frozen=True)
 class LaneInferenceOptions:
+    """Column names and behavior toggles for lane inference."""
     y_col: str = "y"
     height_col: str = "height"
     driving_direction_col: str = "drivingDirection"
@@ -105,6 +106,7 @@ def parse_lane_markings(recording_meta: pd.DataFrame, *, options: LaneInferenceO
 
 
 def _ensure_ascending(boundaries: np.ndarray) -> np.ndarray:
+    """Return finite boundaries in ascending order."""
     b = boundaries.astype(float)
     b = b[np.isfinite(b)]
     if b.size == 0:

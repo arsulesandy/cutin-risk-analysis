@@ -1,3 +1,5 @@
+"""Step 11: rule-based threshold search for early warning classification."""
+
 from __future__ import annotations
 
 import argparse

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Lane-change detection based on discrete lane transitions.
 
@@ -12,6 +10,8 @@ detector to run on:
   - dataset-provided lane IDs (e.g., "laneId")
   - reconstructed/inferred lane indices (e.g., "laneIndex_xy")
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 

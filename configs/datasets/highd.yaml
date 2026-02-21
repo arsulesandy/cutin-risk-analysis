@@ -1,6 +1,0 @@
-name: highd
-description: "highD dataset configuration"
-paths:
-  raw: data/raw/highd
-  interim: data/interim/highd
-  processed: data/processed/highd

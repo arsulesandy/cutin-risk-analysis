@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Step 13B: Early-warning evaluation without using the true follower id.
 
@@ -21,6 +19,8 @@ If the merged input table contains an oracle follower id column (e.g., follower_
 we also report how often our geometric candidate matches the oracle follower:
   - match_mode, match_last, match_ratio
 """
+
+from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass

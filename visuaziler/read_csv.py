@@ -1,3 +1,5 @@
+"""CSV parsing utilities used by the interactive highD visualizer."""
+
 import pandas
 import numpy as np
 

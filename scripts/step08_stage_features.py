@@ -1,3 +1,5 @@
+"""Step 08: extract stage-wise event features for downstream risk modeling."""
+
 from __future__ import annotations
 
 import argparse

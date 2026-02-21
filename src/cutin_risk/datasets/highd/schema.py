@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 highD dataset schema and validation helpers.
 
@@ -12,6 +10,8 @@ This module defines:
 The loader should validate the *minimal* contract strictly and treat optional columns
 as best-effort inputs.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import FrozenSet, Iterable
@@ -101,9 +101,7 @@ REQUIRED_RECORDING_META_COLUMNS: FrozenSet[str] = frozenset(
 
 @dataclass(frozen=True)
 class SchemaReport:
-    """
-    A lightweight compatibility report for a DataFrame.
-    """
+    """Lightweight schema-compatibility report for a loaded CSV table."""
     name: str
     required_missing: tuple[str, ...]
     optional_present: tuple[str, ...]
@@ -126,6 +124,7 @@ class SchemaError(ValueError):
 # -----------------------------
 
 def _sorted_tuple(items: Iterable[str]) -> tuple[str, ...]:
+    """Return deterministic tuple representation for a set-like string collection."""
     return tuple(sorted(set(items)))
 
 

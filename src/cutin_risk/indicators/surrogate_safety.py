@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Surrogate safety indicators for leader–follower vehicle pairs.
 
@@ -10,6 +8,8 @@ Indicators implemented:
 
 This module focuses on longitudinal interaction only.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal

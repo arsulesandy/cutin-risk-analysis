@@ -1,3 +1,5 @@
+"""Step 18: bootstrap confidence intervals for per-fold and micro metrics."""
+
 from __future__ import annotations
 
 import argparse

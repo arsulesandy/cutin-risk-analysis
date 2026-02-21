@@ -1,3 +1,11 @@
+"""Binary space-filling-curve (SFC) encoding for local traffic occupancy.
+
+Workflow:
+1. Build a 3x3 neighborhood occupancy grid around a cutter vehicle.
+2. Embed into a 4x4 grid (padding row/column for fixed-size encoding).
+3. Linearize with Hilbert or Morton ordering into a 16-bit integer code.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,6 +23,7 @@ SFCOrder = Literal["hilbert", "morton"]
 # ============================================================
 
 def _hilbert_rot(n: int, x: int, y: int, rx: int, ry: int) -> tuple[int, int]:
+    """Hilbert helper: rotate/flip coordinates in one recursion quadrant."""
     if ry == 0:
         if rx == 1:
             x = n - 1 - x
@@ -41,6 +50,7 @@ def hilbert_index_2d(n_bits: int, x: int, y: int) -> int:
 
 
 def _part1by1_2bit(v: int) -> int:
+    """Interleave two bits with zeros for 2D Morton coding."""
     # spread 2 bits: b1 b0 -> 0 b1 0 b0
     v &= 0b11
     v = (v | (v << 1)) & 0b0101
@@ -110,6 +120,7 @@ def decode_grid_4x4_bits(code: int, *, order: SFCOrder = "hilbert") -> np.ndarra
 
 @dataclass(frozen=True)
 class BinarySFCOptions:
+    """Configuration for 3x3 neighborhood extraction and range-gating."""
     lane_col: str = "laneIndex_xy"
     sign_col: str = "sign"
     s_col: str = "s"
@@ -123,6 +134,7 @@ class BinarySFCOptions:
 
 
 def _lane_key(frame: int, lane: int, sign: int) -> tuple[int, int, int]:
+    """Canonical dictionary key for a lane snapshot."""
     return (int(frame), int(lane), int(sign))
 
 
@@ -158,6 +170,7 @@ def build_lane_snapshots(
 
 
 def _nearest_ahead(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float) -> tuple[int, float]:
+    """Return nearest vehicle ahead of `s0` and its forward distance."""
     pos = int(np.searchsorted(s_sorted, s0, side="right"))
     if pos >= len(s_sorted):
         return 0, float("inf")
@@ -165,6 +178,7 @@ def _nearest_ahead(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float) -> t
 
 
 def _nearest_behind(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float) -> tuple[int, float]:
+    """Return nearest vehicle behind `s0` and its backward distance."""
     pos = int(np.searchsorted(s_sorted, s0, side="left"))
     idx = pos - 1
     if idx < 0:
@@ -173,6 +187,7 @@ def _nearest_behind(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float) -> 
 
 
 def _nearest_alongside(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float, *, thresh: float) -> int:
+    """Return closest lateral-neighbor candidate within absolute longitudinal threshold."""
     pos = int(np.searchsorted(s_sorted, s0, side="left"))
     best_id = 0
     best_abs = float("inf")

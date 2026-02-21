@@ -1,5 +1,0 @@
-# Default configuration entry points.
-dataset_config: configs/datasets/highd.yaml
-experiment_config: configs/experiments/cutin_detection.yaml
-logging_config: configs/logging.yaml
-output_root: outputs/runs

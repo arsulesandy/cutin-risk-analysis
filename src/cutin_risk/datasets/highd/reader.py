@@ -1,3 +1,9 @@
+"""CSV reader for one highD recording with strict schema enforcement.
+
+This module is intentionally narrow: it loads three raw tables and validates the
+required contracts. Any derived columns or joins happen in `transforms.py`.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -20,9 +26,7 @@ from .schema import (
 
 @dataclass(frozen=True)
 class HighDRecording:
-    """
-    Container for one highD recording.
-    """
+    """In-memory container with all raw tables for one recording."""
     recording_id: str
     recording_meta: pd.DataFrame
     tracks: pd.DataFrame
@@ -41,6 +45,7 @@ def _normalize_recording_id(recording_id: str) -> str:
 
 
 def _file_path(root: Path, recording_id: str, suffix: str) -> Path:
+    """Build canonical highD CSV file path for a recording/suffix pair."""
     return root / f"{recording_id}_{suffix}.csv"
 
 

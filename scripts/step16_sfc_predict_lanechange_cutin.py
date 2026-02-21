@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Step 16: Predict lane changes and cut-ins using binary SFC (space-filling curve) signatures.
 
@@ -40,6 +38,8 @@ Outputs (default):
 Note:
   This is a baseline. You can later extend to distance/TTC weighted occupancy (Step 15B).
 """
+
+from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass

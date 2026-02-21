@@ -1,3 +1,5 @@
+"""Step 17: audit split artifacts against expected per-recording sample counts."""
+
 from __future__ import annotations
 
 import argparse

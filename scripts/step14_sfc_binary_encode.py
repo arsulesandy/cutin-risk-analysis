@@ -1,3 +1,5 @@
+"""Step 14: encode stage windows as binary SFC occupancy signatures."""
+
 from __future__ import annotations
 
 import argparse

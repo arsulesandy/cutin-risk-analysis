@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Transform raw highD recording tables into a normalized, analysis-friendly structure.
 
@@ -14,6 +12,8 @@ Non-responsibilities:
 - cut-in identification
 - risk indicator computation
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Iterable
@@ -37,6 +37,7 @@ class BuildOptions:
 
 
 def _get_frame_rate(recording_meta: pd.DataFrame) -> float:
+    """Extract and validate scalar frame-rate metadata."""
     if recording_meta.empty:
         raise ValueError("recordingMeta is empty")
     if "frameRate" not in recording_meta.columns:
@@ -48,6 +49,7 @@ def _get_frame_rate(recording_meta: pd.DataFrame) -> float:
 
 
 def _assert_unique_key(df: pd.DataFrame, keys: Iterable[str], name: str) -> None:
+    """Raise when duplicate composite keys are present in a table."""
     dup = df.duplicated(list(keys), keep=False)
     if dup.any():
         examples = df.loc[dup, list(keys)].head(10).to_dict(orient="records")

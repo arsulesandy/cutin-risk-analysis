@@ -1,3 +1,5 @@
+"""Step 10: summarize and sanity-check risk labels from stage feature tables."""
+
 from __future__ import annotations
 
 import argparse

@@ -1,8 +1,10 @@
+"""Command-line entrypoint placeholder for the thesis pipeline package."""
+
 from __future__ import annotations
 
 
 def main() -> None:
-    """Placeholder CLI entrypoint."""
+    """Run the package CLI once implemented."""
     raise NotImplementedError("CLI is not implemented yet.")
 
 

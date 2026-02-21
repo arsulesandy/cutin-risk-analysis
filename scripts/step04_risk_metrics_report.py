@@ -1,3 +1,5 @@
+"""Step 04: compute surrogate risk indicators around detected cut-ins."""
+
 from __future__ import annotations
 
 import math

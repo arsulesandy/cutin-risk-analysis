@@ -1,3 +1,5 @@
+"""Step 15C: train/evaluate prediction models from binary or weighted SFC features."""
+
 from __future__ import annotations
 
 import argparse

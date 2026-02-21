@@ -1,3 +1,5 @@
+"""Quality-check helpers used during dataset sanity reporting."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,6 +20,7 @@ NEIGHBOR_COLS = [
 
 @dataclass(frozen=True)
 class BasicStats:
+    """Compact summary of one normalized recording table."""
     rows: int
     vehicles: int
     time_min: float
@@ -27,6 +30,7 @@ class BasicStats:
 
 
 def compute_basic_stats(df: pd.DataFrame) -> BasicStats:
+    """Compute recording-level statistics used in step-level reports."""
     lane_ids = tuple(sorted(int(x) for x in df["laneId"].dropna().unique().tolist()))
     return BasicStats(
         rows=int(len(df)),
@@ -39,6 +43,7 @@ def compute_basic_stats(df: pd.DataFrame) -> BasicStats:
 
 
 def check_duplicates_id_frame(df: pd.DataFrame) -> int:
+    """Count duplicate `(id, frame)` keys."""
     return int(df.duplicated(["id", "frame"]).sum())
 
 
@@ -84,4 +89,3 @@ def sample_neighbor_id_integrity(df: pd.DataFrame, sample_n: int = 2000, random_
                 }
             )
     return pd.DataFrame(rows)
-

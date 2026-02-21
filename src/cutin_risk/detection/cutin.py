@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Cut-in detection based on previously detected lane-change events.
 
@@ -17,6 +15,8 @@ follower in that lane. The follower relationship must:
 
 The implementation is dataset-agnostic and supports configurable column names.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 import pandas as pd

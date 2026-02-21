@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Neighbor reconstruction from geometry (baseline).
 
@@ -18,6 +16,8 @@ Notes:
   Later, we can replace laneId with a lane assignment inferred from y + lane markings.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Mapping
 
@@ -28,6 +28,7 @@ from cutin_risk.indicators.surrogate_safety import infer_direction_sign_map
 
 @dataclass(frozen=True)
 class NeighborReconstructionOptions:
+    """Input/output column names and default sentinel values for reconstruction."""
     id_col: str = "id"
     frame_col: str = "frame"
     lane_col: str = "laneId"
