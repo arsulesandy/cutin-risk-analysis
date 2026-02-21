@@ -105,13 +105,13 @@ class VisualizationPlot(object):
             "normal": 0,
         }
 
-        self.road_bottom = 0.36
-        self.road_top = 0.86
-        self.header_bottom = 0.885
+        self.road_bottom = 0.42
+        self.road_top = 0.882
+        self.header_bottom = 0.89
         self.header_height = 0.075
-        self.info_bottom = 0.225
-        self.info_height = 0.105
-        self.timeline_bottom = 0.145
+        self.info_bottom = 0.17
+        self.info_height = 0.165
+        self.timeline_bottom = 0.122
         self.timeline_height = 0.03
         self.controls_bottom = 0.055
         self.controls_height = 0.065
@@ -122,6 +122,7 @@ class VisualizationPlot(object):
         else:
             self.fig = fig
             self.ax = self.fig.gca()
+        self._center_window_on_screen()
 
         self.fig.patch.set_facecolor(self.THEME["figure_bg"])
         self.ax.set_position([0.0, self.road_bottom, 1.0, self.road_top - self.road_bottom])
@@ -237,8 +238,69 @@ class VisualizationPlot(object):
             fontweight="bold",
         )
 
+    def _center_window_on_screen(self):
+        """
+        Attempt to center the Matplotlib GUI window on screen.
+        Supports common backends (Tk, Qt, Wx) and safely no-ops otherwise.
+        """
+        manager = getattr(self.fig.canvas, "manager", None)
+        if manager is None:
+            return
+        window = getattr(manager, "window", None)
+        if window is None:
+            return
+
+        # Tk backend
+        try:
+            if hasattr(window, "wm_geometry") and hasattr(window, "winfo_screenwidth"):
+                window.update_idletasks()
+                width = int(window.winfo_width())
+                height = int(window.winfo_height())
+                if width <= 1 or height <= 1:
+                    width = int(window.winfo_reqwidth())
+                    height = int(window.winfo_reqheight())
+                screen_w = int(window.winfo_screenwidth())
+                screen_h = int(window.winfo_screenheight())
+                x = max(0, (screen_w - width) // 2)
+                y = max(0, (screen_h - height) // 2)
+                window.wm_geometry(f"+{x}+{y}")
+                return
+        except Exception:
+            pass
+
+        # Qt backend
+        try:
+            if hasattr(window, "move") and hasattr(window, "width") and hasattr(window, "height"):
+                from matplotlib.backends.qt_compat import QtWidgets
+
+                app = QtWidgets.QApplication.instance()
+                screen = app.primaryScreen() if app is not None else None
+                if screen is not None:
+                    rect = screen.availableGeometry()
+                    width = int(window.width())
+                    height = int(window.height())
+                    x = int(rect.x() + (rect.width() - width) / 2)
+                    y = int(rect.y() + (rect.height() - height) / 2)
+                    window.move(x, y)
+                    return
+        except Exception:
+            pass
+
+        # Wx backend
+        try:
+            if hasattr(window, "GetDisplaySize") and hasattr(window, "GetSize") and hasattr(window, "SetPosition"):
+                screen_w, screen_h = window.GetDisplaySize()
+                width, height = window.GetSize()
+                x = max(0, int((screen_w - width) / 2))
+                y = max(0, int((screen_h - height) / 2))
+                window.SetPosition((x, y))
+                return
+        except Exception:
+            pass
+
     def _build_timeline(self):
-        self.ax_timeline = self.fig.add_axes([0.02, 0.338, 0.96, 0.018])
+        timeline_y = self.info_bottom + self.info_height + 0.008
+        self.ax_timeline = self.fig.add_axes([0.02, timeline_y, 0.96, 0.016])
         self.ax_timeline.set_facecolor(self.THEME["panel_soft"])
         self.ax_timeline.set_xlim(1, max(2, int(self.maximum_frames)))
         self.ax_timeline.set_ylim(0, 1)
@@ -250,8 +312,8 @@ class VisualizationPlot(object):
         self._refresh_timeline_plot()
 
     def _build_info_panels(self):
-        self.ax_sfc_info = self.fig.add_axes([0.02, self.info_bottom, 0.66, self.info_height])
-        self.ax_status = self.fig.add_axes([0.70, self.info_bottom, 0.28, self.info_height])
+        self.ax_sfc_info = self.fig.add_axes([0.02, self.info_bottom, 0.72, self.info_height])
+        self.ax_status = self.fig.add_axes([0.75, self.info_bottom, 0.23, self.info_height])
 
         for panel in (self.ax_sfc_info, self.ax_status):
             panel.set_facecolor(self.THEME["panel_soft"])
