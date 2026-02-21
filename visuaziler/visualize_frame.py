@@ -105,12 +105,12 @@ class VisualizationPlot(object):
             "normal": 0,
         }
 
-        self.road_bottom = 0.42
-        self.road_top = 0.882
+        self.road_bottom = 0.455
+        self.road_top = 0.885
         self.header_bottom = 0.89
         self.header_height = 0.075
-        self.info_bottom = 0.17
-        self.info_height = 0.165
+        self.info_bottom = 0.205
+        self.info_height = 0.155
         self.timeline_bottom = 0.122
         self.timeline_height = 0.03
         self.controls_bottom = 0.055
