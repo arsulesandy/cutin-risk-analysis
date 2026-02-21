@@ -39,8 +39,15 @@ class Stage:
     end_s: float    # exclusive
 
 
-def _finite_min(values: pd.Series) -> float:
-    vals = [float(x) for x in values.tolist() if math.isfinite(float(x))]
+def _finite_min(values: pd.Series, *, lower_bound: float | None = None) -> float:
+    vals: list[float] = []
+    for x in values.tolist():
+        fx = float(x)
+        if not math.isfinite(fx):
+            continue
+        if lower_bound is not None:
+            fx = max(fx, float(lower_bound))
+        vals.append(fx)
     return min(vals) if vals else float("inf")
 
 
@@ -92,8 +99,8 @@ def _stage_summary(joined: pd.DataFrame, stage: Stage) -> dict[str, float]:
         }
 
     # Pair metrics
-    dhw_min = float(seg["dhw"].min())
-    thw_min = _finite_min(seg["thw"])
+    dhw_min = float(seg["dhw"].clip(lower=0.0).min())
+    thw_min = _finite_min(seg["thw"], lower_bound=0.0)
     ttc_min = _finite_min(seg["ttc"])
 
     # Lateral motion (cutter)
@@ -301,8 +308,8 @@ def main() -> None:
         joined["t_rel"] = joined["time"].astype(float) - t0_time
 
         # Some event-level minima over full window
-        dhw_min_total = float(joined["dhw"].min())
-        thw_min_total = _finite_min(joined["thw"])
+        dhw_min_total = float(joined["dhw"].clip(lower=0.0).min())
+        thw_min_total = _finite_min(joined["thw"], lower_bound=0.0)
         ttc_min_total = _finite_min(joined["ttc"])
 
         out = {
