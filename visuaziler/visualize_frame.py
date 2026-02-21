@@ -77,13 +77,25 @@ class VisualizationPlot(object):
         self.plotted_objects = []
         self.pick_event_cid = None
         self.key_event_cid = None
+        self.mouse_event_cid = None
         self.playing = False
         self.playback_fps = 12
         self.playback_timer = None
+        self.default_xlim = None
+        self.default_ylim = None
+        self.timeline_event_points = []
+        self.timeline_seek_line = None
+        self.timeline_stage_colors = {
+            "decision": "#22d3ee",
+            "execution": "#f59e0b",
+            "merge": "#a78bfa",
+            "other": "#94a3b8",
+        }
         self.sfc_codes_by_frame = self._load_sfc_codes_by_frame(
             arguments.get("sfc_codes_csv"),
             arguments.get("input_path"),
         )
+        self.timeline_event_points = self._build_timeline_event_points()
         self.semantic_stats = {
             "visible": 0,
             "cutters": 0,
@@ -116,6 +128,7 @@ class VisualizationPlot(object):
         self.ax.set_facecolor(self.THEME["road_bg"])
 
         self._build_header()
+        self._build_timeline()
         self._build_info_panels()
         self._draw_background()
         self._build_controls()
@@ -205,7 +218,7 @@ class VisualizationPlot(object):
         self.ax_header.text(
             0.015,
             0.22,
-            "Controls: Space play/pause | Left/Right +/-1 frame | Up/Down +/-10 frames | L load recording",
+            "Controls: Space play/pause | Left/Right +/-1 | Up/Down +/-10 | L load recording",
             transform=self.ax_header.transAxes,
             ha="left",
             va="center",
@@ -223,6 +236,18 @@ class VisualizationPlot(object):
             color=self.THEME["text_main"],
             fontweight="bold",
         )
+
+    def _build_timeline(self):
+        self.ax_timeline = self.fig.add_axes([0.02, 0.338, 0.96, 0.018])
+        self.ax_timeline.set_facecolor(self.THEME["panel_soft"])
+        self.ax_timeline.set_xlim(1, max(2, int(self.maximum_frames)))
+        self.ax_timeline.set_ylim(0, 1)
+        self.ax_timeline.set_xticks([])
+        self.ax_timeline.set_yticks([])
+        for spine in self.ax_timeline.spines.values():
+            spine.set_color(self.THEME["panel_edge"])
+            spine.set_linewidth(0.8)
+        self._refresh_timeline_plot()
 
     def _build_info_panels(self):
         self.ax_sfc_info = self.fig.add_axes([0.02, self.info_bottom, 0.66, self.info_height])
@@ -347,6 +372,90 @@ class VisualizationPlot(object):
             )
             x += stride
 
+    @staticmethod
+    def _stage_key(stage_value):
+        if stage_value is None:
+            return "other"
+        stage_text = str(stage_value).strip().lower()
+        if "decision" in stage_text:
+            return "decision"
+        if "execution" in stage_text:
+            return "execution"
+        if "merge" in stage_text or "lane" in stage_text:
+            return "merge"
+        return "other"
+
+    def _build_timeline_event_points(self):
+        if not self.sfc_codes_by_frame:
+            return []
+
+        frames = sorted(int(frame) for frame in self.sfc_codes_by_frame.keys())
+        max_markers = 300
+        stride = max(1, int(np.ceil(len(frames) / max_markers)))
+        sampled_frames = frames[::stride]
+        if sampled_frames[-1] != frames[-1]:
+            sampled_frames.append(frames[-1])
+
+        event_points = []
+        for frame in sampled_frames:
+            entries = self.sfc_codes_by_frame.get(frame, [])
+            stage_keys = {self._stage_key(entry.get("stage")) for entry in entries}
+            stage = "other"
+            if "decision" in stage_keys:
+                stage = "decision"
+            elif "execution" in stage_keys:
+                stage = "execution"
+            elif "merge" in stage_keys:
+                stage = "merge"
+            event_points.append((int(frame), stage))
+        return event_points
+
+    def _refresh_timeline_plot(self):
+        self.ax_timeline.cla()
+        self.ax_timeline.set_facecolor(self.THEME["panel_soft"])
+        self.ax_timeline.set_xlim(1, max(2, int(self.maximum_frames)))
+        self.ax_timeline.set_ylim(0, 1)
+        self.ax_timeline.set_xticks([])
+        self.ax_timeline.set_yticks([])
+        for spine in self.ax_timeline.spines.values():
+            spine.set_color(self.THEME["panel_edge"])
+            spine.set_linewidth(0.8)
+
+        self.ax_timeline.plot(
+            [1, max(2, int(self.maximum_frames))],
+            [0.5, 0.5],
+            color=self.THEME["panel_edge"],
+            linewidth=1.0,
+            alpha=0.8,
+            zorder=1,
+        )
+
+        for frame, stage in self.timeline_event_points:
+            color = self.timeline_stage_colors.get(stage, self.timeline_stage_colors["other"])
+            self.ax_timeline.vlines(
+                frame,
+                0.15,
+                0.85,
+                color=color,
+                linewidth=1.0,
+                alpha=0.85,
+                zorder=2,
+            )
+
+        self.timeline_seek_line = self.ax_timeline.axvline(
+            int(self.current_frame),
+            color=self.THEME["accent"],
+            linewidth=2.1,
+            alpha=0.95,
+            zorder=3,
+        )
+
+    def _update_timeline_cursor(self):
+        if self.timeline_seek_line is None:
+            return
+        x = int(self.current_frame)
+        self.timeline_seek_line.set_xdata([x, x])
+
     def _build_playback_timer(self):
         self.playback_timer = self.fig.canvas.new_timer(interval=self._fps_to_interval(self.playback_fps))
         self.playback_timer.add_callback(self._on_playback_tick)
@@ -367,6 +476,9 @@ class VisualizationPlot(object):
         if self.key_event_cid is not None:
             self.fig.canvas.mpl_disconnect(self.key_event_cid)
         self.key_event_cid = self.fig.canvas.mpl_connect("key_press_event", self.on_key_press)
+        if self.mouse_event_cid is not None:
+            self.fig.canvas.mpl_disconnect(self.mouse_event_cid)
+        self.mouse_event_cid = self.fig.canvas.mpl_connect("button_press_event", self.on_mouse_press)
 
     def _style_button(self, button):
         button.ax.set_facecolor(self.THEME["button"])
@@ -526,6 +638,8 @@ class VisualizationPlot(object):
         self.ax.set_xticks([])
         self.ax.set_yticks([])
         self.ax.set_autoscale_on(False)
+        self.default_xlim = tuple(self.ax.get_xlim())
+        self.default_ylim = tuple(self.ax.get_ylim())
 
     def _reload_recording(self, loaded_arguments, loaded_tracks, loaded_static_info, loaded_meta_dictionary):
         self._toggle_playback(force_stop=True)
@@ -543,6 +657,8 @@ class VisualizationPlot(object):
             loaded_arguments.get("sfc_codes_csv"),
             loaded_arguments.get("input_path"),
         )
+        self.timeline_event_points = self._build_timeline_event_points()
+        self._refresh_timeline_plot()
         self._draw_background()
 
         self.frame_slider = self._build_frame_slider()
@@ -627,6 +743,35 @@ class VisualizationPlot(object):
         center_y = vehicle_box_y + bounding_box[3] / 2
         return np.array([center_x, center_y], dtype=float)
 
+    def _collect_active_cutter_centers(self, active_cutter_ids):
+        centers = []
+        for cutter_id in active_cutter_ids:
+            center = self._track_center_for_frame(cutter_id, int(self.current_frame))
+            if center is not None:
+                centers.append(center)
+        return centers
+
+    @staticmethod
+    def _clamp_view_window(center, span, limits):
+        forward = float(limits[1]) >= float(limits[0])
+        lim_min = min(float(limits[0]), float(limits[1]))
+        lim_max = max(float(limits[0]), float(limits[1]))
+        span = min(max(1e-6, float(span)), lim_max - lim_min)
+        half = span / 2.0
+        lo = float(center - half)
+        hi = float(center + half)
+        if lo < lim_min:
+            hi += lim_min - lo
+            lo = lim_min
+        if hi > lim_max:
+            lo -= hi - lim_max
+            hi = lim_max
+        lo = max(lim_min, lo)
+        hi = min(lim_max, hi)
+        if forward:
+            return lo, hi
+        return hi, lo
+
     @staticmethod
     def _finite_metric(series, index):
         if series is None:
@@ -694,166 +839,6 @@ class VisualizationPlot(object):
                 if neighbor_id > 0 and neighbor_id != cutter_id_int:
                     neighbor_ids.add(neighbor_id)
         return neighbor_ids
-
-    def _collect_cutter_trail(self, cutter_id, upto_frame, history=42):
-        points = []
-        start_frame = max(1, int(upto_frame) - history + 1)
-        for frame in range(start_frame, int(upto_frame) + 1):
-            center = self._track_center_for_frame(cutter_id, frame)
-            if center is not None:
-                points.append(center)
-        if len(points) < 2:
-            return None
-
-        points = np.array(points, dtype=float)
-        if len(points) >= 3:
-            smoothed = points.copy()
-            smoothed[1:-1] = 0.25 * points[:-2] + 0.5 * points[1:-1] + 0.25 * points[2:]
-            points = smoothed
-        return points
-
-    def _draw_sfc_guidance_overlay(self, frame_entries, plotted_objects):
-        if not frame_entries:
-            return
-
-        cutter_ids = []
-        for entry in frame_entries:
-            cutter_id = entry.get("cutter_id")
-            if cutter_id is None or cutter_id in cutter_ids:
-                continue
-            cutter_ids.append(cutter_id)
-
-        if not cutter_ids:
-            return
-
-        active_centers = []
-        for cutter_id in cutter_ids:
-            center = self._track_center_for_frame(cutter_id, int(self.current_frame))
-            if center is None:
-                continue
-            active_centers.append((cutter_id, center))
-
-        if not active_centers:
-            return
-
-        x_limits = self.ax.get_xlim()
-        y_limits = self.ax.get_ylim()
-        axis_span = min(abs(x_limits[1] - x_limits[0]), abs(y_limits[1] - y_limits[0]))
-        if axis_span <= 0:
-            axis_span = 1.0
-        pulse_radius = axis_span * (0.010 + 0.0025 * np.sin(self.current_frame * 0.30))
-
-        for cutter_id, center in active_centers:
-            ring_glow = patches.Circle(
-                (center[0], center[1]),
-                radius=pulse_radius * 1.9,
-                fill=False,
-                lw=4.0,
-                edgecolor=self.THEME["cutter"],
-                alpha=0.20,
-                zorder=44,
-            )
-            ring_core = patches.Circle(
-                (center[0], center[1]),
-                radius=pulse_radius,
-                fill=False,
-                lw=1.8,
-                edgecolor=self.THEME["cutter"],
-                alpha=0.95,
-                zorder=45,
-            )
-            self.ax.add_patch(ring_glow)
-            self.ax.add_patch(ring_core)
-            plotted_objects.append(ring_glow)
-            plotted_objects.append(ring_core)
-
-            trail = self._collect_cutter_trail(cutter_id, self.current_frame, history=48)
-            if trail is not None and len(trail) > 1:
-                trail_glow, = self.ax.plot(
-                    trail[:, 0],
-                    trail[:, 1],
-                    color=self.THEME["cutter_trail"],
-                    linewidth=6.0,
-                    alpha=0.12,
-                    zorder=34,
-                    solid_capstyle="round",
-                )
-                trail_core, = self.ax.plot(
-                    trail[:, 0],
-                    trail[:, 1],
-                    color=self.THEME["cutter_trail"],
-                    linewidth=2.2,
-                    alpha=0.62,
-                    zorder=35,
-                    solid_capstyle="round",
-                )
-                plotted_objects.append(trail_glow)
-                plotted_objects.append(trail_core)
-
-        primary_cutter_id, primary_center = active_centers[0]
-        start_anchor = np.array(
-            self.ax.transData.inverted().transform(self.ax.transAxes.transform((0.02, 0.92))), dtype=float
-        )
-        target_anchor = np.array([primary_center[0], primary_center[1]], dtype=float)
-        mid = (start_anchor + target_anchor) * 0.5
-
-        direction = target_anchor - start_anchor
-        normal = np.array([-direction[1], direction[0]], dtype=float)
-        normal_norm = np.linalg.norm(normal)
-        if normal_norm > 0:
-            normal = normal / normal_norm
-        control = mid + normal * (0.06 * max(abs(x_limits[1] - x_limits[0]), abs(y_limits[1] - y_limits[0])))
-
-        t = np.linspace(0.0, 1.0, 70)
-        curve = (
-            (1.0 - t)[:, None] ** 2 * start_anchor
-            + 2.0 * (1.0 - t)[:, None] * t[:, None] * control
-            + (t[:, None] ** 2) * target_anchor
-        )
-        guide_glow, = self.ax.plot(
-            curve[:, 0],
-            curve[:, 1],
-            color=self.THEME["accent"],
-            linewidth=7.0,
-            alpha=0.15,
-            zorder=40,
-            solid_capstyle="round",
-        )
-        guide_core, = self.ax.plot(
-            curve[:, 0],
-            curve[:, 1],
-            color=self.THEME["accent"],
-            linewidth=2.2,
-            alpha=0.95,
-            zorder=41,
-            solid_capstyle="round",
-        )
-        arrow_head = patches.FancyArrowPatch(
-            posA=(curve[-3, 0], curve[-3, 1]),
-            posB=(curve[-1, 0], curve[-1, 1]),
-            arrowstyle="-|>",
-            mutation_scale=17,
-            color=self.THEME["accent"],
-            linewidth=0,
-            zorder=42,
-        )
-        guide_text = self.ax.text(
-            curve[15, 0],
-            curve[15, 1],
-            "SFC -> Cutter {}".format(primary_cutter_id),
-            fontsize=8,
-            color=self.THEME["text_main"],
-            bbox=dict(
-                boxstyle="round,pad=0.25",
-                fc=self.THEME["panel"],
-                ec=self.THEME["accent"],
-                lw=0.9,
-                alpha=0.88,
-            ),
-            zorder=46,
-        )
-        self.ax.add_patch(arrow_head)
-        plotted_objects.extend([guide_glow, guide_core, arrow_head, guide_text])
 
     def _build_status_text(self):
         state = "PLAYING" if self.playing else "PAUSED"
@@ -993,6 +978,19 @@ class VisualizationPlot(object):
             self.update_button_previous2(None)
         elif key == "l":
             self.update_button_load_recording(None)
+
+    def on_mouse_press(self, event):
+        if event is None:
+            return
+        if event.inaxes != self.ax_timeline or event.xdata is None:
+            return
+        target_frame = int(round(float(event.xdata)))
+        target_frame = int(max(1, min(target_frame, self.maximum_frames)))
+        if self.playing:
+            self._toggle_playback(force_stop=True)
+        self.current_frame = target_frame
+        self.changed_button = True
+        self.trigger_update()
 
     def trigger_update(self):
         self.remove_patches()
@@ -1150,7 +1148,6 @@ class VisualizationPlot(object):
                     )
                     plotted_objects.append(plotted_centroids)
 
-        self._draw_sfc_guidance_overlay(frame_entries, plotted_objects)
         self.semantic_stats = {
             "visible": int(visible_count),
             "cutters": int(len(active_cutter_ids)),
@@ -1167,6 +1164,7 @@ class VisualizationPlot(object):
         self._update_sfc_matrix_overlay()
         self._refresh_control_value_labels()
         self._update_header_state()
+        self._update_timeline_cursor()
 
     @staticmethod
     def _infer_recording_id(track_csv_path):
