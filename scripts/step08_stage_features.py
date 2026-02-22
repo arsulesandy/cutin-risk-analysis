@@ -7,11 +7,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 import math
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
@@ -356,21 +354,26 @@ def main() -> None:
 
     # Optional median TTC curve plot
     if args.make_plot and ttc_by_offset:
-        offsets_sorted = np.array(sorted(ttc_by_offset.keys()), dtype=int)
-        med = np.array([float(np.median(ttc_by_offset[o])) for o in offsets_sorted], dtype=float)
-        t_rel_s = offsets_sorted / frame_rate
+        try:
+            import matplotlib.pyplot as plt  # lazy import: only needed for plotting mode
+        except Exception as exc:
+            print(f"[WARN] Unable to generate plot: {exc}")
+        else:
+            offsets_sorted = np.array(sorted(ttc_by_offset.keys()), dtype=int)
+            med = np.array([float(np.median(ttc_by_offset[o])) for o in offsets_sorted], dtype=float)
+            t_rel_s = offsets_sorted / frame_rate
 
-        plt.figure()
-        plt.plot(t_rel_s, med)
-        plt.axvline(0.0, linestyle="--")
-        plt.title(f"Median TTC aligned at cut-in (recording {rec.recording_id})")
-        plt.xlabel("time relative to cut-in start (s)")
-        plt.ylabel("TTC (s)")
-        plt.tight_layout()
-        out_png = fig_dir / f"median_ttc_curve_{run_id}.png"
-        plt.savefig(out_png, dpi=150)
-        plt.close()
-        print(f"Saved plot: {out_png}")
+            plt.figure()
+            plt.plot(t_rel_s, med)
+            plt.axvline(0.0, linestyle="--")
+            plt.title(f"Median TTC aligned at cut-in (recording {rec.recording_id})")
+            plt.xlabel("time relative to cut-in start (s)")
+            plt.ylabel("TTC (s)")
+            plt.tight_layout()
+            out_png = fig_dir / f"median_ttc_curve_{run_id}.png"
+            plt.savefig(out_png, dpi=150)
+            plt.close()
+            print(f"Saved plot: {out_png}")
 
 
 if __name__ == "__main__":

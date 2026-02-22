@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 from cutin_risk.encoding.sfc_binary import decode_grid_4x4_bits
 from cutin_risk.paths import output_path, step14_codes_csv_path
@@ -24,7 +24,24 @@ def mean_grid(df: pd.DataFrame, *, order: str) -> np.ndarray:
     return acc / max(n, 1)
 
 
-def plot_grid(g: np.ndarray, title: str, out: Path) -> None:
+def _load_pyplot(out_dir: Path):
+    # Keep plotting reproducible in headless/sandboxed environments.
+    cache_home = out_dir / ".cache"
+    mpl_config = out_dir / ".mplconfig"
+    cache_home.mkdir(parents=True, exist_ok=True)
+    mpl_config.mkdir(parents=True, exist_ok=True)
+    os.environ.setdefault("XDG_CACHE_HOME", str(cache_home))
+    os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
+
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    return plt
+
+
+def plot_grid(plt, g: np.ndarray, title: str, out: Path) -> None:
     plt.figure()
     plt.imshow(g, vmin=0.0, vmax=1.0)
     plt.title(title)
@@ -40,6 +57,12 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--codes-csv", default=str(step14_codes_csv_path()))
     ap.add_argument("--out-dir", default=str(output_path("reports/step14_sfc_binary_report")))
+    ap.add_argument(
+        "--make-plot",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Generate PNG heatmaps in addition to CSV grids.",
+    )
     args = ap.parse_args()
 
     codes_csv = Path(args.codes_csv)
@@ -52,21 +75,25 @@ def main() -> None:
 
     order = str(df["sfc_order"].iloc[0])
 
+    plt = _load_pyplot(out_dir) if args.make_plot else None
+
     for stage in ["intention", "decision", "execution"]:
         d_stage = df[df["stage"] == stage]
         if d_stage.empty:
             continue
 
-        d_risk = d_stage[d_stage["risk_thw"] == True]
-        d_safe = d_stage[d_stage["risk_thw"] == False]
+        risk_mask = d_stage["risk_thw"].astype(bool)
+        d_risk = d_stage[risk_mask]
+        d_safe = d_stage[~risk_mask]
 
         g_risk = mean_grid(d_risk, order=order)
         g_safe = mean_grid(d_safe, order=order)
         g_diff = g_risk - g_safe
 
-        plot_grid(g_safe, f"{stage}: non-risk mean occupancy", out_dir / f"{stage}_nonrisk.png")
-        plot_grid(g_risk, f"{stage}: risk mean occupancy", out_dir / f"{stage}_risk.png")
-        plot_grid(g_diff, f"{stage}: (risk - nonrisk) difference", out_dir / f"{stage}_diff.png")
+        if plt is not None:
+            plot_grid(plt, g_safe, f"{stage}: non-risk mean occupancy", out_dir / f"{stage}_nonrisk.png")
+            plot_grid(plt, g_risk, f"{stage}: risk mean occupancy", out_dir / f"{stage}_risk.png")
+            plot_grid(plt, g_diff, f"{stage}: (risk - nonrisk) difference", out_dir / f"{stage}_diff.png")
 
         # also save raw numbers for the thesis
         np.savetxt(out_dir / f"{stage}_nonrisk.csv", g_safe, delimiter=",", fmt="%.6f")

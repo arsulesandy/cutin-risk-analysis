@@ -44,7 +44,6 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -164,6 +163,23 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Metrics:
     f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) else 0.0
 
     return Metrics(tp=tp, fp=fp, fn=fn, tn=tn, precision=precision, recall=recall, f1=f1)
+
+
+def majority_baseline_metrics(y_train: np.ndarray, y_test: np.ndarray) -> tuple[bool, Metrics]:
+    """
+    Predict the training-majority class for all test samples.
+    Returns (majority_is_positive, fold_metrics).
+    """
+    majority_is_positive = bool(np.mean(y_train.astype(float)) >= 0.5)
+    pred = np.full(shape=len(y_test), fill_value=majority_is_positive, dtype=bool)
+    return majority_is_positive, compute_metrics(y_test, pred)
+
+
+def metrics_from_counts(tp: int, fp: int, fn: int, tn: int) -> Metrics:
+    precision = tp / (tp + fp) if (tp + fp) else 0.0
+    recall = tp / (tp + fn) if (tp + fn) else 0.0
+    f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) else 0.0
+    return Metrics(tp=int(tp), fp=int(fp), fn=int(fn), tn=int(tn), precision=precision, recall=recall, f1=f1)
 
 
 def best_threshold_for_f1(y_true: np.ndarray, prob: np.ndarray) -> float:
@@ -843,6 +859,7 @@ def loocv_eval(df: pd.DataFrame, label_col: str) -> pd.DataFrame:
         pred_te = prob_te >= thr
 
         m = compute_metrics(y_te, pred_te)
+        majority_is_positive, m_base = majority_baseline_metrics(y_tr, y_te)
 
         rows.append(
             {
@@ -857,6 +874,15 @@ def loocv_eval(df: pd.DataFrame, label_col: str) -> pd.DataFrame:
                 "tn": m.tn,
                 "n_test": int(len(y_te)),
                 "pos_rate_test": float(np.mean(y_te)) if len(y_te) else 0.0,
+                "baseline_majority_label": int(majority_is_positive),
+                "baseline_precision": m_base.precision,
+                "baseline_recall": m_base.recall,
+                "baseline_f1": m_base.f1,
+                "baseline_tp": m_base.tp,
+                "baseline_fp": m_base.fp,
+                "baseline_fn": m_base.fn,
+                "baseline_tn": m_base.tn,
+                "delta_f1_vs_baseline": m.f1 - m_base.f1,
             }
         )
 
@@ -964,16 +990,60 @@ def main() -> None:
         lc_loocv = loocv_eval(lanechange_df, "label_lanechange")
         out_lc_cv = out_dir / "lanechange_loocv.csv"
         lc_loocv.to_csv(out_lc_cv, index=False)
+
+        model_micro = metrics_from_counts(
+            tp=int(lc_loocv["tp"].sum()),
+            fp=int(lc_loocv["fp"].sum()),
+            fn=int(lc_loocv["fn"].sum()),
+            tn=int(lc_loocv["tn"].sum()),
+        )
+        baseline_micro = metrics_from_counts(
+            tp=int(lc_loocv["baseline_tp"].sum()),
+            fp=int(lc_loocv["baseline_fp"].sum()),
+            fn=int(lc_loocv["baseline_fn"].sum()),
+            tn=int(lc_loocv["baseline_tn"].sum()),
+        )
+
         print("\nLane-change LOOCV:")
         print(lc_loocv.to_string(index=False))
+        print(
+            "\nLane-change micro model vs baseline:",
+            {
+                "model_f1": float(model_micro.f1),
+                "baseline_f1": float(baseline_micro.f1),
+                "delta_f1": float(model_micro.f1 - baseline_micro.f1),
+            },
+        )
         print("Saved:", out_lc_cv)
 
     if not cutin_df.empty:
         ci_loocv = loocv_eval(cutin_df, "label_cutin")
         out_ci_cv = out_dir / "cutin_loocv.csv"
         ci_loocv.to_csv(out_ci_cv, index=False)
+
+        model_micro = metrics_from_counts(
+            tp=int(ci_loocv["tp"].sum()),
+            fp=int(ci_loocv["fp"].sum()),
+            fn=int(ci_loocv["fn"].sum()),
+            tn=int(ci_loocv["tn"].sum()),
+        )
+        baseline_micro = metrics_from_counts(
+            tp=int(ci_loocv["baseline_tp"].sum()),
+            fp=int(ci_loocv["baseline_fp"].sum()),
+            fn=int(ci_loocv["baseline_fn"].sum()),
+            tn=int(ci_loocv["baseline_tn"].sum()),
+        )
+
         print("\nCut-in LOOCV (among lane changes):")
         print(ci_loocv.to_string(index=False))
+        print(
+            "\nCut-in micro model vs baseline:",
+            {
+                "model_f1": float(model_micro.f1),
+                "baseline_f1": float(baseline_micro.f1),
+                "delta_f1": float(model_micro.f1 - baseline_micro.f1),
+            },
+        )
         print("Saved:", out_ci_cv)
 
 

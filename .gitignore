@@ -221,3 +221,4 @@ data/.DS_Store
 configs/paths.local.json
 configs/detection.local.json
 configs/thesis.local.json
+.DS_Store

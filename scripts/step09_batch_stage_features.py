@@ -50,7 +50,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--make-plot",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=False,
         help="Also generate plots per recording (slower, more files).",
     )
 
@@ -80,8 +81,9 @@ def main() -> None:
             "--recording-id",
             rid,
         ]
-        if args.make_plot:
-            cmd.append("--make-plot")
+        # Always forward the plot toggle so Step 08 does not silently fall back
+        # to its own config default.
+        cmd.append("--make-plot" if args.make_plot else "--no-make-plot")
 
         print(f"\n=== Running stage_features for recording {rid} ===")
         ret = subprocess.run(cmd, text=True)

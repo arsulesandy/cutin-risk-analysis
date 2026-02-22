@@ -92,11 +92,31 @@ def _bootstrap_micro(
     }
 
 
+def _majority_baseline_fold_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Per fold, predict the test-fold majority class as a transparent trivial baseline.
+    """
+    rows: list[dict[str, float]] = []
+    for _, r in df.iterrows():
+        pos = float(r["tp"] + r["fn"])
+        neg = float(r["tn"] + r["fp"])
+        if pos >= neg:
+            tp_b, fp_b, fn_b, tn_b = pos, neg, 0.0, 0.0
+        else:
+            tp_b, fp_b, fn_b, tn_b = 0.0, 0.0, pos, neg
+        m = _micro_from_counts(tp_b, fp_b, fn_b, tn_b)
+        rows.append(m)
+    return pd.DataFrame(rows)
+
+
 def _to_markdown_table(df: pd.DataFrame) -> str:
     headers = [str(c) for c in df.columns.tolist()]
     rows = df.astype(str).values.tolist()
     right_align_cols = {"point", "ci95", "n_folds"}
-    align = ["right" if h in right_align_cols else "left" for h in headers]
+    align = [
+        "right" if (h in right_align_cols or h.endswith("_f1") or h.startswith("delta_")) else "left"
+        for h in headers
+    ]
     return markdown_table(headers=headers, rows=rows, align=align)
 
 
@@ -131,6 +151,7 @@ def main() -> None:
     ]
 
     rows: list[dict[str, object]] = []
+    comparison_rows: list[dict[str, object]] = []
     rng = np.random.default_rng(int(args.seed))
     metrics = ["precision", "recall", "f1"]
 
@@ -169,6 +190,17 @@ def main() -> None:
         )
         micro_ci = _bootstrap_micro(d, rng, int(args.n_bootstrap))
 
+        d_base = _majority_baseline_fold_metrics(d)
+        macro_point_base = {m: float(d_base[m].mean()) for m in metrics}
+        macro_ci_base = _bootstrap_macro(d_base, metrics, rng, int(args.n_bootstrap))
+        micro_point_base = _micro_from_counts(
+            tp=float(d_base["tp"].sum()),
+            fp=float(d_base["fp"].sum()),
+            fn=float(d_base["fn"].sum()),
+            tn=float(d_base["tn"].sum()),
+        )
+        micro_ci_base = _bootstrap_micro(d_base, rng, int(args.n_bootstrap))
+
         for m in metrics:
             rows.append(
                 {
@@ -196,6 +228,44 @@ def main() -> None:
                     "n_bootstrap": int(args.n_bootstrap),
                 }
             )
+            rows.append(
+                {
+                    "experiment": f"{t.experiment}__majority_baseline",
+                    "source_csv": str(t.csv_path),
+                    "n_folds": int(len(d)),
+                    "estimate_type": "macro",
+                    "metric": m,
+                    "point": macro_point_base[m],
+                    "ci_low": macro_ci_base[m][0],
+                    "ci_high": macro_ci_base[m][1],
+                    "n_bootstrap": int(args.n_bootstrap),
+                }
+            )
+            rows.append(
+                {
+                    "experiment": f"{t.experiment}__majority_baseline",
+                    "source_csv": str(t.csv_path),
+                    "n_folds": int(len(d)),
+                    "estimate_type": "micro",
+                    "metric": m,
+                    "point": micro_point_base[m],
+                    "ci_low": micro_ci_base[m][0],
+                    "ci_high": micro_ci_base[m][1],
+                    "n_bootstrap": int(args.n_bootstrap),
+                }
+            )
+
+        comparison_rows.append(
+            {
+                "experiment": t.experiment,
+                "macro_f1_model": macro_point["f1"],
+                "macro_f1_majority_baseline": macro_point_base["f1"],
+                "delta_macro_f1": macro_point["f1"] - macro_point_base["f1"],
+                "micro_f1_model": micro_point["f1"],
+                "micro_f1_majority_baseline": micro_point_base["f1"],
+                "delta_micro_f1": micro_point["f1"] - micro_point_base["f1"],
+            }
+        )
 
     if not rows:
         raise ValueError("No usable experiment CSVs were found for CI computation.")
@@ -212,6 +282,18 @@ def main() -> None:
     summary["ci95"] = summary["ci_low"] + " .. " + summary["ci_high"]
     summary = summary[["experiment", "estimate_type", "metric", "point", "ci95", "n_folds"]]
 
+    comp_df = pd.DataFrame(comparison_rows).sort_values("experiment").reset_index(drop=True)
+    comp_fmt = comp_df.copy()
+    for c in [
+        "macro_f1_model",
+        "macro_f1_majority_baseline",
+        "delta_macro_f1",
+        "micro_f1_model",
+        "micro_f1_majority_baseline",
+        "delta_micro_f1",
+    ]:
+        comp_fmt[c] = comp_fmt[c].map(lambda x: f"{x:.4f}")
+
     out_md = out_dir / "metrics_with_ci.md"
     md = [
         "# Metrics With 95% CI",
@@ -222,8 +304,13 @@ def main() -> None:
         "- Leave-one-recording-out fold metrics are bootstrapped by resampling folds with replacement.",
         "- `macro`: mean of fold metrics.",
         "- `micro`: metrics from pooled confusion counts.",
+        "- `__majority_baseline`: per fold, predict the majority class in that held-out fold.",
         "",
         _to_markdown_table(summary),
+        "",
+        "## Model vs Majority Baseline (F1)",
+        "",
+        _to_markdown_table(comp_fmt),
         "",
         f"Full CSV: `{out_csv}`",
     ]
