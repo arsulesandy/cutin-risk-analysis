@@ -19,7 +19,7 @@ import pandas as pd
 
 
 NoNeighbor = tuple[int, ...]
-PositionReference = Literal["center", "rear"]
+PositionReference = Literal["center", "rear", "bbox_topleft"]
 
 
 @dataclass(frozen=True)
@@ -34,6 +34,9 @@ class LongitudinalModel:
       Interpretation of the x position:
         - "center": x is treated as the longitudinal center of the vehicle
         - "rear":   x is treated as the rear bumper position in travel direction
+        - "bbox_topleft": x is treated as highD-style upper-left bbox x.
+                           This means x corresponds to rear for sign=+1
+                           and front for sign=-1.
 
       Use the validation helper to choose what best matches dataset-provided dhw/thw/ttc.
     """
@@ -97,6 +100,15 @@ def _longitudinal_state(
         # Treat x as rear position along travel direction
         s_rear = s
         s_front = s + length
+    elif model.position_reference == "bbox_topleft":
+        # highD x uses the upper-left bbox corner.
+        # In normalized travel direction (s): sign=+1 => x is rear; sign=-1 => x is front.
+        if sign >= 0:
+            s_rear = s
+            s_front = s + length
+        else:
+            s_front = s
+            s_rear = s - length
     else:
         raise ValueError(f"Unknown position_reference: {model.position_reference}")
 

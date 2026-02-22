@@ -236,7 +236,6 @@ def _build_details_markdown(
 def main() -> None:
     root = dataset_root_path()
     report_dir = step_output_dir(STEP_NUMBER, kind="reports")
-    step_output_dir(STEP_NUMBER, kind="figures")
     lane_change_options = LaneChangeOptions()
     cutin_options = CutInOptions()
 

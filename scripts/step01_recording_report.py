@@ -8,6 +8,7 @@ from typing import List
 import logging
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
+from cutin_risk.datasets.highd.schema import RECORDING_META_SUFFIX
 from cutin_risk.datasets.highd.transforms import build_tracking_table, BuildOptions
 from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.paths import dataset_root_path, step_output_dir
@@ -23,6 +24,17 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 SEPARATOR = "-" * 80
+
+
+def _all_recording_ids(root: Path) -> list[str]:
+    pattern = f"*_{RECORDING_META_SUFFIX}.csv"
+    ids = {
+        (rid.zfill(2) if rid.isdigit() else rid)
+        for p in root.glob(pattern)
+        for rid in [p.stem.split("_", 1)[0]]
+        if rid
+    }
+    return sorted(ids)
 
 
 def process_recording(root: Path, rec_id: str) -> bool:
@@ -73,12 +85,16 @@ def process_recording(root: Path, rec_id: str) -> bool:
 def main() -> None:
     root = dataset_root_path()
     report_dir = step_output_dir(1, kind="reports")
-    step_output_dir(1, kind="figures")
 
     failed: List[str] = []
     succeeded = 0
 
-    recordings = [f"{i:02d}" for i in range(1, 61)]
+    recordings = _all_recording_ids(root)
+    if not recordings:
+        raise FileNotFoundError(
+            f"No recording metadata files found under {root} matching *_recordingMeta.csv"
+        )
+
     for _, _, rec_id in iter_with_progress(
         recordings,
         label="Step 01 recordings",
@@ -108,7 +124,7 @@ def main() -> None:
         "",
         f"- Generated at: {datetime.now().isoformat(timespec='seconds')}",
         f"- Dataset root: `{root}`",
-        "- Recordings attempted: 60",
+        f"- Recordings attempted: {len(recordings)}",
         f"- Recordings processed successfully: {succeeded}",
         f"- Recordings failed: {len(failed)}",
         "",

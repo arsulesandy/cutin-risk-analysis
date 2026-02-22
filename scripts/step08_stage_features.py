@@ -222,8 +222,8 @@ def main() -> None:
     model = LongitudinalModel(
         position_reference=thesis_str(
             "indicators.position_reference",
-            "rear",
-            allowed={"center", "rear"},
+            "bbox_topleft",
+            allowed={"center", "rear", "bbox_topleft"},
         ),
     )
     ind_opt = IndicatorOptions(
@@ -263,7 +263,6 @@ def main() -> None:
     report_dir = out_base / "reports" / f"step8_recording_{rec.recording_id}"
     fig_dir = out_base / "figures" / f"step8_recording_{rec.recording_id}"
     _ensure_dir(report_dir)
-    _ensure_dir(fig_dir)
     _remove_legacy_timestamped_outputs(report_dir, fig_dir)
 
     rows: list[dict[str, float | int | str]] = []
@@ -356,11 +355,12 @@ def main() -> None:
     features.to_csv(out_csv, index=False)
     canonical_subdir = f"recording_{rec.recording_id}"
     canonical_report_dir = step_reports_dir(8, subdir=canonical_subdir)
-    canonical_fig_dir = step_figures_dir(8, subdir=canonical_subdir)
+    canonical_fig_dir = step_figures_dir(8, subdir=canonical_subdir, create=False)
     for p in canonical_report_dir.glob("cutin_stage_features_*.csv"):
         p.unlink(missing_ok=True)
-    for p in canonical_fig_dir.glob("median_ttc_curve_*.png"):
-        p.unlink(missing_ok=True)
+    if canonical_fig_dir.exists():
+        for p in canonical_fig_dir.glob("median_ttc_curve_*.png"):
+            p.unlink(missing_ok=True)
     canonical_csv = mirror_file_to_step(out_csv, 8, subdir=canonical_subdir)
     print(f"\nSaved stage features: {out_csv}")
     print(f"Mirrored stage features: {canonical_csv}")
@@ -393,6 +393,7 @@ def main() -> None:
             plt.xlabel("time relative to cut-in start (s)")
             plt.ylabel("TTC (s)")
             plt.tight_layout()
+            fig_dir.mkdir(parents=True, exist_ok=True)
             out_png = fig_dir / "median_ttc_curve.png"
             plt.savefig(out_png, dpi=150)
             plt.close()

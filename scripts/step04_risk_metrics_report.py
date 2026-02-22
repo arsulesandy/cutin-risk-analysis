@@ -166,6 +166,7 @@ def _write_per_recording_csv(rows: list[dict[str, int | float | str]], out_path:
                 "model_position_reference",
                 "validation_dhw_median_abs_error_center",
                 "validation_dhw_median_abs_error_rear",
+                "validation_dhw_median_abs_error_bbox_topleft",
             ],
         )
         writer.writeheader()
@@ -302,6 +303,7 @@ def _build_details_markdown(
             f"- Events with computed metrics: {len(event_summaries)}",
             f"- Chosen model `center`: {model_choice_counts.get('center', 0)}",
             f"- Chosen model `rear`: {model_choice_counts.get('rear', 0)}",
+            f"- Chosen model `bbox_topleft`: {model_choice_counts.get('bbox_topleft', 0)}",
         ]
     )
     if total_cutins:
@@ -350,7 +352,6 @@ def _build_details_markdown(
 def main() -> None:
     root = dataset_root_path()
     report_dir = step_output_dir(STEP_NUMBER, kind="reports")
-    step_output_dir(STEP_NUMBER, kind="figures")
 
     lane_change_options = LaneChangeOptions()
     cutin_options = CutInOptions()
@@ -389,30 +390,25 @@ def main() -> None:
             rec = load_highd_recording(root, rid)
             df = build_tracking_table(rec)
 
-            model_center = LongitudinalModel(position_reference="center")
-            model_rear = LongitudinalModel(position_reference="rear")
-            report_center: dict[str, float] | None = None
-            report_rear: dict[str, float] | None = None
-            model = model_center
+            candidate_models = [
+                LongitudinalModel(position_reference="center"),
+                LongitudinalModel(position_reference="rear"),
+                LongitudinalModel(position_reference="bbox_topleft"),
+            ]
+            validation_reports: dict[str, dict[str, float]] = {}
+            model = candidate_models[0]
             try:
-                report_center = validate_against_dataset_preceding(
-                    df,
-                    sample_n=validation_sample_n,
-                    random_state=validation_random_state,
-                    model=model_center,
-                    options=indicator_options,
-                )
-                report_rear = validate_against_dataset_preceding(
-                    df,
-                    sample_n=validation_sample_n,
-                    random_state=validation_random_state,
-                    model=model_rear,
-                    options=indicator_options,
-                )
-                model = (
-                    model_center
-                    if report_center["dhw_median_abs_error"] <= report_rear["dhw_median_abs_error"]
-                    else model_rear
+                for candidate in candidate_models:
+                    validation_reports[candidate.position_reference] = validate_against_dataset_preceding(
+                        df,
+                        sample_n=validation_sample_n,
+                        random_state=validation_random_state,
+                        model=candidate,
+                        options=indicator_options,
+                    )
+                model = min(
+                    candidate_models,
+                    key=lambda m: validation_reports[m.position_reference]["dhw_median_abs_error"],
                 )
             except Exception as exc:
                 validation_failed_recordings.append((rid, str(exc)))
@@ -503,10 +499,19 @@ def main() -> None:
                     "finite_ttc_events": sum(math.isfinite(float(r["ttc_min"])) for r in recording_event_rows),
                     "model_position_reference": model.position_reference,
                     "validation_dhw_median_abs_error_center": (
-                        float(report_center["dhw_median_abs_error"]) if report_center else float("nan")
+                        float(validation_reports["center"]["dhw_median_abs_error"])
+                        if "center" in validation_reports
+                        else float("nan")
                     ),
                     "validation_dhw_median_abs_error_rear": (
-                        float(report_rear["dhw_median_abs_error"]) if report_rear else float("nan")
+                        float(validation_reports["rear"]["dhw_median_abs_error"])
+                        if "rear" in validation_reports
+                        else float("nan")
+                    ),
+                    "validation_dhw_median_abs_error_bbox_topleft": (
+                        float(validation_reports["bbox_topleft"]["dhw_median_abs_error"])
+                        if "bbox_topleft" in validation_reports
+                        else float("nan")
                     ),
                 }
             )

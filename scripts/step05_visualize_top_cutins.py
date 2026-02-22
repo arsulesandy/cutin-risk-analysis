@@ -282,7 +282,7 @@ def main() -> None:
 
     dataset_root = Path(args.dataset_root)
     report_dir = step_output_dir(STEP_NUMBER, kind="reports")
-    figure_dir = step_output_dir(STEP_NUMBER, kind="figures")
+    figure_dir = step_output_dir(STEP_NUMBER, kind="figures", create=False)
     events_source_path = Path(args.step04_events_csv)
     by_recording_source_path = Path(args.step04_by_recording_csv)
 
@@ -319,7 +319,11 @@ def main() -> None:
     events_df = events_df.sort_values(["ttc_min", "thw_min", "dhw_min"], ascending=[True, True, True]).reset_index(drop=True)
 
     top_k = min(int(args.top_k), len(events_df))
-    position_reference = thesis_str("indicators.position_reference", "rear", allowed={"center", "rear"})
+    position_reference = thesis_str(
+        "indicators.position_reference",
+        "bbox_topleft",
+        allowed={"center", "rear", "bbox_topleft"},
+    )
     indicator_options = IndicatorOptions(
         min_speed=thesis_float("indicators.min_speed", 0.1, min_value=0.0),
         closing_speed_epsilon=thesis_float("indicators.closing_speed_epsilon", 1e-6, min_value=0.0),
@@ -423,6 +427,7 @@ def main() -> None:
             f"{int(row['from_lane'])}to{int(row['to_lane'])}"
         )
         out_path = figure_dir / f"{prefix}_risk_metrics.png"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
         title = (
             f"Top cut-in #{rank + 1} | rec {rec_id}, cutter {int(row['cutter_id'])}, follower {int(row['follower_id'])}, "
             f"{int(row['from_lane'])}->{int(row['to_lane'])} | "
@@ -493,7 +498,10 @@ def main() -> None:
     print(f"  Details markdown: {details_md_path}")
     print(f"  Per-recording CSV: {per_recording_csv_path}")
     print(f"  Per-event CSV: {events_csv_path}")
-    print(f"  Figures directory: {figure_dir}")
+    if figure_paths_by_rank:
+        print(f"  Figures directory: {figure_dir}")
+    else:
+        print("  Figures directory: not created (no plots generated)")
     if plot_failures:
         print(f"  Plot reconstruction issues: {len(plot_failures)} (see details markdown)")
 
