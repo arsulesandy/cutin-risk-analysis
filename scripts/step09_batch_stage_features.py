@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import subprocess
 import sys
 from pathlib import Path
 
 import pandas as pd
 from cutin_risk.io.progress import iter_with_progress
+from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir, write_step_markdown
 from cutin_risk.paths import dataset_root_path, output_path, project_root
 from cutin_risk.thesis_config import thesis_str
 
@@ -91,15 +93,30 @@ def main() -> None:
             print(f"[WARN] stage_features failed for recording {rid}, continuing…")
             continue
 
-        # Find the newest CSV that stage_features produced for this recording
-        step8_dir = output_path(f"reports/step8_recording_{rid}")
-        csvs = sorted(step8_dir.glob("cutin_stage_features_*.csv"))
-        if not csvs:
+        # Prefer deterministic Step 08 filenames, fallback to older timestamped files if present.
+        candidate_dirs = [
+            step_reports_dir(8, subdir=f"recording_{rid}", create=False),
+            output_path(f"reports/step8_recording_{rid}"),
+        ]
+        chosen: Path | None = None
+        for d in candidate_dirs:
+            deterministic = d / "cutin_stage_features.csv"
+            if deterministic.exists():
+                chosen = deterministic
+                break
+        if chosen is None:
+            csvs: list[Path] = []
+            for d in candidate_dirs:
+                csvs.extend(list(d.glob("cutin_stage_features_*.csv")))
+            csvs = sorted(csvs, key=lambda p: p.stat().st_mtime)
+            if csvs:
+                chosen = csvs[-1]
+        if chosen is None:
             print(f"[WARN] No CSV produced for recording {rid} (unexpected).")
             continue
 
-        produced_csvs.append(csvs[-1])
-        print(f"Collected: {csvs[-1]}")
+        produced_csvs.append(chosen)
+        print(f"Collected: {chosen}")
 
     if not produced_csvs:
         print("\nNo outputs collected. Nothing to merge.")
@@ -131,9 +148,27 @@ def main() -> None:
     out_summary = out_dir / "recording_summary.csv"
     summary.to_csv(out_summary, index=False)
 
+    canonical_csv = mirror_file_to_step(out_csv, 9)
+    canonical_summary = mirror_file_to_step(out_summary, 9)
+    details_md = write_step_markdown(
+        9,
+        "stage_batch_details.md",
+        [
+            "# Step 09 Batch Stage Features Report",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Recordings requested: `{args.recordings}`",
+            f"- Recordings processed: `{len(produced_csvs)}`",
+            f"- Total merged events: `{len(merged)}`",
+            f"- Merged CSV: `{canonical_csv}`",
+            f"- Recording summary CSV: `{canonical_summary}`",
+        ],
+    )
+
     print(f"\nSaved merged event table: {out_csv}")
     print(f"Saved per-recording summary: {out_summary}")
     print(f"Total events merged: {len(merged)}")
+    print(f"Saved summary markdown: {details_md}")
 
 
 if __name__ == "__main__":

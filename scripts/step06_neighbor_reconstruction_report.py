@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import statistics as stats
 from pathlib import Path
 
@@ -11,9 +12,12 @@ from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
 from cutin_risk.detection.cutin import detect_cutins, CutInOptions
 from cutin_risk.detection.lane_change import detect_lane_changes, LaneChangeOptions
+from cutin_risk.io.step_reports import step_reports_dir, write_step_markdown
 from cutin_risk.paths import dataset_root_path
 from cutin_risk.reconstruction.neighbors import reconstruct_same_lane_neighbors
 from cutin_risk.thesis_config import thesis_int, thesis_str
+
+STEP_NUMBER = 6
 
 
 def _norm_neighbor(s: pd.Series, *, no_neighbor_ids: tuple[int, ...] = (0, -1)) -> pd.Series:
@@ -140,10 +144,12 @@ def main() -> None:
     pred_fol = _norm_neighbor(df["followingId_xy"])
 
     print("\nSame-lane precedingId accuracy:")
-    print(_accuracy(truth_pre, pred_pre))
+    pre_acc = _accuracy(truth_pre, pred_pre)
+    print(pre_acc)
 
     print("\nSame-lane followingId accuracy:")
-    print(_accuracy(truth_fol, pred_fol))
+    fol_acc = _accuracy(truth_fol, pred_fol)
+    print(fol_acc)
 
     # Show a few mismatches to understand edge cases
     mism_pre = df.loc[
@@ -185,6 +191,63 @@ def main() -> None:
     metrics = _match_cutins(cutins_oracle, cutins_xy, frame_tolerance=int(args.frame_tolerance))
     print("\nCut-in matching metrics:")
     print(metrics)
+
+    report_dir = step_reports_dir(STEP_NUMBER)
+    metrics_csv = report_dir / "neighbor_reconstruction_metrics.csv"
+    pd.DataFrame(
+        [
+            {"metric": "preceding_overall_accuracy", "value": pre_acc["overall_accuracy"]},
+            {
+                "metric": "preceding_accuracy_when_truth_has_neighbor",
+                "value": pre_acc["accuracy_when_truth_has_neighbor"],
+            },
+            {"metric": "following_overall_accuracy", "value": fol_acc["overall_accuracy"]},
+            {
+                "metric": "following_accuracy_when_truth_has_neighbor",
+                "value": fol_acc["accuracy_when_truth_has_neighbor"],
+            },
+            {"metric": "cutin_true_events", "value": metrics["true_events"]},
+            {"metric": "cutin_pred_events", "value": metrics["pred_events"]},
+            {"metric": "cutin_tp", "value": metrics["tp"]},
+            {"metric": "cutin_fp", "value": metrics["fp"]},
+            {"metric": "cutin_fn", "value": metrics["fn"]},
+            {"metric": "cutin_precision", "value": metrics["precision"]},
+            {"metric": "cutin_recall", "value": metrics["recall"]},
+            {"metric": "cutin_f1", "value": metrics["f1"]},
+        ]
+    ).to_csv(metrics_csv, index=False)
+
+    details_md = write_step_markdown(
+        STEP_NUMBER,
+        "neighbor_reconstruction_details.md",
+        [
+            "# Step 06 Neighbor Reconstruction Report",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Recording: `{rec.recording_id}`",
+            f"- Dataset root: `{Path(args.dataset_root).resolve()}`",
+            f"- Rows: `{len(df)}`",
+            f"- Vehicles: `{int(df['id'].nunique())}`",
+            "",
+            "## Accuracy",
+            f"- Same-lane preceding overall: `{pre_acc['overall_accuracy']:.6f}`",
+            f"- Same-lane preceding (truth has neighbor): `{pre_acc['accuracy_when_truth_has_neighbor']:.6f}`",
+            f"- Same-lane following overall: `{fol_acc['overall_accuracy']:.6f}`",
+            f"- Same-lane following (truth has neighbor): `{fol_acc['accuracy_when_truth_has_neighbor']:.6f}`",
+            "",
+            "## Cut-in Matching",
+            f"- Lane changes: `{len(lane_changes)}`",
+            f"- Cut-ins oracle: `{len(cutins_oracle)}`",
+            f"- Cut-ins reconstructed: `{len(cutins_xy)}`",
+            f"- Precision: `{metrics['precision']:.6f}`",
+            f"- Recall: `{metrics['recall']:.6f}`",
+            f"- F1: `{metrics['f1']:.6f}`",
+            "",
+            f"- Metrics CSV: `{metrics_csv}`",
+        ],
+    )
+    print("\nSaved:", metrics_csv)
+    print("Saved:", details_md)
 
 
 if __name__ == "__main__":

@@ -26,6 +26,12 @@ from cutin_risk.indicators.surrogate_safety import (
     infer_direction_sign_map,
     compute_pair_timeseries,
 )
+from cutin_risk.io.step_reports import (
+    mirror_file_to_step,
+    step_figures_dir,
+    step_reports_dir,
+    write_step_markdown,
+)
 from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.thesis_config import thesis_bool, thesis_float, thesis_str
 
@@ -51,6 +57,13 @@ def _finite_min(values: pd.Series, *, lower_bound: float | None = None) -> float
 
 def _ensure_dir(path: Path) -> None:
     path.mkdir(parents=True, exist_ok=True)
+
+
+def _remove_legacy_timestamped_outputs(report_dir: Path, fig_dir: Path) -> None:
+    for p in report_dir.glob("cutin_stage_features_*.csv"):
+        p.unlink(missing_ok=True)
+    for p in fig_dir.glob("median_ttc_curve_*.png"):
+        p.unlink(missing_ok=True)
 
 
 def _vehicle_slice(
@@ -246,12 +259,12 @@ def main() -> None:
         ),
     ]
 
-    run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_base = Path(args.out_dir)
     report_dir = out_base / "reports" / f"step8_recording_{rec.recording_id}"
     fig_dir = out_base / "figures" / f"step8_recording_{rec.recording_id}"
     _ensure_dir(report_dir)
     _ensure_dir(fig_dir)
+    _remove_legacy_timestamped_outputs(report_dir, fig_dir)
 
     rows: list[dict[str, float | int | str]] = []
 
@@ -339,9 +352,18 @@ def main() -> None:
         print("No usable events for stage analysis (missing data slices).")
         return
 
-    out_csv = report_dir / f"cutin_stage_features_{run_id}.csv"
+    out_csv = report_dir / "cutin_stage_features.csv"
     features.to_csv(out_csv, index=False)
+    canonical_subdir = f"recording_{rec.recording_id}"
+    canonical_report_dir = step_reports_dir(8, subdir=canonical_subdir)
+    canonical_fig_dir = step_figures_dir(8, subdir=canonical_subdir)
+    for p in canonical_report_dir.glob("cutin_stage_features_*.csv"):
+        p.unlink(missing_ok=True)
+    for p in canonical_fig_dir.glob("median_ttc_curve_*.png"):
+        p.unlink(missing_ok=True)
+    canonical_csv = mirror_file_to_step(out_csv, 8, subdir=canonical_subdir)
     print(f"\nSaved stage features: {out_csv}")
+    print(f"Mirrored stage features: {canonical_csv}")
 
     # Quick summary for meeting
     finite_ttc = features["ttc_min_total"].replace([np.inf, -np.inf], np.nan).dropna()
@@ -353,6 +375,7 @@ def main() -> None:
     print("  p75:", float(finite_ttc.quantile(0.75)))
 
     # Optional median TTC curve plot
+    out_png: Path | None = None
     if args.make_plot and ttc_by_offset:
         try:
             import matplotlib.pyplot as plt  # lazy import: only needed for plotting mode
@@ -370,10 +393,31 @@ def main() -> None:
             plt.xlabel("time relative to cut-in start (s)")
             plt.ylabel("TTC (s)")
             plt.tight_layout()
-            out_png = fig_dir / f"median_ttc_curve_{run_id}.png"
+            out_png = fig_dir / "median_ttc_curve.png"
             plt.savefig(out_png, dpi=150)
             plt.close()
             print(f"Saved plot: {out_png}")
+            canonical_png = mirror_file_to_step(out_png, 8, kind="figures", subdir=canonical_subdir)
+            print(f"Mirrored plot: {canonical_png}")
+
+    details_md = write_step_markdown(
+        8,
+        "stage_features_details.md",
+        [
+            "# Step 08 Stage Features Report",
+            "",
+            f"- Generated at: `{datetime.now().isoformat(timespec='seconds')}`",
+            f"- Recording: `{rec.recording_id}`",
+            f"- Dataset root: `{Path(args.dataset_root).resolve()}`",
+            f"- Lane changes: `{len(lane_changes)}`",
+            f"- Cut-ins: `{len(cutins)}`",
+            f"- Stage events exported: `{len(features)}`",
+            f"- Stage features CSV: `{canonical_csv}`",
+            f"- Median TTC figure: `{out_png.name if out_png is not None else 'not generated'}`",
+        ],
+        subdir=canonical_subdir,
+    )
+    print(f"Saved summary markdown: {details_md}")
 
 
 if __name__ == "__main__":

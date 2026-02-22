@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
 
 from cutin_risk.encoding.sfc_binary import decode_grid_4x4_bits, encode_grid_4x4_bits
+from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
 from cutin_risk.paths import output_path
 from cutin_risk.thesis_config import thesis_str
 
@@ -137,6 +139,7 @@ def main() -> None:
 
     out_path = out_dir / f"{codes_csv.stem}_mirrored.csv"
     merged.to_csv(out_path, index=False)
+    canonical_out = mirror_file_to_step(out_path, "15A")
 
     # Summary
     n_events = merged["event_id"].nunique()
@@ -149,6 +152,26 @@ def main() -> None:
     print("Saved:", out_path)
     print(f"Events: {n_events} | mirrored events: {n_mir_events}")
     print(f"Rows: {n_rows} | mirrored rows: {n_mir_rows}")
+    details_md = write_step_markdown(
+        "15A",
+        "sfc_mirror_normalize_details.md",
+        [
+            "# Step 15A Mirror Normalization",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Input codes CSV: `{codes_csv}`",
+            f"- Input events CSV: `{events_csv}`",
+            f"- From lane column: `{args.from_col}`",
+            f"- To lane column: `{args.to_col}`",
+            f"- Canonical direction: `{args.canonical_direction}`",
+            f"- Events total: `{n_events}`",
+            f"- Events mirrored: `{n_mir_events}`",
+            f"- Rows total: `{n_rows}`",
+            f"- Rows mirrored: `{n_mir_rows}`",
+            f"- Output CSV: `{canonical_out}`",
+        ],
+    )
+    print("Saved:", details_md)
 
 
 if __name__ == "__main__":

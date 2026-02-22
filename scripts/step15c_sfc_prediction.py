@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 from pathlib import Path
-import math
 
 import numpy as np
 import pandas as pd
@@ -13,6 +13,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from cutin_risk.io.progress import iter_with_progress
+from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
 from cutin_risk.paths import output_path
 from cutin_risk.thesis_config import thesis_float, thesis_int, thesis_optional_float, thesis_str
 
@@ -259,27 +260,52 @@ def main() -> None:
     loo = pd.DataFrame(rows)
     out_loo = out_dir / "leave_one_recording_out.csv"
     loo.to_csv(out_loo, index=False)
+    canonical_loo = mirror_file_to_step(out_loo, "15C")
 
     micro_metrics = compute_metrics(
         np.array([True] * micro["tp"] + [False] * micro["fp"] + [True] * micro["fn"] + [False] * micro["tn"]),
         np.array([True] * micro["tp"] + [True] * micro["fp"] + [False] * micro["fn"] + [False] * micro["tn"]),
     )
+    macro = {
+        "precision": float(loo["precision"].mean()),
+        "recall": float(loo["recall"].mean()),
+        "f1": float(loo["f1"].mean()),
+    }
 
     print("== Step 15C: SFC prediction ==")
     print("Input:", input_csv)
     print("Saved:", out_loo)
     print("\nLOO results:")
     print(loo.to_string(index=False))
-    print("\nMacro averages:", {
-        "precision": float(loo["precision"].mean()),
-        "recall": float(loo["recall"].mean()),
-        "f1": float(loo["f1"].mean()),
-    })
+    print("\nMacro averages:", macro)
     print("\nMicro totals:", micro | {
         "precision": float(micro_metrics["precision"]),
         "recall": float(micro_metrics["recall"]),
         "f1": float(micro_metrics["f1"]),
     })
+    details_md = write_step_markdown(
+        "15C",
+        "sfc_prediction_details.md",
+        [
+            "# Step 15C SFC Prediction",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Input type: `{args.input_type}`",
+            f"- Input CSV: `{input_csv}`",
+            f"- Stage: `{args.stage}`",
+            f"- Feature columns: `{len(feature_cols)}`",
+            f"- LOO folds: `{len(loo)}`",
+            f"- Threshold strategy: `{args.threshold_strategy}`",
+            f"- Macro precision: `{macro['precision']:.6f}`",
+            f"- Macro recall: `{macro['recall']:.6f}`",
+            f"- Macro F1: `{macro['f1']:.6f}`",
+            f"- Micro precision: `{float(micro_metrics['precision']):.6f}`",
+            f"- Micro recall: `{float(micro_metrics['recall']):.6f}`",
+            f"- Micro F1: `{float(micro_metrics['f1']):.6f}`",
+            f"- LOO CSV: `{canonical_loo}`",
+        ],
+    )
+    print("Saved:", details_md)
 
 
 if __name__ == "__main__":

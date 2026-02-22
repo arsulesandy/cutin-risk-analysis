@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from cutin_risk.io.progress import iter_with_progress
+from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
 from cutin_risk.paths import output_path
 from cutin_risk.thesis_config import (
     thesis_bool,
@@ -322,8 +324,39 @@ def main() -> None:
     coef_csv = out_dir / "logreg_coefficients_step13a.csv"
     coefs.to_csv(coef_csv, index=False)
 
+    canonical_loo = mirror_file_to_step(out_csv, "13A")
+    canonical_coef = mirror_file_to_step(coef_csv, "13A")
+    details_md = write_step_markdown(
+        "13A",
+        "tuned_logreg_details.md",
+        [
+            "# Step 13A Tuned Logistic Regression",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Input merged CSV: `{merged_csv}`",
+            f"- THW risk threshold: `{float(args.thw_risk):.3f}`",
+            f"- Feature set: `{args.feature_set}`",
+            f"- Interaction enabled: `{bool(args.with_interaction)}`",
+            f"- Features: `{', '.join(feature_cols)}`",
+            f"- Class weight: `{args.class_weight}`",
+            f"- C: `{float(args.C):.6f}`",
+            f"- Beta: `{float(args.beta):.6f}`",
+            f"- Min recall constraint: `{args.min_recall}`",
+            f"- LOO folds: `{len(loo)}`",
+            f"- Macro precision: `{macro_precision:.6f}`",
+            f"- Macro recall: `{macro_recall:.6f}`",
+            f"- Macro F-beta: `{macro_fbeta:.6f}`",
+            f"- Micro precision: `{micro_precision:.6f}`",
+            f"- Micro recall: `{micro_recall:.6f}`",
+            f"- Micro F-beta: `{micro_fbeta:.6f}`",
+            f"- LOO CSV: `{canonical_loo}`",
+            f"- Coefficients CSV: `{canonical_coef}`",
+        ],
+    )
+
     print(f"\nSaved: {out_csv}")
     print(f"Saved: {coef_csv}")
+    print(f"Saved: {details_md}")
 
 
 if __name__ == "__main__":

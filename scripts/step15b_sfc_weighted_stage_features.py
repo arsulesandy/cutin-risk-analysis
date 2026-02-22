@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +12,7 @@ import pandas as pd
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
 from cutin_risk.io.progress import iter_with_progress
+from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
 from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_index
 
@@ -248,11 +250,29 @@ def main() -> None:
     out = pd.DataFrame(rows_out)
     out_path = out_dir / f"sfc_weighted_stage_features_{args.mode}_{args.order}.csv"
     out.to_csv(out_path, index=False)
+    canonical_out = mirror_file_to_step(out_path, "15B")
 
     print("\n== Step 15B: Weighted SFC stage features ==")
     print("Saved:", out_path)
     print("Rows:", len(out))
     print(out.head(3).to_string(index=False))
+    details_md = write_step_markdown(
+        "15B",
+        "sfc_weighted_stage_features_details.md",
+        [
+            "# Step 15B Weighted SFC Stage Features",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Input events CSV: `{events_csv}`",
+            f"- Dataset root: `{Path(args.dataset_root).resolve()}`",
+            f"- Mode: `{args.mode}`",
+            f"- Order: `{args.order}`",
+            f"- Risk THW threshold: `{float(args.risk_thw):.3f}`",
+            f"- Rows exported: `{len(out)}`",
+            f"- Output CSV: `{canonical_out}`",
+        ],
+    )
+    print("Saved:", details_md)
 
 
 if __name__ == "__main__":

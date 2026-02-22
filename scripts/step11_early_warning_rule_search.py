@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from cutin_risk.io.progress import iter_with_progress
+from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
 from cutin_risk.paths import output_path
 from cutin_risk.thesis_config import thesis_float
 
@@ -168,19 +170,42 @@ def main() -> None:
     loo = pd.DataFrame(loo_rows)
     out_csv = out_dir / "leave_one_recording_out.csv"
     loo.to_csv(out_csv, index=False)
+    macro = {
+        "precision": float(loo["precision"].mean()),
+        "recall": float(loo["recall"].mean()),
+        "f1": float(loo["f1"].mean()),
+    }
+
+    canonical_csv = mirror_file_to_step(out_csv, 11)
+    details_md = write_step_markdown(
+        11,
+        "early_warning_rule_search_details.md",
+        [
+            "# Step 11 Early Warning Rule Search",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Input merged CSV: `{args.merged_csv}`",
+            f"- THW risk threshold: `{float(args.thw_risk):.3f}`",
+            f"- Global best lat threshold: `{best_lat:.3f}`",
+            f"- Global best speed-delta threshold: `{best_spd:.3f}`",
+            f"- Global precision: `{best_m.precision:.6f}`",
+            f"- Global recall: `{best_m.recall:.6f}`",
+            f"- Global F1: `{best_m.f1:.6f}`",
+            f"- LOO folds: `{len(loo)}`",
+            f"- Macro precision: `{macro['precision']:.6f}`",
+            f"- Macro recall: `{macro['recall']:.6f}`",
+            f"- Macro F1: `{macro['f1']:.6f}`",
+            f"- LOO CSV: `{canonical_csv}`",
+        ],
+    )
 
     print("\nLeave-one-recording-out results:")
     print(loo.to_string(index=False))
 
     print("\nMacro averages:")
-    print(
-        {
-            "precision": float(loo["precision"].mean()),
-            "recall": float(loo["recall"].mean()),
-            "f1": float(loo["f1"].mean()),
-        }
-    )
+    print(macro)
     print(f"\nSaved: {out_csv}")
+    print(f"Saved: {details_md}")
 
 
 if __name__ == "__main__":

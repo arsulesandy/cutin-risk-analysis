@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from cutin_risk.io.markdown import markdown_table
+from cutin_risk.io.step_reports import mirror_file_to_step
 from cutin_risk.paths import output_path
 from cutin_risk.thesis_config import thesis_int
 
@@ -92,21 +93,70 @@ def _bootstrap_micro(
     }
 
 
-def _majority_baseline_fold_metrics(df: pd.DataFrame) -> pd.DataFrame:
+def _baseline_metrics_from_existing_columns(df: pd.DataFrame) -> pd.DataFrame | None:
     """
-    Per fold, predict the test-fold majority class as a transparent trivial baseline.
+    Use baseline confusion counts already produced by upstream scripts when available.
     """
+    raw_cols = ["baseline_tp", "baseline_fp", "baseline_fn", "baseline_tn"]
+    if not (set(raw_cols) <= set(df.columns)):
+        return None
+
+    base = df[raw_cols].copy()
+    for c in raw_cols:
+        base[c] = pd.to_numeric(base[c], errors="coerce")
+    if base[raw_cols].isna().any().any():
+        return None
+
     rows: list[dict[str, float]] = []
-    for _, r in df.iterrows():
-        pos = float(r["tp"] + r["fn"])
-        neg = float(r["tn"] + r["fp"])
-        if pos >= neg:
-            tp_b, fp_b, fn_b, tn_b = pos, neg, 0.0, 0.0
-        else:
-            tp_b, fp_b, fn_b, tn_b = 0.0, 0.0, pos, neg
-        m = _micro_from_counts(tp_b, fp_b, fn_b, tn_b)
-        rows.append(m)
+    for _, r in base.iterrows():
+        rows.append(
+            _micro_from_counts(
+                tp=float(r["baseline_tp"]),
+                fp=float(r["baseline_fp"]),
+                fn=float(r["baseline_fn"]),
+                tn=float(r["baseline_tn"]),
+            )
+        )
     return pd.DataFrame(rows)
+
+
+def _majority_baseline_from_train_counts(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build a train-majority baseline per fold from confusion counts.
+
+    Assumes leave-one-fold-out partitioning where each fold appears once as test.
+    For each fold:
+      - infer test positives = tp + fn and test negatives = tn + fp
+      - infer train class counts by subtracting held-out counts from totals
+      - predict the training-majority class on the held-out fold
+    """
+    pos_test = (pd.to_numeric(df["tp"], errors="coerce") + pd.to_numeric(df["fn"], errors="coerce")).to_numpy(
+        dtype=float
+    )
+    neg_test = (pd.to_numeric(df["tn"], errors="coerce") + pd.to_numeric(df["fp"], errors="coerce")).to_numpy(
+        dtype=float
+    )
+    pos_total = float(np.nansum(pos_test))
+    neg_total = float(np.nansum(neg_test))
+
+    rows: list[dict[str, float]] = []
+    for pos, neg in zip(pos_test.tolist(), neg_test.tolist()):
+        train_pos = pos_total - float(pos)
+        train_neg = neg_total - float(neg)
+        predict_positive = train_pos >= train_neg
+        if predict_positive:
+            tp_b, fp_b, fn_b, tn_b = float(pos), float(neg), 0.0, 0.0
+        else:
+            tp_b, fp_b, fn_b, tn_b = 0.0, 0.0, float(pos), float(neg)
+        rows.append(_micro_from_counts(tp_b, fp_b, fn_b, tn_b))
+    return pd.DataFrame(rows)
+
+
+def _majority_baseline_fold_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    existing = _baseline_metrics_from_existing_columns(df)
+    if existing is not None:
+        return existing
+    return _majority_baseline_from_train_counts(df)
 
 
 def _to_markdown_table(df: pd.DataFrame) -> str:
@@ -294,6 +344,21 @@ def main() -> None:
     ]:
         comp_fmt[c] = comp_fmt[c].map(lambda x: f"{x:.4f}")
 
+    non_improving = comp_df[
+        (comp_df["delta_macro_f1"] <= 0.0) | (comp_df["delta_micro_f1"] <= 0.0)
+    ].copy()
+    non_improving_fmt = non_improving.copy()
+    for c in [
+        "macro_f1_model",
+        "macro_f1_majority_baseline",
+        "delta_macro_f1",
+        "micro_f1_model",
+        "micro_f1_majority_baseline",
+        "delta_micro_f1",
+    ]:
+        if c in non_improving_fmt.columns:
+            non_improving_fmt[c] = non_improving_fmt[c].map(lambda x: f"{x:.4f}")
+
     out_md = out_dir / "metrics_with_ci.md"
     md = [
         "# Metrics With 95% CI",
@@ -304,21 +369,41 @@ def main() -> None:
         "- Leave-one-recording-out fold metrics are bootstrapped by resampling folds with replacement.",
         "- `macro`: mean of fold metrics.",
         "- `micro`: metrics from pooled confusion counts.",
-        "- `__majority_baseline`: per fold, predict the majority class in that held-out fold.",
+        "- `__majority_baseline`: per fold, predict the training-fold majority class.",
+        "- If baseline confusion columns exist in source CSV, those are used directly.",
         "",
         _to_markdown_table(summary),
         "",
         "## Model vs Majority Baseline (F1)",
         "",
         _to_markdown_table(comp_fmt),
-        "",
-        f"Full CSV: `{out_csv}`",
     ]
+    if not non_improving_fmt.empty:
+        md.extend(
+            [
+                "",
+                "## Non-improving Experiments vs Baseline",
+                "",
+                "These experiments do not beat the majority baseline on F1 and should be treated as negative findings.",
+                "",
+                _to_markdown_table(non_improving_fmt),
+            ]
+        )
+    md.extend(
+        [
+            "",
+            f"Full CSV: `{out_csv}`",
+        ]
+    )
     out_md.write_text("\n".join(md) + "\n", encoding="utf-8")
+    canonical_csv = mirror_file_to_step(out_csv, 18)
+    canonical_md = mirror_file_to_step(out_md, 18)
 
     print("== Step 18: Metrics CI ==")
     print(f"Saved: {out_csv}")
     print(f"Saved: {out_md}")
+    print(f"Mirrored: {canonical_csv}")
+    print(f"Mirrored: {canonical_md}")
 
 
 if __name__ == "__main__":

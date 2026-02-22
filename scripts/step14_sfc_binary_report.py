@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import os
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 from cutin_risk.encoding.sfc_binary import decode_grid_4x4_bits
+from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
 from cutin_risk.paths import output_path, step14_codes_csv_path
 
 
@@ -100,7 +102,28 @@ def main() -> None:
         np.savetxt(out_dir / f"{stage}_risk.csv", g_risk, delimiter=",", fmt="%.6f")
         np.savetxt(out_dir / f"{stage}_diff.csv", g_diff, delimiter=",", fmt="%.6f")
 
+    mirrored: list[Path] = []
+    for p in sorted(out_dir.glob("*.csv")):
+        mirrored.append(mirror_file_to_step(p, 14))
+    for p in sorted(out_dir.glob("*.png")):
+        mirrored.append(mirror_file_to_step(p, 14, kind="figures"))
+
+    details_md = write_step_markdown(
+        14,
+        "sfc_binary_report_details.md",
+        [
+            "# Step 14 Binary SFC Report",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Input codes CSV: `{codes_csv}`",
+            f"- Local report directory: `{out_dir}`",
+            f"- Plot generation enabled: `{bool(args.make_plot)}`",
+            f"- Artifacts mirrored: `{len(mirrored)}`",
+        ],
+    )
+
     print("Saved report to:", out_dir)
+    print("Saved summary markdown:", details_md)
 
 
 if __name__ == "__main__":

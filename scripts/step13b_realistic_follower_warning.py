@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -32,6 +33,7 @@ import pandas as pd
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
 from cutin_risk.io.progress import iter_with_progress
+from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
 from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import infer_lane_index, parse_lane_markings
 from cutin_risk.thesis_config import thesis_float, thesis_str
@@ -408,6 +410,7 @@ def main() -> None:
     feat = pd.DataFrame(rows_out)
     out_feat = out_dir / "realistic_candidate_features.csv"
     feat.to_csv(out_feat, index=False)
+    out_match: Path | None = None
 
     print("== Step 13B: Realistic candidate-follower warning ==")
     print("Events:", len(feat))
@@ -559,6 +562,41 @@ def main() -> None:
     )
 
     print("\nSaved LOOCV results:", out_loo)
+
+    canonical_feat = mirror_file_to_step(out_feat, "13B")
+    canonical_loo = mirror_file_to_step(out_loo, "13B")
+    canonical_match = mirror_file_to_step(out_match, "13B") if out_match is not None else None
+    details_md = write_step_markdown(
+        "13B",
+        "realistic_warning_details.md",
+        [
+            "# Step 13B Realistic Candidate-Follower Warning",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Input merged CSV: `{merged_csv}`",
+            f"- Dataset root: `{dataset_root.resolve()}`",
+            f"- THW risk threshold: `{float(args.thw_risk):.3f}`",
+            f"- Decision seconds: `{float(args.decision_seconds):.3f}`",
+            f"- Events evaluated: `{len(feat)}`",
+            f"- Baseline precision: `{m_baseline.precision:.6f}`",
+            f"- Baseline recall: `{m_baseline.recall:.6f}`",
+            f"- Baseline F1: `{m_baseline.f1:.6f}`",
+            f"- Global best lat threshold: `{best_lat:.3f}`",
+            f"- Global best speed threshold: `{best_spd:.3f}`",
+            f"- Global best F1: `{best_m.f1:.6f}`",
+            f"- LOO folds: `{len(loo)}`",
+            f"- Macro precision: `{macro['precision']:.6f}`",
+            f"- Macro recall: `{macro['recall']:.6f}`",
+            f"- Macro F1: `{macro['f1']:.6f}`",
+            f"- Micro precision: `{micro_precision:.6f}`",
+            f"- Micro recall: `{micro_recall:.6f}`",
+            f"- Micro F1: `{micro_f1:.6f}`",
+            f"- Features CSV: `{canonical_feat}`",
+            f"- LOO CSV: `{canonical_loo}`",
+            f"- Candidate match CSV: `{canonical_match if canonical_match is not None else 'not generated'}`",
+        ],
+    )
+    print("Saved:", details_md)
 
 
 if __name__ == "__main__":

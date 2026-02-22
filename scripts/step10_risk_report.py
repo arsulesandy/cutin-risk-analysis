@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
 from cutin_risk.paths import output_path
 from cutin_risk.thesis_config import thesis_float
 
@@ -104,6 +106,25 @@ def main() -> None:
     out_pooled = out_dir / "risk_vs_nonrisk_pooled.csv"
     pooled.to_csv(out_pooled, index=False)
 
+    canonical_summary = mirror_file_to_step(out_summary, 10)
+    canonical_pooled = mirror_file_to_step(out_pooled, 10)
+    details_md = write_step_markdown(
+        10,
+        "risk_report_details.md",
+        [
+            "# Step 10 Risk Report",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Input merged CSV: `{merged_csv}`",
+            f"- THW risk threshold: `{float(args.thw_risk):.3f}`",
+            f"- THW very-risk threshold: `{float(args.thw_very_risk):.3f}`",
+            f"- Events processed: `{len(df)}`",
+            f"- Risk-positive events: `{int(df['risk_thw'].sum())}`",
+            f"- Summary CSV: `{canonical_summary}`",
+            f"- Pooled comparison CSV: `{canonical_pooled}`",
+        ],
+    )
+
     print("== Step 10: Risk report ==")
     print("Input:", merged_csv)
     print("Saved:", out_summary)
@@ -112,6 +133,7 @@ def main() -> None:
     print(summary.to_string(index=False))
     print("\nRisk vs non-risk (pooled):")
     print(pooled.to_string(index=False))
+    print("\nSaved summary markdown:", details_md)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ from pathlib import Path
 import pandas as pd
 
 from cutin_risk.io.markdown import markdown_table
+from cutin_risk.io.step_reports import mirror_file_to_step
 from cutin_risk.paths import output_path, project_root
 from cutin_risk.thesis_config import thesis_float, thesis_int, thesis_str
 
@@ -423,10 +424,14 @@ def main() -> None:
 
     out_md = out_dir / "split_audit.md"
     out_md.write_text("\n".join(md_lines) + "\n", encoding="utf-8")
+    canonical_csv = mirror_file_to_step(out_csv, 17)
+    canonical_md = mirror_file_to_step(out_md, 17)
 
     print("== Step 17: Split audit ==")
     print(f"Saved: {out_csv}")
     print(f"Saved: {out_md}")
+    print(f"Mirrored: {canonical_csv}")
+    print(f"Mirrored: {canonical_md}")
     print(f"Pass: {passed}/{total}")
 
 

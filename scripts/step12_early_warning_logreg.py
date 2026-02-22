@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from cutin_risk.io.progress import iter_with_progress
+from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
 from cutin_risk.paths import output_path
 from cutin_risk.thesis_config import thesis_float, thesis_int, thesis_str
 
@@ -203,18 +205,17 @@ def main() -> None:
     loo = pd.DataFrame([r.__dict__ for r in fold_results])
     out_csv = out_dir / "leave_one_recording_out_logreg.csv"
     loo.to_csv(out_csv, index=False)
+    macro = {
+        "precision": float(loo["precision"].mean()),
+        "recall": float(loo["recall"].mean()),
+        "f1": float(loo["f1"].mean()),
+    }
 
     print("Leave-one-recording-out results:")
     print(loo.to_string(index=False))
 
     print("\nMacro averages:")
-    print(
-        {
-            "precision": float(loo["precision"].mean()),
-            "recall": float(loo["recall"].mean()),
-            "f1": float(loo["f1"].mean()),
-        }
-    )
+    print(macro)
 
     # Fit on all data and export coefficients for interpretability
     model.fit(X_all, y_all)
@@ -229,8 +230,33 @@ def main() -> None:
     coef_csv = out_dir / "logreg_coefficients.csv"
     coefs.to_csv(coef_csv, index=False)
 
+    canonical_loo = mirror_file_to_step(out_csv, 12)
+    canonical_coef = mirror_file_to_step(coef_csv, 12)
+    details_md = write_step_markdown(
+        12,
+        "early_warning_logreg_details.md",
+        [
+            "# Step 12 Logistic Regression Early Warning",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Input merged CSV: `{merged_csv}`",
+            f"- THW risk threshold: `{float(args.thw_risk):.3f}`",
+            f"- Features: `{', '.join(feature_cols)}`",
+            f"- Class weight: `{model_class_weight}`",
+            f"- Solver: `{model_solver}`",
+            f"- C: `{float(model_c):.6f}`",
+            f"- LOO folds: `{len(loo)}`",
+            f"- Macro precision: `{macro['precision']:.6f}`",
+            f"- Macro recall: `{macro['recall']:.6f}`",
+            f"- Macro F1: `{macro['f1']:.6f}`",
+            f"- LOO CSV: `{canonical_loo}`",
+            f"- Coefficients CSV: `{canonical_coef}`",
+        ],
+    )
+
     print(f"\nSaved: {out_csv}")
     print(f"Saved: {coef_csv}")
+    print(f"Saved: {details_md}")
 
 
 if __name__ == "__main__":

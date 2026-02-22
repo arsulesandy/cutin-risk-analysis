@@ -42,6 +42,7 @@ Note:
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -59,6 +60,7 @@ from cutin_risk.detection.config import (
     lane_change_default_min_stable_before_frames,
 )
 from cutin_risk.io.progress import iter_with_progress
+from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
 from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_index
 from cutin_risk.thesis_config import thesis_bool, thesis_float, thesis_int, thesis_str
@@ -980,16 +982,23 @@ def main() -> None:
     out_ci = out_dir / "sfc_cutin_dataset.csv"
     lanechange_df.to_csv(out_lc, index=False)
     cutin_df.to_csv(out_ci, index=False)
+    canonical_lc = mirror_file_to_step(out_lc, 16)
+    canonical_ci = mirror_file_to_step(out_ci, 16)
 
     print("\nSaved datasets:")
     print(" ", out_lc)
     print(" ", out_ci)
 
     # LOOCV evaluation
+    out_lc_cv: Path | None = None
+    out_ci_cv: Path | None = None
+    lanechange_delta: float | None = None
+    cutin_delta: float | None = None
     if not lanechange_df.empty:
         lc_loocv = loocv_eval(lanechange_df, "label_lanechange")
         out_lc_cv = out_dir / "lanechange_loocv.csv"
         lc_loocv.to_csv(out_lc_cv, index=False)
+        canonical_lc_cv = mirror_file_to_step(out_lc_cv, 16)
 
         model_micro = metrics_from_counts(
             tp=int(lc_loocv["tp"].sum()),
@@ -1014,12 +1023,15 @@ def main() -> None:
                 "delta_f1": float(model_micro.f1 - baseline_micro.f1),
             },
         )
+        lanechange_delta = float(model_micro.f1 - baseline_micro.f1)
         print("Saved:", out_lc_cv)
+        print("Mirrored:", canonical_lc_cv)
 
     if not cutin_df.empty:
         ci_loocv = loocv_eval(cutin_df, "label_cutin")
         out_ci_cv = out_dir / "cutin_loocv.csv"
         ci_loocv.to_csv(out_ci_cv, index=False)
+        canonical_ci_cv = mirror_file_to_step(out_ci_cv, 16)
 
         model_micro = metrics_from_counts(
             tp=int(ci_loocv["tp"].sum()),
@@ -1044,7 +1056,35 @@ def main() -> None:
                 "delta_f1": float(model_micro.f1 - baseline_micro.f1),
             },
         )
+        cutin_delta = float(model_micro.f1 - baseline_micro.f1)
         print("Saved:", out_ci_cv)
+        print("Mirrored:", canonical_ci_cv)
+
+    details_md = write_step_markdown(
+        16,
+        "sfc_predict_details.md",
+        [
+            "# Step 16 SFC Predict LaneChange/CutIn",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Dataset root: `{dataset_root.resolve()}`",
+            f"- Recordings: `{', '.join(recordings)}`",
+            f"- Decision seconds: `{float(args.decision_seconds):.3f}`",
+            f"- Ahead range (m): `{float(args.ahead_m):.3f}`",
+            f"- Behind range (m): `{float(args.behind_m):.3f}`",
+            f"- Alongside range (m): `{float(args.alongside_m):.3f}`",
+            f"- Mirror enabled: `{bool(args.mirror)}`",
+            f"- Lanechange dataset rows: `{len(lanechange_df)}`",
+            f"- Cutin dataset rows: `{len(cutin_df)}`",
+            f"- Lanechange dataset CSV: `{canonical_lc}`",
+            f"- Cutin dataset CSV: `{canonical_ci}`",
+            f"- Lanechange LOO CSV: `{out_lc_cv if out_lc_cv is not None else 'not generated'}`",
+            f"- Cutin LOO CSV: `{out_ci_cv if out_ci_cv is not None else 'not generated'}`",
+            f"- Lanechange delta F1 vs baseline: `{lanechange_delta if lanechange_delta is not None else 'n/a'}`",
+            f"- Cutin delta F1 vs baseline: `{cutin_delta if cutin_delta is not None else 'n/a'}`",
+        ],
+    )
+    print("Saved:", details_md)
 
 
 if __name__ == "__main__":

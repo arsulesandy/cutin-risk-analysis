@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +12,7 @@ import pandas as pd
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
 from cutin_risk.io.progress import iter_with_progress
+from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
 from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_index
 
@@ -217,9 +219,29 @@ def main() -> None:
     out = pd.DataFrame(rows)
     out_path = out_dir / f"sfc_binary_codes_long_{order}.csv"
     out.to_csv(out_path, index=False)
+    canonical_codes = mirror_file_to_step(out_path, 14)
+    details_md = write_step_markdown(
+        14,
+        "sfc_binary_encode_details.md",
+        [
+            "# Step 14 Binary SFC Encoding",
+            "",
+            f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
+            f"- Input merged CSV: `{merged_csv}`",
+            f"- Dataset root: `{Path(args.dataset_root).resolve()}`",
+            f"- Order: `{order}`",
+            f"- Risk THW threshold: `{float(args.risk_thw):.3f}`",
+            f"- Alongside threshold: `{float(args.alongside_thresh):.3f}`",
+            f"- Range ahead: `{float(args.range_ahead):.3f}`",
+            f"- Range behind: `{float(args.range_behind):.3f}`",
+            f"- Rows exported: `{len(out)}`",
+            f"- Output CSV: `{canonical_codes}`",
+        ],
+    )
 
     print("\n== Step 14: Binary SFC encoding ==")
     print("Saved:", out_path)
+    print("Saved:", details_md)
     print("Rows:", len(out))
     if len(out) > 0:
         print(out.head(5).to_string(index=False))
