@@ -226,6 +226,10 @@ def main() -> None:
             allowed={"center", "rear", "bbox_topleft"},
         ),
     )
+    if model.position_reference != "bbox_topleft":
+        raise ValueError(
+            "Step 08 requires indicators.position_reference='bbox_topleft' for highD x-coordinate semantics."
+        )
     ind_opt = IndicatorOptions(
         min_speed=thesis_float("indicators.min_speed", 0.1, min_value=0.0),
         closing_speed_epsilon=thesis_float(

@@ -1,3 +1,8 @@
+> **Note**
+> This file is an archived terminal log from exploratory runs.
+> For thesis-defense claims, use the canonical artifacts under `outputs/reports/Step NN/`
+> and scope notes in `THESIS_SCOPE_DELTA.md`.
+
 (.venv) (base) sandeep@Sandeeps-MacBook-Pro cutin-risk-analysis % python3 scripts/step01_recording_report.py
 --------------------------------------------------------------------------------
 
@@ -781,7 +786,6 @@ Neighbor id integrity failures: 0
 
 --------------------------------------------------------------------------------
 All recordings processed successfully.
-
 
 
 

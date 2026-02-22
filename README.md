@@ -38,13 +38,13 @@ The analysis pipeline is organized into four main stages:
 - Extract consistent time windows before, during, and after the manoeuvre
 
 ### 3. Risk indicator computation
-For each cut-in scenario, the pipeline computes several established indicators, including:
+For each cut-in scenario, the thesis pipeline computes:
+- Distance headway (DHW)
+- Time headway (THW)
 - Time-to-Collision (TTC)
-- Time headway
-- Braking-demand style indicators
-- Safe-gap based measures
 
 Indicators are computed as time series to capture how risk evolves over the manoeuvre.
+Additional stage-level features and SFC encodings are built on top of these base indicators.
 
 ### 4. Analysis and inspection
 - Compare indicator timing and severity
@@ -80,16 +80,10 @@ The codebase is designed to be dataset-agnostic. Support for additional trajecto
   Local data directories. Raw data is gitignored. Only derived or intermediate artifacts should be stored here.
 
 - `outputs/`  
-  Generated results such as extracted scenarios, figures, and tables. Outputs are organized per run.
+  Generated results such as extracted scenarios, figures, and tables. Outputs are written to stable `Step NN` paths and overwritten on rerun.
 
 - `tests/`  
   Unit and integration tests, primarily focused on indicator calculations and detection logic.
-
-- `notebooks/`  
-  Exploration and sanity-check notebooks. These are not part of the main pipeline.
-
-- `docs/`  
-  Design notes, methodological explanations, and project decisions.
 
 ---
 
@@ -176,9 +170,15 @@ Key groups include:
 - `risk_label` (risk/very-risk cutoffs)
 - `step04`..`step18` (window sizes, threshold grids, model hyperparameters, SFC options)
 - `indicators` (position reference, indicator numeric safeguards)
+  For highD thesis runs, use `indicators.position_reference = "bbox_topleft"`.
 
 Thesis config precedence is:
 1. `CUTIN_THESIS_CONFIG_FILE` (custom JSON config location)
 2. `configs/thesis.local.json`
 3. `configs/thesis.json`
 4. Built-in defaults in each script (used if config file is missing)
+
+## Thesis alignment note
+
+For proposal-vs-implementation scope transparency, see:
+- `THESIS_SCOPE_DELTA.md`

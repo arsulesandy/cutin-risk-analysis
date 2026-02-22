@@ -20,7 +20,7 @@
     "validation_random_state": 7
   },
   "indicators": {
-    "position_reference": "rear",
+    "position_reference": "bbox_topleft",
     "min_speed": 0.1,
     "closing_speed_epsilon": 1e-06
   },
@@ -177,7 +177,9 @@
   "step17": {
     "thw_risk": 0.7,
     "step15c_stage": "decision",
-    "step15c_min_frames": 10
+    "step15c_min_frames": 10,
+    "suspicious_raw_dhw_threshold": 1.0,
+    "suspicious_raw_thw_threshold": 0.05
   },
   "step18": {
     "n_bootstrap": 3000,

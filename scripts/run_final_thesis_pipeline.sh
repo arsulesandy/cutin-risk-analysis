@@ -68,6 +68,7 @@ run_cmd "$PYTHON_BIN" scripts/step15c_sfc_prediction.py \
 run_cmd "$PYTHON_BIN" scripts/step16_sfc_predict_lanechange_cutin.py --recordings "$RECORDINGS_STEP16"
 
 run_cmd "$PYTHON_BIN" scripts/step17_split_audit.py --thw-risk "$THW_RISK"
+run_cmd "$PYTHON_BIN" scripts/step17_geometry_audit.py
 run_cmd "$PYTHON_BIN" scripts/step18_metrics_ci.py --n-bootstrap "$CI_BOOTSTRAP" --seed "$CI_SEED"
 
 run_cmd "$PYTHON_BIN" - <<'PY'
