@@ -116,6 +116,12 @@ def create_args():
                         default=None,
                         type=str,
                         help='Optional CSV containing per-frame SFC binary codes used to print decoded 3x3 matrices.')
+    parser.add_argument(
+        '--sfc_codes_canonical',
+        default=False,
+        type=lambda x: (str(x).lower() == 'true'),
+        help='Set True when using canonical/mirrored SFC codes (e.g., Step 15A) so no extra direction mirroring is applied.',
+    )
     # --- Settings ---
     parser.add_argument('--visualize', default=True, type=lambda x: (str(x).lower() == 'true'),
                         help='True if you want to visualize the data.')

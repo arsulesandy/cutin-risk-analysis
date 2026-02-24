@@ -1,0 +1,2 @@
+recording_id,cutins,exec_thw_median,exec_dhw_median,exec_ttc_finite,risky,very_risky,decision_lat_v_median,exec_lat_v_median,risky_pct,very_risky_pct
+1,103,1.138728323699422,29.590000000000003,33,14,4,0.94,0.89,13.6,3.9

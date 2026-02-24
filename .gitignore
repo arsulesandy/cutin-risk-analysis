@@ -216,7 +216,6 @@ __marimo__/
 data/.DS_Store
 /.idea
 .DS_Store
-/outputs
 /scripts/outputs
 configs/paths.local.json
 configs/detection.local.json

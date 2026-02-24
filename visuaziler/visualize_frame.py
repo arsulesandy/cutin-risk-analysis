@@ -226,6 +226,16 @@ class VisualizationPlot(object):
             fontsize=10,
             color=self.THEME["text_muted"],
         )
+        self.ax_header.text(
+            0.62,
+            0.22,
+            "Lane Directions: Upper=Dir1 (x<0) | Lower=Dir2 (x>0)",
+            transform=self.ax_header.transAxes,
+            ha="left",
+            va="center",
+            fontsize=9.5,
+            color=self.THEME["accent_alt"],
+        )
         self.header_state_text = self.ax_header.text(
             0.985,
             0.62,
@@ -1337,11 +1347,12 @@ class VisualizationPlot(object):
             return "Frame {} SFC matrix: no code".format(frame)
 
         lines = ["Frame {} SFC 3x3 matrix/matrices:".format(frame)]
+        sfc_codes_canonical = bool(self.arguments.get("sfc_codes_canonical", False))
         for entry in frame_entries:
             matrix = self._decode_code_to_3x3_matrix(entry["code"])
             cutter_id = entry.get("cutter_id")
             mirrored = False
-            if cutter_id is not None and self._is_track_right_to_left(cutter_id, frame):
+            if (not sfc_codes_canonical) and cutter_id is not None and self._is_track_right_to_left(cutter_id, frame):
                 matrix = np.fliplr(np.asarray(matrix, dtype=int)).tolist()
                 mirrored = True
             lines.append(
@@ -1432,31 +1443,8 @@ class VisualizationPlot(object):
         self.ax.add_patch(lower_inner)
 
     def plot_highway_information(self):
-        info_box_style = dict(boxstyle="round,pad=0.22", fc="#0b1b2d", alpha=0.80, ec="#60a5fa", lw=0.6)
-        self.ax.text(
-            0.5,
-            0.985,
-            "Direction 1: X-velocity negative (upper lanes)",
-            transform=self.ax.transAxes,
-            ha="center",
-            va="top",
-            fontsize=10,
-            color=self.THEME["text_main"],
-            bbox=info_box_style,
-            zorder=30,
-        )
-        self.ax.text(
-            0.5,
-            0.015,
-            "Direction 2: X-velocity positive (lower lanes)",
-            transform=self.ax.transAxes,
-            ha="center",
-            va="bottom",
-            fontsize=10,
-            color=self.THEME["text_main"],
-            bbox=info_box_style,
-            zorder=30,
-        )
+        # Direction legend is rendered in the header panel to avoid cluttering lane view.
+        return
 
     def on_click(self, event):
         artist = event.artist

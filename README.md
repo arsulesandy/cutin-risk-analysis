@@ -182,3 +182,106 @@ Thesis config precedence is:
 
 For proposal-vs-implementation scope transparency, see:
 - `THESIS_SCOPE_DELTA.md`
+
+---
+
+## New Member Quick Start (Thesis Flow)
+
+This section is the recommended onboarding flow for thesis users.
+It starts from Python setup, then runs the core steps in order.
+
+Scope for this guide:
+- Included: Step 01 to Step 10, Step 14, Step 15A, Step 15B
+- Skipped on purpose: Step 11 to Step 13B, and everything after Step 15B
+
+### 1) Python setup (`.venv`)
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -e ".[dev]"
+```
+
+### 2) Configure dataset path
+
+Create `configs/paths.local.json`:
+
+```json
+{
+  "paths": {
+    "dataset_root": "/absolute/path/to/highD/data",
+    "outputs_root": "outputs"
+  }
+}
+```
+
+Current project default dataset path (from `configs/paths.json`) is:
+- `data/raw/highD-dataset-v1.0/data`
+
+So if you keep the dataset inside this repository, place files like:
+- `data/raw/highD-dataset-v1.0/data/01_tracks.csv`
+- `data/raw/highD-dataset-v1.0/data/01_tracksMeta.csv`
+- `data/raw/highD-dataset-v1.0/data/01_recordingMeta.csv`
+
+Quick path check:
+
+```bash
+ls data/raw/highD-dataset-v1.0/data | head
+```
+
+### 3) Run thesis steps (recommended order)
+
+```bash
+.venv/bin/python scripts/step01_recording_report.py
+.venv/bin/python scripts/step02_lane_change_report.py
+.venv/bin/python scripts/step03_cutin_report.py
+.venv/bin/python scripts/step04_risk_metrics_report.py
+.venv/bin/python scripts/step05_visualize_top_cutins.py
+.venv/bin/python scripts/step06_neighbor_reconstruction_report.py
+.venv/bin/python scripts/step07_xy_lane_pipeline_report.py
+.venv/bin/python scripts/step08_stage_features.py --no-make-plot
+.venv/bin/python scripts/step09_batch_stage_features.py --no-make-plot
+.venv/bin/python scripts/step10_risk_report.py
+.venv/bin/python scripts/step14_sfc_binary_encode.py
+.venv/bin/python scripts/step14_sfc_binary_report.py --no-make-plot
+.venv/bin/python scripts/step15a_sfc_mirror_normalize.py
+.venv/bin/python scripts/step15b_sfc_weighted_stage_features.py --mode distance
+.venv/bin/python scripts/step15b_sfc_weighted_stage_features.py --mode ttc
+```
+
+### 4) What each step does and where output goes
+
+| Step | Purpose | Main output path | Output contains |
+|---|---|---|---|
+| Step 01 | Recording-level data quality and schema checks | `outputs/reports/Step 01` | Per-recording quality report and failure summary |
+| Step 02 | Lane-change detection summary across recordings | `outputs/reports/Step 02` | Lane-change counts by recording and markdown summary |
+| Step 03 | Cut-in detection across recordings | `outputs/reports/Step 03` | Cut-in counts, per-recording stats, and summary |
+| Step 04 | Compute risk indicators (DHW/THW/TTC) for cut-ins | `outputs/reports/Step 04` | Per-event and per-recording risk metric tables |
+| Step 05 | Visual sanity-check of top-risk cut-ins | `outputs/reports/Step 05` and `outputs/figures/Step 05` | Plots of selected high-risk scenarios |
+| Step 06 | Validate geometry-based neighbor reconstruction | `outputs/reports/Step 06` | Reconstruction accuracy and cut-in agreement metrics |
+| Step 07 | Validate XY-lane + reconstructed-neighbor pipeline | `outputs/reports/Step 07` | Accuracy and cut-in matching metrics by recording |
+| Step 08 | Build stage-wise event features per recording | `outputs/reports/Step 08/recording_XX` | Stage features per event and per-recording details |
+| Step 09 | Merge Step 08 outputs across all recordings | `outputs/reports/Step 09` | `cutin_stage_features_merged.csv` and recording summary |
+| Step 10 | Apply risk labels and produce descriptive summaries | `outputs/reports/Step 10` | Risk summary by recording and pooled risk/non-risk table |
+| Step 14 | Encode local occupancy as binary SFC codes | `outputs/reports/Step 14` | Long per-frame SFC code table (`code`, `code_hex`, stage, event) |
+| Step 14 report | Decode/aggregate SFC occupancy patterns | `outputs/reports/Step 14` | Stage-wise risk/non-risk occupancy grids (CSV, optional PNG) |
+| Step 15A | Mirror-normalize binary SFC codes to canonical direction | `outputs/reports/Step 15A` | Direction-normalized binary SFC code table |
+| Step 15B | Build weighted SFC stage features (distance/TTC) | `outputs/reports/Step 15B` | Weighted SFC feature vectors per stage and event |
+
+---
+
+## Visualizer (after pipeline run)
+
+Use visualizer with Step 15A canonical SFC codes so matrix orientation is consistent:
+
+```bash
+.venv/bin/python visuaziler/main.py \
+  --recording_id 03 \
+  --sfc_codes_csv "outputs/reports/Step 15A/sfc_binary_codes_long_hilbert_mirrored.csv" \
+  --sfc_codes_canonical true
+```
+
+Notes:
+- `--recording_id` can be any available recording (for example `01` to `20` in your current local run).
+- If you want to use raw Step 14 codes instead, pass `--sfc_codes_canonical false` (default).
