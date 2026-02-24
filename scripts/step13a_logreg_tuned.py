@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from cutin_risk.io.progress import iter_with_progress
-from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
+from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir, write_step_markdown
 from cutin_risk.paths import output_path
 from cutin_risk.thesis_config import (
     thesis_bool,
@@ -111,7 +111,7 @@ def main() -> None:
     parser.add_argument(
         "--merged-csv",
         type=str,
-        default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
+        default=str(output_path("reports/Step 09/cutin_stage_features_merged.csv")),
     )
     parser.add_argument("--thw-risk", type=float, default=thesis_float("risk_label.thw_risk", 0.7, min_value=0.0))
 
@@ -153,7 +153,7 @@ def main() -> None:
         help="If set, choose threshold to maximize precision while keeping recall >= min_recall (train set).",
     )
 
-    parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step13a_warning_logreg")))
+    parser.add_argument("--out-dir", type=str, default=str(step_reports_dir("13A")))
     args = parser.parse_args()
 
     # Lazy import for clear error message if sklearn is missing.
@@ -324,8 +324,13 @@ def main() -> None:
     coef_csv = out_dir / "logreg_coefficients_step13a.csv"
     coefs.to_csv(coef_csv, index=False)
 
-    canonical_loo = mirror_file_to_step(out_csv, "13A")
-    canonical_coef = mirror_file_to_step(coef_csv, "13A")
+    canonical_dir = step_reports_dir("13A")
+    if out_dir.resolve() == canonical_dir.resolve():
+        canonical_loo = out_csv
+        canonical_coef = coef_csv
+    else:
+        canonical_loo = mirror_file_to_step(out_csv, "13A")
+        canonical_coef = mirror_file_to_step(coef_csv, "13A")
     details_md = write_step_markdown(
         "13A",
         "tuned_logreg_details.md",

@@ -189,7 +189,7 @@ def main() -> None:
     ap.add_argument(
         "--merged-csv",
         type=str,
-        default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
+        default=str(output_path("reports/Step 09/cutin_stage_features_merged.csv")),
     )
     ap.add_argument("--thw-risk", type=float, default=thesis_float("step17.thw_risk", 0.7, min_value=0.0))
     ap.add_argument("--step15c-stage", type=str, default=thesis_str("step17.step15c_stage", "decision"))

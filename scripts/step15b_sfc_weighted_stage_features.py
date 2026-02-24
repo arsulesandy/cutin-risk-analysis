@@ -69,7 +69,7 @@ def mirror_3x3(g3: np.ndarray) -> np.ndarray:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Step 15B: Weighted SFC stage features (distance or TTC).")
-    ap.add_argument("--events-csv", default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")))
+    ap.add_argument("--events-csv", default=str(output_path("reports/Step 09/cutin_stage_features_merged.csv")))
     ap.add_argument("--dataset-root", default=str(dataset_root_path()))
     ap.add_argument("--out-dir", default=str(output_path("reports/step15b_sfc_weighted")))
 

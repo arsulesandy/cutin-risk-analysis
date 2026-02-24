@@ -34,7 +34,7 @@ def main() -> None:
     ap.add_argument("--codes-csv", required=True, help="Step14 long codes CSV (binary).")
     ap.add_argument(
         "--events-csv",
-        default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
+        default=str(output_path("reports/Step 09/cutin_stage_features_merged.csv")),
         help="Merged event table containing from_lane and to_lane.",
     )
     ap.add_argument("--from-col", default=thesis_str("step15a.from_col", "from_lane"))

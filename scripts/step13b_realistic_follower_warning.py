@@ -33,7 +33,7 @@ import pandas as pd
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
 from cutin_risk.io.progress import iter_with_progress
-from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
+from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir, write_step_markdown
 from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import infer_lane_index, parse_lane_markings
 from cutin_risk.thesis_config import thesis_float, thesis_str
@@ -203,7 +203,7 @@ def main() -> None:
     parser.add_argument(
         "--merged-csv",
         type=str,
-        default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
+        default=str(output_path("reports/Step 09/cutin_stage_features_merged.csv")),
     )
     parser.add_argument(
         "--dataset-root",
@@ -232,7 +232,7 @@ def main() -> None:
     parser.add_argument("--spd-max", type=float, default=thesis_float("step13b.spd_max", 10.0))
     parser.add_argument("--spd-step", type=float, default=thesis_float("step13b.spd_step", 0.25, min_value=1e-9))
 
-    parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step13b_warning")))
+    parser.add_argument("--out-dir", type=str, default=str(step_reports_dir("13B")))
     args = parser.parse_args()
 
     merged_csv = Path(args.merged_csv)
@@ -563,9 +563,15 @@ def main() -> None:
 
     print("\nSaved LOOCV results:", out_loo)
 
-    canonical_feat = mirror_file_to_step(out_feat, "13B")
-    canonical_loo = mirror_file_to_step(out_loo, "13B")
-    canonical_match = mirror_file_to_step(out_match, "13B") if out_match is not None else None
+    canonical_dir = step_reports_dir("13B")
+    if out_dir.resolve() == canonical_dir.resolve():
+        canonical_feat = out_feat
+        canonical_loo = out_loo
+        canonical_match = out_match
+    else:
+        canonical_feat = mirror_file_to_step(out_feat, "13B")
+        canonical_loo = mirror_file_to_step(out_loo, "13B")
+        canonical_match = mirror_file_to_step(out_match, "13B") if out_match is not None else None
     details_md = write_step_markdown(
         "13B",
         "realistic_warning_details.md",

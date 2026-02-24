@@ -9,13 +9,14 @@ from pathlib import Path
 
 import pandas as pd
 from cutin_risk.datasets.highd.reader import load_highd_recording
+from cutin_risk.datasets.highd.schema import RECORDING_META_SUFFIX
 from cutin_risk.datasets.highd.transforms import build_tracking_table
 from cutin_risk.detection.cutin import detect_cutins, CutInOptions
 from cutin_risk.detection.lane_change import detect_lane_changes, LaneChangeOptions
 from cutin_risk.io.step_reports import step_reports_dir, write_step_markdown
 from cutin_risk.paths import dataset_root_path
 from cutin_risk.reconstruction.neighbors import reconstruct_same_lane_neighbors
-from cutin_risk.thesis_config import thesis_int, thesis_str
+from cutin_risk.thesis_config import thesis_int
 
 STEP_NUMBER = 6
 
@@ -109,10 +110,109 @@ def _match_cutins(true_events, pred_events, *, frame_tolerance: int = 10) -> dic
     return out
 
 
+def _all_recording_ids(root: Path) -> list[str]:
+    pattern = f"*_{RECORDING_META_SUFFIX}.csv"
+    return sorted(p.name.split("_", 1)[0] for p in root.glob(pattern))
+
+
+def _evaluate_recording(
+    dataset_root: Path,
+    recording_id: str,
+    *,
+    frame_tolerance: int,
+    mismatch_examples: int,
+) -> tuple[dict[str, float | str], list[str]]:
+    rec = load_highd_recording(dataset_root, recording_id)
+    df = build_tracking_table(rec)
+
+    # Reconstruct neighbors from geometry (baseline: same-lane preceding/following).
+    pred_neighbors = reconstruct_same_lane_neighbors(df)
+    df = df.join(pred_neighbors)
+
+    truth_pre = _norm_neighbor(df["precedingId"])
+    pred_pre = _norm_neighbor(df["precedingId_xy"])
+    truth_fol = _norm_neighbor(df["followingId"])
+    pred_fol = _norm_neighbor(df["followingId_xy"])
+    pre_acc = _accuracy(truth_pre, pred_pre)
+    fol_acc = _accuracy(truth_fol, pred_fol)
+
+    mism_pre = df.loc[
+        truth_pre != pred_pre, ["frame", "id", "laneId", "drivingDirection", "x", "precedingId", "precedingId_xy"]]
+    mism_fol = df.loc[
+        truth_fol != pred_fol, ["frame", "id", "laneId", "drivingDirection", "x", "followingId", "followingId_xy"]]
+
+    lane_changes = detect_lane_changes(
+        df,
+        options=LaneChangeOptions(),
+    )
+    cutins_oracle = detect_cutins(df, lane_changes, options=CutInOptions())
+    cutins_xy = detect_cutins(
+        df,
+        lane_changes,
+        options=CutInOptions(
+            following_col="followingId_xy",
+            preceding_col="precedingId_xy",
+        ),
+    )
+    metrics = _match_cutins(cutins_oracle, cutins_xy, frame_tolerance=frame_tolerance)
+
+    console_lines = [
+        f"\n== Recording {rec.recording_id} ==",
+        f"Rows: {len(df)}",
+        f"Vehicles: {df['id'].nunique()}",
+        "Same-lane precedingId accuracy:",
+        str(pre_acc),
+        "Same-lane followingId accuracy:",
+        str(fol_acc),
+        f"precedingId mismatches: {len(mism_pre)}",
+    ]
+    if len(mism_pre) > 0 and mismatch_examples > 0:
+        console_lines.append(mism_pre.head(mismatch_examples).to_string(index=False))
+
+    console_lines.append(f"followingId mismatches: {len(mism_fol)}")
+    if len(mism_fol) > 0 and mismatch_examples > 0:
+        console_lines.append(mism_fol.head(mismatch_examples).to_string(index=False))
+
+    console_lines.extend(
+        [
+            "Cut-in detection comparison:",
+            f"Lane changes: {len(lane_changes)}",
+            f"Cut-ins (oracle): {len(cutins_oracle)}",
+            f"Cut-ins (reconstructed neighbors): {len(cutins_xy)}",
+            "Cut-in matching metrics:",
+            str(metrics),
+        ]
+    )
+
+    row: dict[str, float | str] = {
+        "recording_id": rec.recording_id,
+        "rows": float(len(df)),
+        "vehicles": float(df["id"].nunique()),
+        "preceding_overall_accuracy": pre_acc["overall_accuracy"],
+        "preceding_accuracy_when_truth_has_neighbor": pre_acc["accuracy_when_truth_has_neighbor"],
+        "following_overall_accuracy": fol_acc["overall_accuracy"],
+        "following_accuracy_when_truth_has_neighbor": fol_acc["accuracy_when_truth_has_neighbor"],
+        "cutin_true_events": metrics["true_events"],
+        "cutin_pred_events": metrics["pred_events"],
+        "cutin_tp": metrics["tp"],
+        "cutin_fp": metrics["fp"],
+        "cutin_fn": metrics["fn"],
+        "cutin_precision": metrics["precision"],
+        "cutin_recall": metrics["recall"],
+        "cutin_f1": metrics["f1"],
+    }
+    return row, console_lines
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Step 6: reconstruct neighbors from geometry and evaluate vs highD.")
     parser.add_argument("--dataset-root", type=str, default=str(dataset_root_path()))
-    parser.add_argument("--recording-id", type=str, default=thesis_str("step06.recording_id", "01"))
+    parser.add_argument(
+        "--recording-id",
+        type=str,
+        default=None,
+        help="Optional single recording ID to process. If omitted, process all recordings.",
+    )
     parser.add_argument(
         "--frame-tolerance",
         type=int,
@@ -125,97 +225,44 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rec = load_highd_recording(Path(args.dataset_root), args.recording_id)
-    df = build_tracking_table(rec)
-
-    # Reconstruct neighbors from geometry (baseline: same-lane preceding/following).
-    pred_neighbors = reconstruct_same_lane_neighbors(df)
-    df = df.join(pred_neighbors)
-
-    # Evaluate neighbor reconstruction accuracy against dataset columns.
     print("== Step 6: Neighbor reconstruction report ==")
-    print("Recording:", rec.recording_id)
-    print("Rows:", len(df))
-    print("Vehicles:", df["id"].nunique())
+    dataset_root = Path(args.dataset_root)
+    if args.recording_id:
+        recording_ids = [str(args.recording_id)]
+    else:
+        recording_ids = _all_recording_ids(dataset_root)
 
-    truth_pre = _norm_neighbor(df["precedingId"])
-    pred_pre = _norm_neighbor(df["precedingId_xy"])
-    truth_fol = _norm_neighbor(df["followingId"])
-    pred_fol = _norm_neighbor(df["followingId_xy"])
+    if not recording_ids:
+        raise FileNotFoundError(
+            f"No recording metadata files found under {dataset_root} matching *_recordingMeta.csv"
+        )
 
-    print("\nSame-lane precedingId accuracy:")
-    pre_acc = _accuracy(truth_pre, pred_pre)
-    print(pre_acc)
-
-    print("\nSame-lane followingId accuracy:")
-    fol_acc = _accuracy(truth_fol, pred_fol)
-    print(fol_acc)
-
-    # Show a few mismatches to understand edge cases
-    mism_pre = df.loc[
-        truth_pre != pred_pre, ["frame", "id", "laneId", "drivingDirection", "x", "precedingId", "precedingId_xy"]]
-    mism_fol = df.loc[
-        truth_fol != pred_fol, ["frame", "id", "laneId", "drivingDirection", "x", "followingId", "followingId_xy"]]
-
-    print(f"\nprecedingId mismatches: {len(mism_pre)}")
-    if len(mism_pre) > 0:
-        print(mism_pre.head(int(args.mismatch_examples)).to_string(index=False))
-
-    print(f"\nfollowingId mismatches: {len(mism_fol)}")
-    if len(mism_fol) > 0:
-        print(mism_fol.head(int(args.mismatch_examples)).to_string(index=False))
-
-    # Now evaluate cut-in detection using:
-    # - oracle neighbors (highD columns)
-    # - reconstructed neighbors (our *_xy columns)
-    lane_changes = detect_lane_changes(
-        df,
-        options=LaneChangeOptions(),
-    )
-
-    cutins_oracle = detect_cutins(df, lane_changes, options=CutInOptions())
-    cutins_xy = detect_cutins(
-        df,
-        lane_changes,
-        options=CutInOptions(
-            following_col="followingId_xy",
-            preceding_col="precedingId_xy",
-        ),
-    )
-
-    print("\nCut-in detection comparison:")
-    print("Lane changes:", len(lane_changes))
-    print("Cut-ins (oracle):", len(cutins_oracle))
-    print("Cut-ins (reconstructed neighbors):", len(cutins_xy))
-
-    metrics = _match_cutins(cutins_oracle, cutins_xy, frame_tolerance=int(args.frame_tolerance))
-    print("\nCut-in matching metrics:")
-    print(metrics)
+    rows: list[dict[str, float | str]] = []
+    for rid in recording_ids:
+        row, console_lines = _evaluate_recording(
+            dataset_root,
+            rid,
+            frame_tolerance=int(args.frame_tolerance),
+            mismatch_examples=int(args.mismatch_examples),
+        )
+        rows.append(row)
+        for line in console_lines:
+            print(line)
 
     report_dir = step_reports_dir(STEP_NUMBER)
-    metrics_csv = report_dir / "neighbor_reconstruction_metrics.csv"
-    pd.DataFrame(
-        [
-            {"metric": "preceding_overall_accuracy", "value": pre_acc["overall_accuracy"]},
-            {
-                "metric": "preceding_accuracy_when_truth_has_neighbor",
-                "value": pre_acc["accuracy_when_truth_has_neighbor"],
-            },
-            {"metric": "following_overall_accuracy", "value": fol_acc["overall_accuracy"]},
-            {
-                "metric": "following_accuracy_when_truth_has_neighbor",
-                "value": fol_acc["accuracy_when_truth_has_neighbor"],
-            },
-            {"metric": "cutin_true_events", "value": metrics["true_events"]},
-            {"metric": "cutin_pred_events", "value": metrics["pred_events"]},
-            {"metric": "cutin_tp", "value": metrics["tp"]},
-            {"metric": "cutin_fp", "value": metrics["fp"]},
-            {"metric": "cutin_fn", "value": metrics["fn"]},
-            {"metric": "cutin_precision", "value": metrics["precision"]},
-            {"metric": "cutin_recall", "value": metrics["recall"]},
-            {"metric": "cutin_f1", "value": metrics["f1"]},
-        ]
-    ).to_csv(metrics_csv, index=False)
+    metrics_csv = report_dir / "neighbor_reconstruction_metrics_by_recording.csv"
+    metrics_df = pd.DataFrame(rows).sort_values("recording_id").reset_index(drop=True)
+    metrics_df.to_csv(metrics_csv, index=False)
+
+    summary = {
+        "mean_preceding_overall_accuracy": float(metrics_df["preceding_overall_accuracy"].mean()),
+        "mean_following_overall_accuracy": float(metrics_df["following_overall_accuracy"].mean()),
+        "mean_cutin_precision": float(metrics_df["cutin_precision"].mean()),
+        "mean_cutin_recall": float(metrics_df["cutin_recall"].mean()),
+        "mean_cutin_f1": float(metrics_df["cutin_f1"].mean()),
+    }
+    summary_csv = report_dir / "neighbor_reconstruction_metrics_summary.csv"
+    pd.DataFrame([{"metric": k, "value": v} for k, v in summary.items()]).to_csv(summary_csv, index=False)
 
     details_md = write_step_markdown(
         STEP_NUMBER,
@@ -224,29 +271,24 @@ def main() -> None:
             "# Step 06 Neighbor Reconstruction Report",
             "",
             f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
-            f"- Recording: `{rec.recording_id}`",
+            f"- Recordings processed: `{len(metrics_df)}`",
             f"- Dataset root: `{Path(args.dataset_root).resolve()}`",
-            f"- Rows: `{len(df)}`",
-            f"- Vehicles: `{int(df['id'].nunique())}`",
             "",
-            "## Accuracy",
-            f"- Same-lane preceding overall: `{pre_acc['overall_accuracy']:.6f}`",
-            f"- Same-lane preceding (truth has neighbor): `{pre_acc['accuracy_when_truth_has_neighbor']:.6f}`",
-            f"- Same-lane following overall: `{fol_acc['overall_accuracy']:.6f}`",
-            f"- Same-lane following (truth has neighbor): `{fol_acc['accuracy_when_truth_has_neighbor']:.6f}`",
+            "## Mean Accuracy Across Processed Recordings",
+            f"- Same-lane preceding overall: `{summary['mean_preceding_overall_accuracy']:.6f}`",
+            f"- Same-lane following overall: `{summary['mean_following_overall_accuracy']:.6f}`",
             "",
-            "## Cut-in Matching",
-            f"- Lane changes: `{len(lane_changes)}`",
-            f"- Cut-ins oracle: `{len(cutins_oracle)}`",
-            f"- Cut-ins reconstructed: `{len(cutins_xy)}`",
-            f"- Precision: `{metrics['precision']:.6f}`",
-            f"- Recall: `{metrics['recall']:.6f}`",
-            f"- F1: `{metrics['f1']:.6f}`",
+            "## Mean Cut-in Matching Metrics",
+            f"- Precision: `{summary['mean_cutin_precision']:.6f}`",
+            f"- Recall: `{summary['mean_cutin_recall']:.6f}`",
+            f"- F1: `{summary['mean_cutin_f1']:.6f}`",
             "",
             f"- Metrics CSV: `{metrics_csv}`",
+            f"- Summary CSV: `{summary_csv}`",
         ],
     )
     print("\nSaved:", metrics_csv)
+    print("Saved:", summary_csv)
     print("Saved:", details_md)
 
 

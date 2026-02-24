@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
+from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir, write_step_markdown
 from cutin_risk.paths import output_path
 from cutin_risk.thesis_config import thesis_float
 
@@ -23,7 +23,7 @@ def main() -> None:
     parser.add_argument(
         "--merged-csv",
         type=str,
-        default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
+        default=str(output_path("reports/Step 09/cutin_stage_features_merged.csv")),
     )
     parser.add_argument(
         "--thw-risk",
@@ -37,7 +37,7 @@ def main() -> None:
         default=thesis_float("risk_label.thw_very_risk", 0.5, min_value=0.0),
         help="Very-risk threshold for execution_thw_min.",
     )
-    parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step10_risk")))
+    parser.add_argument("--out-dir", type=str, default=str(step_reports_dir(10)))
 
     args = parser.parse_args()
 
@@ -106,8 +106,13 @@ def main() -> None:
     out_pooled = out_dir / "risk_vs_nonrisk_pooled.csv"
     pooled.to_csv(out_pooled, index=False)
 
-    canonical_summary = mirror_file_to_step(out_summary, 10)
-    canonical_pooled = mirror_file_to_step(out_pooled, 10)
+    canonical_dir = step_reports_dir(10)
+    if out_dir.resolve() == canonical_dir.resolve():
+        canonical_summary = out_summary
+        canonical_pooled = out_pooled
+    else:
+        canonical_summary = mirror_file_to_step(out_summary, 10)
+        canonical_pooled = mirror_file_to_step(out_pooled, 10)
     details_md = write_step_markdown(
         10,
         "risk_report_details.md",

@@ -9,10 +9,10 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+from cutin_risk.datasets.highd.schema import RECORDING_META_SUFFIX
 from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir, write_step_markdown
 from cutin_risk.paths import dataset_root_path, output_path, project_root
-from cutin_risk.thesis_config import thesis_str
 
 
 def parse_recordings_arg(value: str) -> list[str]:
@@ -32,12 +32,17 @@ def parse_recordings_arg(value: str) -> list[str]:
     return out
 
 
+def _all_recording_ids(root: Path) -> list[str]:
+    pattern = f"*_{RECORDING_META_SUFFIX}.csv"
+    return sorted(p.name.split("_", 1)[0] for p in root.glob(pattern))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Step 9: Run stage_features across many recordings.")
     parser.add_argument(
         "--recordings",
         type=str,
-        default=thesis_str("step09.recordings", "1-10"),
+        default=None,
         help="Examples: '01', '01,02,03', '1-10', or 'all'",
     )
     parser.add_argument(
@@ -48,7 +53,7 @@ def main() -> None:
     parser.add_argument(
         "--out-dir",
         type=str,
-        default=str(output_path("reports/step9_batch")),
+        default=str(step_reports_dir(9)),
     )
     parser.add_argument(
         "--make-plot",
@@ -62,12 +67,21 @@ def main() -> None:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    recordings = parse_recordings_arg(args.recordings)
+    dataset_root = Path(args.dataset_root)
+    if args.recordings:
+        recordings = parse_recordings_arg(args.recordings)
+        requested_label = args.recordings
+    else:
+        recordings = _all_recording_ids(dataset_root)
+        requested_label = "all discovered"
+    if not recordings:
+        raise FileNotFoundError(
+            f"No recording metadata files found under {dataset_root} matching *_recordingMeta.csv"
+        )
+
     step8_script = project_root() / "scripts" / "step08_stage_features.py"
 
-    # We call your existing working Step 8 script, because it is already validated.
-    # It will write one CSV per recording in outputs/reports/step8_recording_XX/.
-    # Then we merge them into one batch file here.
+    # We call Step 08 per recording and merge resulting per-recording CSVs.
     produced_csvs: list[Path] = []
 
     for _, _, rid in iter_with_progress(
@@ -148,8 +162,13 @@ def main() -> None:
     out_summary = out_dir / "recording_summary.csv"
     summary.to_csv(out_summary, index=False)
 
-    canonical_csv = mirror_file_to_step(out_csv, 9)
-    canonical_summary = mirror_file_to_step(out_summary, 9)
+    canonical_dir = step_reports_dir(9)
+    if out_dir.resolve() == canonical_dir.resolve():
+        canonical_csv = out_csv
+        canonical_summary = out_summary
+    else:
+        canonical_csv = mirror_file_to_step(out_csv, 9)
+        canonical_summary = mirror_file_to_step(out_summary, 9)
     details_md = write_step_markdown(
         9,
         "stage_batch_details.md",
@@ -157,7 +176,7 @@ def main() -> None:
             "# Step 09 Batch Stage Features Report",
             "",
             f"- Generated at: `{datetime.now(timezone.utc).isoformat()}`",
-            f"- Recordings requested: `{args.recordings}`",
+            f"- Recordings requested: `{requested_label}`",
             f"- Recordings processed: `{len(produced_csvs)}`",
             f"- Total merged events: `{len(merged)}`",
             f"- Merged CSV: `{canonical_csv}`",

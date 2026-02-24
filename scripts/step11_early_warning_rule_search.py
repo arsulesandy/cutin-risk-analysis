@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from cutin_risk.io.progress import iter_with_progress
-from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
+from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir, write_step_markdown
 from cutin_risk.paths import output_path
 from cutin_risk.thesis_config import thesis_float
 
@@ -70,7 +70,7 @@ def main() -> None:
     parser.add_argument(
         "--merged-csv",
         type=str,
-        default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")),
+        default=str(output_path("reports/Step 09/cutin_stage_features_merged.csv")),
     )
     parser.add_argument("--thw-risk", type=float, default=thesis_float("risk_label.thw_risk", 0.7, min_value=0.0))
     parser.add_argument("--lat-min", type=float, default=thesis_float("step11.lat_min", 0.6))
@@ -87,7 +87,7 @@ def main() -> None:
         type=float,
         default=thesis_float("step11.spd_step", 0.25, min_value=1e-9),
     )
-    parser.add_argument("--out-dir", type=str, default=str(output_path("reports/step11_warning")))
+    parser.add_argument("--out-dir", type=str, default=str(step_reports_dir(11)))
     args = parser.parse_args()
 
     df = pd.read_csv(args.merged_csv)
@@ -176,7 +176,11 @@ def main() -> None:
         "f1": float(loo["f1"].mean()),
     }
 
-    canonical_csv = mirror_file_to_step(out_csv, 11)
+    canonical_dir = step_reports_dir(11)
+    if out_dir.resolve() == canonical_dir.resolve():
+        canonical_csv = out_csv
+    else:
+        canonical_csv = mirror_file_to_step(out_csv, 11)
     details_md = write_step_markdown(
         11,
         "early_warning_rule_search_details.md",

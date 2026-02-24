@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from cutin_risk.datasets.highd.reader import load_highd_recording
+from cutin_risk.datasets.highd.schema import RECORDING_META_SUFFIX
 from cutin_risk.datasets.highd.transforms import build_tracking_table
 from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_index
 from cutin_risk.reconstruction.neighbors import (
@@ -27,7 +28,6 @@ from cutin_risk.indicators.surrogate_safety import (
     compute_pair_timeseries,
 )
 from cutin_risk.io.step_reports import (
-    mirror_file_to_step,
     step_figures_dir,
     step_reports_dir,
     write_step_markdown,
@@ -150,37 +150,30 @@ def _accumulate_by_offset(acc: dict[int, list[float]], offsets: np.ndarray, valu
         acc.setdefault(int(off), []).append(fv)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Step 8: stage-based analysis around cut-in events.")
-    parser.add_argument("--dataset-root", type=str, default=str(dataset_root_path()))
-    parser.add_argument("--recording-id", type=str, default=thesis_str("step08.recording_id", "01"))
+def _all_recording_ids(root: Path) -> list[str]:
+    pattern = f"*_{RECORDING_META_SUFFIX}.csv"
+    return sorted(p.name.split("_", 1)[0] for p in root.glob(pattern))
 
-    parser.add_argument("--pre-seconds", type=float, default=thesis_float("step08.pre_seconds", 4.0, min_value=0.0))
-    parser.add_argument("--post-seconds", type=float, default=thesis_float("step08.post_seconds", 4.0, min_value=0.0))
 
-    parser.add_argument(
-        "--make-plot",
-        action=argparse.BooleanOptionalAction,
-        help="Save median TTC curve aligned at t0",
-        default=thesis_bool("step08.make_plot", True),
-    )
-    parser.add_argument("--out-dir", type=str, default=str(output_path(".")))
-
-    args = parser.parse_args()
-
-    # Load + build tracking table
-    rec = load_highd_recording(Path(args.dataset_root), args.recording_id)
+def _process_recording(
+    *,
+    dataset_root: Path,
+    recording_id: str,
+    pre_seconds: float,
+    post_seconds: float,
+    make_plot: bool,
+    out_base: Path,
+) -> dict[str, float | str]:
+    rec = load_highd_recording(dataset_root, recording_id)
     df = build_tracking_table(rec)
 
     frame_rate = float(rec.recording_meta.loc[0, "frameRate"])
-    pre_frames = int(round(args.pre_seconds * frame_rate))
-    post_frames = int(round(args.post_seconds * frame_rate))
+    pre_frames = int(round(pre_seconds * frame_rate))
+    post_frames = int(round(post_seconds * frame_rate))
 
-    # --- Minimal-input path: infer lane index from y + lane markings ---
     markings = parse_lane_markings(rec.recording_meta)
-    df = df.join(infer_lane_index(df, markings))  # laneIndex_xy
+    df = df.join(infer_lane_index(df, markings))
 
-    # --- Reconstruct neighbors using inferred lanes ---
     df = df.join(
         reconstruct_same_lane_neighbors(
             df,
@@ -194,7 +187,6 @@ def main() -> None:
         )
     )
 
-    # Detect lane changes + cut-ins using inferred lanes and reconstructed neighbors
     lane_changes = detect_lane_changes(df, options=LaneChangeOptions(lane_col="laneIndex_xy"))
     cutins = detect_cutins(
         df,
@@ -206,18 +198,20 @@ def main() -> None:
         ),
     )
 
-    print("== Step 8: Stage features report ==")
-    print("Recording:", rec.recording_id)
+    print(f"\n== Recording {rec.recording_id} ==")
     print("Lane changes:", len(lane_changes))
     print("Cut-ins:", len(cutins))
     if not cutins:
         print("No cut-ins found; nothing to analyze.")
-        return
+        return {
+            "recording_id": str(rec.recording_id),
+            "lane_changes": float(len(lane_changes)),
+            "cutins": float(len(cutins)),
+            "stage_events_exported": 0.0,
+            "csv_rows": 0.0,
+        }
 
-    # Prepare indexed view for fast access
     indexed = df.set_index(["id", "frame"], drop=False).sort_index()
-
-    # Pair metrics setup
     sign_map = infer_direction_sign_map(df)
     model = LongitudinalModel(
         position_reference=thesis_str(
@@ -239,7 +233,6 @@ def main() -> None:
         ),
     )
 
-    # Stage definitions (3-stage model, plus optional recovery in the full window)
     stages = [
         Stage(
             "intention",
@@ -263,15 +256,12 @@ def main() -> None:
         ),
     ]
 
-    out_base = Path(args.out_dir)
-    report_dir = out_base / "reports" / f"step8_recording_{rec.recording_id}"
-    fig_dir = out_base / "figures" / f"step8_recording_{rec.recording_id}"
-    _ensure_dir(report_dir)
+    canonical_subdir = f"recording_{rec.recording_id}"
+    report_dir = step_reports_dir(8, subdir=canonical_subdir)
+    fig_dir = step_figures_dir(8, subdir=canonical_subdir, create=False)
     _remove_legacy_timestamped_outputs(report_dir, fig_dir)
 
     rows: list[dict[str, float | int | str]] = []
-
-    # For optional “median TTC curve” plot
     ttc_by_offset: dict[int, list[float]] = {}
 
     for ev in cutins:
@@ -280,7 +270,6 @@ def main() -> None:
         end_frame = t0_frame + post_frames
         frames = range(start_frame, end_frame + 1)
 
-        # Pair metrics (cutter is leader, follower behind)
         ts = compute_pair_timeseries(
             indexed,
             leader_id=int(ev.cutter_id),
@@ -293,7 +282,6 @@ def main() -> None:
         if ts.empty:
             continue
 
-        # Cutter + follower state slices
         state_cols = [
             "frame",
             "time",
@@ -313,15 +301,11 @@ def main() -> None:
 
         cutter_state = _rename_state(cutter_state, "cutter")
         follower_state = _rename_state(follower_state, "follower")
-
-        # Merge everything on frame (time is derivable from frame, so frame is enough)
         joined = ts.merge(cutter_state, on="frame", how="left").merge(follower_state, on="frame", how="left")
 
-        # Relative time around the cut-in moment
         t0_time = float(ev.relation_start_time)
         joined["t_rel"] = joined["time"].astype(float) - t0_time
 
-        # Some event-level minima over full window
         dhw_min_total = float(joined["dhw"].clip(lower=0.0).min())
         thw_min_total = _finite_min(joined["thw"], lower_bound=0.0)
         ttc_min_total = _finite_min(joined["ttc"])
@@ -338,14 +322,11 @@ def main() -> None:
             "thw_min_total": float(thw_min_total),
             "ttc_min_total": float(ttc_min_total),
         }
-
-        # Stage summaries
         for st in stages:
             out.update(_stage_summary(joined, st))
-
         rows.append(out)
 
-        if args.make_plot:
+        if make_plot:
             offsets = (joined["frame"].to_numpy(dtype=int) - t0_frame).astype(int)
             ttc_vals = joined["ttc"].to_numpy(dtype=float)
             _accumulate_by_offset(ttc_by_offset, offsets, ttc_vals)
@@ -353,36 +334,35 @@ def main() -> None:
     features = pd.DataFrame(rows)
     if features.empty:
         print("No usable events for stage analysis (missing data slices).")
-        return
+        return {
+            "recording_id": str(rec.recording_id),
+            "lane_changes": float(len(lane_changes)),
+            "cutins": float(len(cutins)),
+            "stage_events_exported": 0.0,
+            "csv_rows": 0.0,
+        }
 
     out_csv = report_dir / "cutin_stage_features.csv"
     features.to_csv(out_csv, index=False)
-    canonical_subdir = f"recording_{rec.recording_id}"
-    canonical_report_dir = step_reports_dir(8, subdir=canonical_subdir)
-    canonical_fig_dir = step_figures_dir(8, subdir=canonical_subdir, create=False)
-    for p in canonical_report_dir.glob("cutin_stage_features_*.csv"):
+    for p in report_dir.glob("cutin_stage_features_*.csv"):
         p.unlink(missing_ok=True)
-    if canonical_fig_dir.exists():
-        for p in canonical_fig_dir.glob("median_ttc_curve_*.png"):
+    if fig_dir.exists():
+        for p in fig_dir.glob("median_ttc_curve_*.png"):
             p.unlink(missing_ok=True)
-    canonical_csv = mirror_file_to_step(out_csv, 8, subdir=canonical_subdir)
-    print(f"\nSaved stage features: {out_csv}")
-    print(f"Mirrored stage features: {canonical_csv}")
+    print(f"Saved stage features: {out_csv}")
 
-    # Quick summary for meeting
     finite_ttc = features["ttc_min_total"].replace([np.inf, -np.inf], np.nan).dropna()
-    print("\nTTC(min) total summary (finite only):")
+    print("TTC(min) total summary (finite only):")
     print("  events:", int(len(features)))
     print("  min:", float(finite_ttc.min()))
     print("  median:", float(finite_ttc.median()))
     print("  p25:", float(finite_ttc.quantile(0.25)))
     print("  p75:", float(finite_ttc.quantile(0.75)))
 
-    # Optional median TTC curve plot
     out_png: Path | None = None
-    if args.make_plot and ttc_by_offset:
+    if make_plot and ttc_by_offset:
         try:
-            import matplotlib.pyplot as plt  # lazy import: only needed for plotting mode
+            import matplotlib.pyplot as plt
         except Exception as exc:
             print(f"[WARN] Unable to generate plot: {exc}")
         else:
@@ -402,8 +382,6 @@ def main() -> None:
             plt.savefig(out_png, dpi=150)
             plt.close()
             print(f"Saved plot: {out_png}")
-            canonical_png = mirror_file_to_step(out_png, 8, kind="figures", subdir=canonical_subdir)
-            print(f"Mirrored plot: {canonical_png}")
 
     details_md = write_step_markdown(
         8,
@@ -413,16 +391,77 @@ def main() -> None:
             "",
             f"- Generated at: `{datetime.now().isoformat(timespec='seconds')}`",
             f"- Recording: `{rec.recording_id}`",
-            f"- Dataset root: `{Path(args.dataset_root).resolve()}`",
+            f"- Dataset root: `{dataset_root.resolve()}`",
             f"- Lane changes: `{len(lane_changes)}`",
             f"- Cut-ins: `{len(cutins)}`",
             f"- Stage events exported: `{len(features)}`",
-            f"- Stage features CSV: `{canonical_csv}`",
+            f"- Stage features CSV: `{out_csv}`",
             f"- Median TTC figure: `{out_png.name if out_png is not None else 'not generated'}`",
         ],
         subdir=canonical_subdir,
     )
     print(f"Saved summary markdown: {details_md}")
+
+    return {
+        "recording_id": str(rec.recording_id),
+        "lane_changes": float(len(lane_changes)),
+        "cutins": float(len(cutins)),
+        "stage_events_exported": float(len(features)),
+        "csv_rows": float(len(features)),
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Step 8: stage-based analysis around cut-in events.")
+    parser.add_argument("--dataset-root", type=str, default=str(dataset_root_path()))
+    parser.add_argument(
+        "--recording-id",
+        type=str,
+        default=None,
+        help="Optional single recording ID to process. If omitted, process all recordings.",
+    )
+
+    parser.add_argument("--pre-seconds", type=float, default=thesis_float("step08.pre_seconds", 4.0, min_value=0.0))
+    parser.add_argument("--post-seconds", type=float, default=thesis_float("step08.post_seconds", 4.0, min_value=0.0))
+
+    parser.add_argument(
+        "--make-plot",
+        action=argparse.BooleanOptionalAction,
+        help="Save median TTC curve aligned at t0",
+        default=thesis_bool("step08.make_plot", True),
+    )
+    parser.add_argument("--out-dir", type=str, default=str(output_path(".")))
+
+    args = parser.parse_args()
+    print("== Step 8: Stage features report ==")
+    dataset_root = Path(args.dataset_root)
+    if args.recording_id:
+        recording_ids = [str(args.recording_id)]
+    else:
+        recording_ids = _all_recording_ids(dataset_root)
+    if not recording_ids:
+        raise FileNotFoundError(
+            f"No recording metadata files found under {dataset_root} matching *_recordingMeta.csv"
+        )
+
+    out_base = Path(args.out_dir)
+    summary_rows: list[dict[str, float | str]] = []
+    for rid in recording_ids:
+        summary_rows.append(
+            _process_recording(
+                dataset_root=dataset_root,
+                recording_id=rid,
+                pre_seconds=float(args.pre_seconds),
+                post_seconds=float(args.post_seconds),
+                make_plot=bool(args.make_plot),
+                out_base=out_base,
+            )
+        )
+
+    summary_df = pd.DataFrame(summary_rows).sort_values("recording_id").reset_index(drop=True)
+    summary_csv = step_reports_dir(8) / "stage_features_run_summary_by_recording.csv"
+    summary_df.to_csv(summary_csv, index=False)
+    print(f"\nSaved run summary: {summary_csv}")
 
 
 if __name__ == "__main__":

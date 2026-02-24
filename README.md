@@ -94,7 +94,7 @@ The codebase is designed to be dataset-agnostic. Support for additional trajecto
 Create and activate a virtual environment, then install dependencies:
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -U pip
 pip install -e ".[dev]"

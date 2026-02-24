@@ -171,7 +171,7 @@ def step14_codes_csv_path() -> Path:
     """Return path to Step-14 binary SFC code table."""
     return configured_path(
         "step14_codes_csv",
-        output_path("reports/step14_sfc_binary/sfc_binary_codes_long_hilbert.csv"),
+        output_path("reports/Step 14/sfc_binary_codes_long_hilbert.csv"),
     )
 
 

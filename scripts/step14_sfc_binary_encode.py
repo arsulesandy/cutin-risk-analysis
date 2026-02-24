@@ -12,7 +12,7 @@ import pandas as pd
 from cutin_risk.datasets.highd.reader import load_highd_recording
 from cutin_risk.datasets.highd.transforms import build_tracking_table
 from cutin_risk.io.progress import iter_with_progress
-from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
+from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir, write_step_markdown
 from cutin_risk.paths import dataset_root_path, output_path
 from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_index
 
@@ -73,9 +73,9 @@ def stage_ranges(t0: int, fr: int, *, pre4: int, pre2: int, post2: int) -> list[
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Step 14: Binary SFC encoding for cut-in events.")
-    ap.add_argument("--merged-csv", default=str(output_path("reports/step9_batch/cutin_stage_features_merged.csv")))
+    ap.add_argument("--merged-csv", default=str(output_path("reports/Step 09/cutin_stage_features_merged.csv")))
     ap.add_argument("--dataset-root", default=str(dataset_root_path()))
-    ap.add_argument("--out-dir", default=str(output_path("reports/step14_sfc_binary")))
+    ap.add_argument("--out-dir", default=str(step_reports_dir(14)))
     ap.add_argument("--risk-thw", type=float, default=thesis_float("step14.risk_thw", 0.70, min_value=0.0))
 
     ap.add_argument(
@@ -219,7 +219,11 @@ def main() -> None:
     out = pd.DataFrame(rows)
     out_path = out_dir / f"sfc_binary_codes_long_{order}.csv"
     out.to_csv(out_path, index=False)
-    canonical_codes = mirror_file_to_step(out_path, 14)
+    canonical_dir = step_reports_dir(14)
+    if out_dir.resolve() == canonical_dir.resolve():
+        canonical_codes = out_path
+    else:
+        canonical_codes = mirror_file_to_step(out_path, 14)
     details_md = write_step_markdown(
         14,
         "sfc_binary_encode_details.md",
