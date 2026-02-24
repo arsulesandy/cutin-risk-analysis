@@ -1295,6 +1295,41 @@ class VisualizationPlot(object):
     def _decode_code_to_3x3_matrix(cls, code):
         return [[(int(code) >> cls.HILBERT_BIT_LAYOUT[r][c]) & 1 for c in range(3)] for r in range(3)]
 
+    def _is_track_right_to_left(self, track_id, frame):
+        """Return True when the given track moves toward decreasing x at this frame."""
+        try:
+            tid = int(track_id)
+        except Exception:
+            return False
+
+        track = self.track_lookup.get(tid)
+        static_track_information = self.static_info.get(tid)
+        if track is None or static_track_information is None:
+            return False
+
+        try:
+            initial_frame = int(static_track_information[INITIAL_FRAME])
+            final_frame = int(static_track_information[FINAL_FRAME])
+        except Exception:
+            return False
+        if frame < initial_frame or frame >= final_frame:
+            return False
+
+        idx = int(frame - initial_frame)
+        try:
+            vx = float(track[X_VELOCITY][idx])
+            if np.isfinite(vx):
+                return vx < 0.0
+        except Exception:
+            pass
+
+        # Fallback to per-track drivingDirection convention used in highD.
+        try:
+            dd = float(static_track_information[DRIVING_DIRECTION])
+            return int(dd) == 1
+        except Exception:
+            return False
+
     def _build_sfc_matrix_text(self):
         frame = int(self.current_frame)
         frame_entries = self.sfc_codes_by_frame.get(frame)
@@ -1304,13 +1339,19 @@ class VisualizationPlot(object):
         lines = ["Frame {} SFC 3x3 matrix/matrices:".format(frame)]
         for entry in frame_entries:
             matrix = self._decode_code_to_3x3_matrix(entry["code"])
+            cutter_id = entry.get("cutter_id")
+            mirrored = False
+            if cutter_id is not None and self._is_track_right_to_left(cutter_id, frame):
+                matrix = np.fliplr(np.asarray(matrix, dtype=int)).tolist()
+                mirrored = True
             lines.append(
-                "event_id={}, cutter_id={}, stage={}, code={}, code_hex={}".format(
+                "event_id={}, cutter_id={}, stage={}, code={}, code_hex={}, mirrored={}".format(
                     entry.get("event_id"),
-                    entry.get("cutter_id"),
+                    cutter_id,
                     entry.get("stage"),
                     entry["code"],
                     entry.get("code_hex"),
+                    mirrored,
                 )
             )
             lines.extend(" ".join(str(cell) for cell in row) for row in matrix)

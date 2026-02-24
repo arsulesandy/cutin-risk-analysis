@@ -9,8 +9,8 @@ from pathlib import Path
 import pandas as pd
 
 from cutin_risk.encoding.sfc_binary import decode_grid_4x4_bits, encode_grid_4x4_bits
-from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
-from cutin_risk.paths import output_path
+from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir, write_step_markdown
+from cutin_risk.paths import output_path, step14_codes_csv_path
 from cutin_risk.thesis_config import thesis_str
 
 
@@ -31,7 +31,11 @@ def mirror_grid_4x4(g4):
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Step 15A: Mirror-normalize binary SFC codes (left vs right).")
-    ap.add_argument("--codes-csv", required=True, help="Step14 long codes CSV (binary).")
+    ap.add_argument(
+        "--codes-csv",
+        default=str(step14_codes_csv_path()),
+        help="Step14 long codes CSV (binary).",
+    )
     ap.add_argument(
         "--events-csv",
         default=str(output_path("reports/Step 09/cutin_stage_features_merged.csv")),
@@ -47,7 +51,7 @@ def main() -> None:
         help="Canonical lane-change direction. If 'positive', mirror events where (to-from)<0.",
     )
 
-    ap.add_argument("--out-dir", default=str(output_path("reports/step15a_sfc_mirror")))
+    ap.add_argument("--out-dir", default=str(step_reports_dir("15A")))
     args = ap.parse_args()
 
     codes_csv = Path(args.codes_csv)
@@ -139,7 +143,11 @@ def main() -> None:
 
     out_path = out_dir / f"{codes_csv.stem}_mirrored.csv"
     merged.to_csv(out_path, index=False)
-    canonical_out = mirror_file_to_step(out_path, "15A")
+    canonical_dir = step_reports_dir("15A")
+    if out_dir.resolve() == canonical_dir.resolve():
+        canonical_out = out_path
+    else:
+        canonical_out = mirror_file_to_step(out_path, "15A")
 
     # Summary
     n_events = merged["event_id"].nunique()

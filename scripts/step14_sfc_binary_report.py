@@ -11,8 +11,8 @@ import numpy as np
 import pandas as pd
 
 from cutin_risk.encoding.sfc_binary import decode_grid_4x4_bits
-from cutin_risk.io.step_reports import mirror_file_to_step, write_step_markdown
-from cutin_risk.paths import output_path, step14_codes_csv_path
+from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir, write_step_markdown
+from cutin_risk.paths import step14_codes_csv_path
 
 
 def mean_grid(df: pd.DataFrame, *, order: str) -> np.ndarray:
@@ -58,7 +58,7 @@ def plot_grid(plt, g: np.ndarray, title: str, out: Path) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--codes-csv", default=str(step14_codes_csv_path()))
-    ap.add_argument("--out-dir", default=str(output_path("reports/step14_sfc_binary_report")))
+    ap.add_argument("--out-dir", default=str(step_reports_dir(14)))
     ap.add_argument(
         "--make-plot",
         action=argparse.BooleanOptionalAction,
@@ -102,11 +102,15 @@ def main() -> None:
         np.savetxt(out_dir / f"{stage}_risk.csv", g_risk, delimiter=",", fmt="%.6f")
         np.savetxt(out_dir / f"{stage}_diff.csv", g_diff, delimiter=",", fmt="%.6f")
 
+    canonical_dir = step_reports_dir(14)
     mirrored: list[Path] = []
-    for p in sorted(out_dir.glob("*.csv")):
-        mirrored.append(mirror_file_to_step(p, 14))
-    for p in sorted(out_dir.glob("*.png")):
-        mirrored.append(mirror_file_to_step(p, 14, kind="figures"))
+    if out_dir.resolve() != canonical_dir.resolve():
+        for p in sorted(out_dir.glob("*.csv")):
+            mirrored.append(mirror_file_to_step(p, 14))
+        for p in sorted(out_dir.glob("*.png")):
+            mirrored.append(mirror_file_to_step(p, 14, kind="figures"))
+    else:
+        mirrored = sorted(out_dir.glob("*.csv")) + sorted(out_dir.glob("*.png"))
 
     details_md = write_step_markdown(
         14,
