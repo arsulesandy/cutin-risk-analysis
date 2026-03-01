@@ -1,0 +1,863 @@
+
+% ==============================================================================
+% Master's Thesis LaTeX (single-file, no external \input required)
+% Save as: thesis.tex
+% Compile with: pdflatex thesis.tex  (run twice for references)
+% ==============================================================================
+\documentclass[12pt,a4paper,twoside,openright]{report}
+
+% --- Page layout ---
+\usepackage[a4paper,inner=35mm,outer=25mm,top=30mm,bottom=30mm]{geometry}
+
+% --- Fonts and microtypography ---
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% --- Math, tables, figures ---
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{siunitx}
+\usepackage{grffile} % improves robustness for file names with spaces
+
+% --- Captions ---
+\usepackage[font=small,labelfont=bf]{caption}
+
+% --- Lists and spacing ---
+\usepackage{enumitem}
+\usepackage{setspace}
+
+% --- Headers/footers ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\thepage}
+\fancyhead[LO]{\nouppercase{\leftmark}}
+\fancyhead[RE]{\nouppercase{\rightmark}}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{14.5pt}
+\addtolength{\topmargin}{-2.5pt}
+
+% --- Hyperlinks ---
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue,
+    pdftitle={Cut-in Risk Analysis from Highway Trajectory Data},
+    pdfauthor={Sandeep Arsule and Shradha Shinde},
+}
+
+% --- SI units setup ---
+\sisetup{
+    detect-all,
+    per-mode=symbol,
+    range-phrase=--,
+    range-units=single
+}
+
+% --- Utilities ---
+\newcommand{\safeincludegraphics}[2][]{%
+    \IfFileExists{\detokenize{#2}}{%
+        \includegraphics[#1]{\detokenize{#2}}%
+    }{%
+        \fbox{%
+            \parbox[c][0.25\textheight][c]{0.9\linewidth}{%
+                \centering
+                Figure file not found:\par
+                \texttt{\detokenize{#2}}%
+            }%
+        }%
+    }%
+}
+
+% --- Thesis metadata (edit these) ---
+\newcommand{\ThesisTitle}{Cut-in Risk Analysis from Highway Trajectory Data}
+\newcommand{\ThesisSubtitle}{A reproducible pipeline for cut-in detection, pair-consistent risk indicators, and direction-normalised spatial context encoding using highD}
+\newcommand{\AuthorOne}{Sandeep Arsule}
+\newcommand{\AuthorTwo}{Shradha Shinde}
+\newcommand{\SupervisorName}{Claude Gu Jun-Yi}
+\newcommand{\ExaminerName}{Aris Alissandrakis}
+\newcommand{\UniversityName}{Chalmers University of Technology}
+\newcommand{\DepartmentName}{Department of Computer Science and Engineering}
+\newcommand{\CityCountry}{Gothenburg, Sweden}
+\newcommand{\ThesisDate}{\today}
+
+% Optional: link to your reproducibility package / repository
+\newcommand{\ArtifactURL}{\url{https://github.com/arsulesandy/cutin-risk-analysis}}
+
+% ==============================================================================
+\begin{document}
+
+% ==============================================================================
+% Front matter
+% ==============================================================================
+    \pagenumbering{roman}
+
+% --- Title page ---
+    \begin{titlepage}
+        \thispagestyle{empty}
+        \vspace*{2cm}
+
+        \begin{center}
+            {\Large \textsc{\UniversityName}}\\[0.5cm]
+            {\large \DepartmentName}\\[2.0cm]
+
+        {\huge \bfseries \ThesisTitle}\\[0.6cm]
+        {\Large \ThesisSubtitle}\\[2.0cm]
+
+        {\large Master's Thesis in Software Engineering (30 credits)}\\[1.2cm]
+
+        {\large
+        \textbf{Author 1:} \AuthorOne\\
+        \textbf{Author 2:} \AuthorTwo
+        }\\[1.2cm]
+
+        {\large
+        \textbf{Supervisor:} \SupervisorName\\
+        \textbf{Examiner:} \ExaminerName
+        }\\[1.6cm]
+
+        {\large \CityCountry}\\
+        {\large \ThesisDate}
+        \end{center}
+
+        \vfill
+    \end{titlepage}
+
+% --- Abstract ---
+    \cleardoublepage
+    \chapter*{Abstract}
+    \addcontentsline{toc}{chapter}{Abstract}
+
+    Cut-in manoeuvres are a frequent source of interaction stress in highway traffic because they can force the receiving follower into short gaps at non-negligible closing speeds. A core methodological issue is \emph{pair selection}: dataset-provided surrogate safety indicators such as time headway (THW), distance headway (DHW), and time-to-collision (TTC) are often computed only for a default neighbour relationship (e.g., ``ego--same-lane predecessor''). During a cut-in, the relevant interaction is instead defined by the \emph{cutter--follower} pair created in the target lane.
+
+    This thesis presents a reproducible pipeline that addresses pair selection from raw trajectories to analysis-ready artefacts. The workflow performs lane-change and cut-in extraction, computes pair-consistent surrogate safety indicators, builds stage-wise features around cut-in onset, and constructs direction-consistent spatial context encodings via a space-filling-curve (SFC) ordering of an ego-centric occupancy grid. In the final run on highD recordings 01--60, the pipeline detects 11,856 lane changes and 10,026 cut-ins; after stage-window validity checks, 10,023 events remain in the merged stage-feature table.
+
+    Using a transparent label rule (``risky'' if minimum execution-stage THW is below \SI{0.7}{\second}), 2,018 of 10,023 events are classified as risky. The same run yields 1,421,980 frame-level occupancy rows, mirror-normalised codes, and stage-level weighted context features. The resulting artefacts provide traceability from data to metric to result and form a reusable baseline for downstream modelling and analysis.
+
+    \noindent\textbf{Keywords:} cut-in, lane change, highD, surrogate safety measures, TTC, THW, space-filling curve, reproducibility.
+
+% --- Acknowledgements ---
+    \cleardoublepage
+    \chapter*{Acknowledgements}
+    \addcontentsline{toc}{chapter}{Acknowledgements}
+
+    We thank our supervisor for continuous feedback and for pushing us to define a clear input$\rightarrow$output pipeline early and to validate that our metrics are computed for the correct interacting vehicle pair. We also thank the course staff and seminar group for discussions about scope, evaluation, and writing. Finally, we are grateful to the authors of the highD dataset for making the dataset available to the research community.
+
+% --- Contents / lists ---
+    \cleardoublepage
+    \tableofcontents
+
+    \cleardoublepage
+    \addcontentsline{toc}{chapter}{\listfigurename}
+    \listoffigures
+
+    \cleardoublepage
+    \addcontentsline{toc}{chapter}{\listtablename}
+    \listoftables
+
+% --- Abbreviations ---
+    \cleardoublepage
+    \chapter*{Abbreviations}
+    \addcontentsline{toc}{chapter}{Abbreviations}
+
+    \begin{tabular}{@{}ll@{}}
+        \toprule
+        Abbreviation & Meaning \\
+        \midrule
+        DHW & Distance headway (longitudinal gap) \\
+        THW & Time headway (gap divided by follower speed) \\
+        TTC & Time-to-collision (gap divided by closing speed, if closing) \\
+        SSM & Surrogate safety measure \\
+        SFC & Space-filling curve \\
+        \bottomrule
+    \end{tabular}
+
+% ==============================================================================
+% Main matter
+% ==============================================================================
+    \cleardoublepage
+    \setcounter{page}{1}
+    \pagenumbering{arabic}
+    \onehalfspacing
+
+% ==============================================================================
+    \chapter{Introduction}
+    \label{chap:introduction}
+
+    Lane changes are common on highways and are not necessarily unsafe. A \emph{cut-in} is a lane change where a vehicle moves into a lane directly in front of another vehicle, thereby creating a direct longitudinal interaction in the target lane. Depending on available gap, relative speed, and driver behaviour, a cut-in can lead to uncomfortable or safety-critical situations.
+
+    Trajectory datasets enable large-scale analysis of such interactions. However, many datasets provide surrogate safety measures (e.g., TTC/THW/DHW) only for a \emph{predefined} neighbour relationship (typically ``ego--same-lane predecessor''). If we analyse cut-ins but reuse indicators computed for a different pair, the analysis becomes internally inconsistent even if computations are correct.
+
+    \section{Problem statement}
+    This thesis addresses the lack of an integrated, reproducible workflow that (i) identifies cut-in interactions as explicit cutter--follower pairs, (ii) computes surrogate safety measures for that pair, and (iii) produces analysis-ready artefacts (tables and figures) with end-to-end traceability.
+
+    \section{Goal}
+    The goal is to build and evaluate a reproducible pipeline that detects lane changes and cut-ins in highway trajectory data, identifies the affected follower vehicle for each cut-in, computes surrogate safety measures (DHW/THW/TTC) for the correct interacting pair, extracts stage-based features around cut-in onset, and encodes local traffic context in a direction-consistent way using SFC representations.
+
+    \section{Research questions}
+    \textbf{RQ1:} How can lane changes and cut-ins be detected in highway trajectory data in a reproducible and verifiable way?
+
+    \textbf{RQ2:} How do surrogate safety measures (DHW, THW, TTC) evolve around cut-in events when computed for the correct cutter--follower pair?
+
+    \textbf{RQ3:} How can stage-wise spatial context around cut-ins be encoded in a direction-consistent way to support downstream analysis?
+
+    \section{Scope and delimitations}
+    We focus on the highD dataset (highway traffic, drone-based trajectories) and offline analysis. The thesis does not aim to infer driver intent beyond observable trajectories, does not include simulation-based re-enactment, and does not train new machine learning models. Instead, the emphasis is on scenario extraction, metric correctness, validation against dataset-provided indicators when applicable, and reusable feature generation.
+
+    \section{Relation to the accepted proposal}
+    This thesis is based on an accepted proposal for a ``Framework for Cut-In Vehicle Detection and Lane-Change Risk Analysis in Naturalistic Highway Trajectories''. During implementation, the scope was refined to emphasise \emph{pair-consistent} indicator computation and \emph{direction-normalised} spatial context encoding. The revised research questions (RQ1--RQ3) remain aligned with the proposal's core aim: reproducible detection and interpretable risk analysis at scale \cite{highd_2018,wang2021ssm}.
+
+    \section{Contributions}
+    This thesis contributes:
+    \begin{enumerate}[leftmargin=1.6em]
+  \item A reproducible ingestion and validation step that builds a unified tracking table from highD CSV files.
+  \item A stable-block lane change detector and a cut-in detector that identifies the interacting follower vehicle.
+  \item A surrogate safety computation module for arbitrary vehicle pairs, validated against dataset-provided indicators for same-lane predecessor pairs.
+  \item A geometry-based neighbour reconstruction module and a lane-inference (``XY-lane'') variant to reduce dependence on dataset-specific fields.
+  \item Stage-based feature extraction (intention/decision/execution/recovery) around cut-in onset and descriptive summaries across recordings.
+  \item A direction-consistent spatial context branch: binary occupancy encoding, mirror normalisation, and stage-level weighted context features.
+    \end{enumerate}
+
+    \section{Thesis outline}
+    Chapter~\ref{chap:background} introduces the dataset and core concepts. Chapter~\ref{chap:relatedwork} presents the related work. Chapter~\ref{chap:researchmethod} describes the research method and evaluation approach. Chapter~\ref{chap:theory} defines events, stages, and indicators. Chapter~\ref{chap:methods} details the pipeline and validation. Chapter~\ref{chap:results} reports results. Chapter~\ref{chap:discussion} discusses limitations and implications, and Chapter~\ref{chap:conclusion} concludes.
+
+% ==============================================================================
+    \chapter{Background}
+    \label{chap:background}
+
+    \section{Trajectory data and the highD dataset}
+    We use the \textit{highD} dataset, a drone-based collection of naturalistic highway trajectories \cite{highd_2018}. HighD provides per-frame vehicle states (position, velocity, acceleration), lane identifiers, and neighbour identifiers such as same-lane preceding and following vehicles. The recordings are sampled at \SI{25}{\hertz}.
+
+    A recording is typically distributed as three CSV files:
+    \begin{itemize}[leftmargin=1.2em]
+  \item \texttt{XX\_tracks.csv}: per-frame state per vehicle,
+  \item \texttt{XX\_tracksMeta.csv}: per-vehicle attributes and track bounds,
+  \item \texttt{XX\_recordingMeta.csv}: recording-level metadata (frame rate, lane markings, etc.).
+    \end{itemize}
+
+    \section{Neighbour relations and why they are not sufficient}
+    HighD includes neighbour ids (e.g., \texttt{precedingId} and \texttt{followingId}) that encode same-lane ordering. These fields are useful, but they can lead to mistakes if we assume that dataset-provided TTC/THW/DHW always refer to the interaction pair of interest. In highD, these indicators are typically defined for the same-lane predecessor relation, not for arbitrary pairs.
+
+    \section{Why compute indicators ourselves}
+    For cut-in risk, the key interaction is between the cutter and the follower that ends up behind the cutter in the target lane. Even if the dataset provides surrogate measures, we compute DHW/THW/TTC ourselves for the cutter--follower pair to ensure that analysis reflects the intended interaction and to support pipeline variants where neighbours are reconstructed from geometry.
+
+% ==============================================================================
+    \chapter{Related Work}
+    \label{chap:relatedwork}
+
+    This chapter reviews (i) surrogate safety measures, (ii) lane-changing and cut-in analysis, (iii) highD and dataset constraints, and (iv) compact context encodings for interaction analysis.
+
+    \section{Literature identification approach}
+    This thesis is not presented as a full systematic literature review. However, to keep the related-work selection transparent and reproducible, we followed a structured search-and-selection approach inspired by evidence-based guidelines \cite{kitchenham2007,wohlin2014}. We searched IEEE Xplore, the ACM Digital Library, and Google Scholar (with Scopus used when available) for peer-reviewed work on (i) surrogate safety measures, (ii) lane changes and cut-ins, (iii) \textit{highD} and similar trajectory datasets, and (iv) spatial/context representations for traffic interactions. The search emphasised recent work relevant to \textit{highD} (primarily 2018--2025) while also including seminal papers needed to define key concepts.
+
+    Example search strings used during the search include:
+    \begin{quote}\small\ttfamily\raggedright
+    ("cut-in" OR "lane change") AND (trajectory OR dataset) AND\\
+    (risk OR safety)\\[2pt]
+        "highD" AND ("lane change" OR "cut-in") AND\\
+        (TTC OR THW OR "surrogate safety")\\[2pt]
+        ("surrogate safety measure" OR "traffic conflict") AND\\
+        (validation OR review)\\[2pt]
+        ("occupancy grid" OR "spatial context") AND\\
+        trajectory AND vehicle
+    \end{quote}
+
+    We included papers that address highway lane changes/cut-ins, define or review surrogate safety measures, use \textit{highD} (or closely related datasets) for scenario extraction, or propose compact spatial context representations for interaction analysis. We complemented keyword searching with backward and forward snowballing on core papers (e.g., the \textit{highD} dataset paper and SSM review papers) \cite{wohlin2014}.
+
+    \section{Surrogate safety measures and validation}
+    Surrogate safety measures (SSMs) are used because crashes (collisions) are rare in naturalistic data. TTC was introduced early as a near-miss concept \cite{hayward1972}. SSAM operationalised a set of commonly used indicators for conflict analysis and provided tooling for systematic application \cite{ssam2008}. Extended TTC formulations have been proposed to adapt TTC-style reasoning to broader traffic conditions \cite{minderhoud2001}. Recent reviews and validation-oriented studies emphasise that SSM values depend strongly on modelling assumptions, measurement noise, and traffic state, and therefore need careful interpretation \cite{wang2021ssm,johnsson2021validation}.
+
+    \section{Lane-changing and cut-in analysis}
+    Lane changes and cut-ins are often described using a combination of incentive (goal) and safety constraints. Classical microscopic models such as the Intelligent Driver Model (IDM) formalise desired spacing and speed adaptation in car-following \cite{treiber2000idm}. Lane-changing models such as MOBIL make safety and incentive criteria explicit \cite{kesting2007mobil}.
+
+    For cut-in and lane-merging behaviour in automated driving, structured phase models with explicit risk logic are common. For example, Hwang et al.\ propose a finite-state-machine approach for lane-merging cut-ins with TTC-based risk handling \cite{hwang2022fsmrl}. While this thesis does not implement a controller, such phase-based framing motivates clear scenario segmentation and transparent risk definitions for offline analysis.
+
+    \section{Data-driven lane-change risk modelling}
+    Recent work increasingly predicts lane-change risk using highD-derived samples and interaction features, for example by combining intention recognition with risk prediction \cite{shangguan2022} or by multi-task learning for manoeuvre and risk prediction \cite{liu2025multitask}. These approaches reinforce the need for consistent scenario extraction and clearly defined interaction pairs, which this thesis addresses from a reproducible pipeline perspective.
+
+    \section{HighD and dataset constraints}
+    HighD provides high-precision trajectories and neighbour relations for large-scale scenario extraction \cite{highd_2018}. At the same time, dataset conventions and lane assignment noise can affect how lane-change timing is interpreted. Recent work discusses lane-change inconsistencies in highD and motivates careful validation when reconstructing events from lane ids and geometry \cite{wanggao2025highd}.
+
+    \section{Context encoding for interaction analysis}
+    Scalar indicators (e.g., minimum THW) compress interactions to a few values and may miss relevant local traffic structure. Grid-based representations such as occupancy grids are widely used for compactly describing local surroundings \cite{elfes1989}. For trajectory prediction and interaction modelling, pooling neighbour information into a spatial grid can improve robustness and interpretability, including for vehicle settings \cite{deo2018}.
+
+    In this thesis, we use an interpretable ego-centric 3$\times$3 occupancy grid aligned with the cutter and apply a space-filling-curve ordering (Hilbert-type) to obtain a locality-preserving one-dimensional code \cite{hilbert1891,moon2001}.
+
+    \section{Summary and research gap}
+    Prior work establishes multiple surrogate safety measures and modelling approaches, but two gaps motivate this thesis. First, cut-in analysis requires explicit pairing between the cutter and the impacted follower; dataset-provided SSMs may not correspond to that pair. Second, event-level scalar indicators alone do not capture the spatial configuration around cut-ins, motivating compact and direction-consistent context encodings. This thesis addresses both gaps via a reproducible pipeline that produces pair-consistent indicators and reusable context features.
+
+% ==============================================================================
+    \chapter{Research Method}
+    \label{chap:researchmethod}
+
+    \section{Methodological stance}
+    The thesis follows a design-oriented, empirical approach: we design and implement a modular analysis pipeline, and we evaluate it using quantitative consistency checks and descriptive analysis on real trajectory data. The primary artefact is the pipeline and its outputs (scenario tables and derived features), while the scientific contribution is the clarification of pair-consistent indicator computation and direction-consistent context encoding.
+
+    \section{Evaluation criteria}
+    We evaluate the pipeline along four criteria:
+    \begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Correctness of pairing:} detected cut-ins are defined as explicit cutter--follower pairs in the target lane.
+  \item \textbf{Metric correctness:} DHW/THW/TTC are computed with a well-defined geometry model and validated against dataset-provided indicators for same-lane predecessor pairs when applicable.
+  \item \textbf{Internal consistency:} independent reconstruction variants (neighbour reconstruction and inferred-lane pipeline) should agree with the primary pipeline to a high degree.
+  \item \textbf{Reproducibility:} the pipeline is configuration-driven and produces versioned outputs so figures and tables can be regenerated.
+    \end{itemize}
+
+    \section{Ethical and legal considerations}
+    The thesis uses an existing trajectory dataset collected from public roads. No new data is collected and no human subjects are recruited. Derived artefacts should be shared only in ways that respect the dataset licence and terms of use.
+
+    \section{Use of Generative AI Tools}
+    Generative AI tools (e.g., large language models) were used in a limited and supportive role during this project. AI assistance was used primarily to troubleshoot development environment configuration issues, identify and resolve Python runtime errors and dependency conflicts, and suggest refactoring patterns to standardise code structure and improve readability. AI assistance was also used to draft diagram code (e.g., Mermaid), which was then manually reviewed and exported as static figures for inclusion in the thesis.
+
+    All core research ideas, problem formulations, definitions (e.g., cut-in detection logic, stage modelling, and pair-consistent metric computation), methodological decisions, evaluation design, and interpretation of results were developed independently by the authors. AI-generated suggestions were treated as technical assistance similar to consulting documentation or community forums, and any suggested code changes were manually reviewed, validated, and tested before integration. The authors take full responsibility for the correctness of the implementation, the integrity of the analysis, and the conclusions presented in this thesis.
+
+
+
+% ==============================================================================
+    \chapter{Theory}
+    \label{chap:theory}
+
+    \section{Lane change vs cut-in}
+    \subsection{Lane change}
+    We define a \textbf{lane change event} as a transition from one stable lane block to another stable lane block. ``Stable'' means the vehicle remains in that lane for at least a minimum number of consecutive frames before and after the transition.
+
+    \subsection{Cut-in}
+    We define a \textbf{cut-in event} as a lane change where the lane-changing vehicle (the \emph{cutter}) becomes the same-lane predecessor of another vehicle (the \emph{follower}) in the target lane. This definition yields an explicit interacting pair $(A,B)$ with cutter $A$ and follower $B$.
+
+    \section{Cut-in onset and stage model}
+    We define cut-in onset $t_0$ as the first frame where the follower's same-lane predecessor becomes the cutter id (i.e., the first frame where the follower relationship is established). Time around $t_0$ is segmented into four stages:
+    \begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Intention:} $[t_0-\SI{4}{\second},\, t_0-\SI{2}{\second})$
+  \item \textbf{Decision:} $[t_0-\SI{2}{\second},\, t_0)$
+  \item \textbf{Execution:} $[t_0,\, t_0+\SI{2}{\second})$
+  \item \textbf{Recovery:} $[t_0+\SI{2}{\second},\, t_0+\SI{4}{\second}]$
+    \end{itemize}
+
+    \section{Surrogate safety measures}
+    Let $A$ be the leader (cutter) and $B$ the follower. We use:
+    \begin{itemize}[leftmargin=1.2em]
+  \item \textbf{DHW} (distance headway): longitudinal gap between leader rear and follower front.
+  \item \textbf{THW} (time headway): $\mathrm{THW} = \mathrm{DHW} / v_B$ (with safe handling of small $v_B$).
+  \item \textbf{TTC} (time-to-collision): under constant-velocity assumptions,
+  \[
+      \mathrm{TTC}=
+      \begin{cases}
+          \mathrm{DHW}/(v_B - v_A), & \text{if } v_B > v_A \\
+          \infty, & \text{otherwise.}
+      \end{cases}
+  \]
+    \end{itemize}
+
+    \section{Risk label}
+    Because risk is not standardised, we use a transparent label rule for descriptive comparison:
+    \[
+        \text{risky} := \min(\mathrm{THW}) \text{ in execution stage} < \SI{0.7}{\second}.
+    \]
+    This rule is not presented as a universal definition of risk; it is a clear and reproducible threshold that can be varied in sensitivity analysis.
+
+% ==============================================================================
+    \chapter{Methods}
+    \label{chap:methods}
+
+    \section{Pipeline overview}
+    We implement the project as a sequence of scripts and modules with explicit inputs and outputs. Figure~\ref{fig:pipeline-ablation} summarises the main workflow and the XY-lane ablation/validation branch.
+
+    \begin{figure}
+        \centering
+        \safeincludegraphics[width=0.2\textwidth]{fig_pipeline_ablation_xy_lane.png}
+        \caption{Overview of the main pipeline and the XY-lane ablation branch used to validate lane inference and neighbour reconstruction (Steps 01--14).}
+        \label{fig:pipeline-ablation}
+    \end{figure}
+
+    \begin{enumerate}[leftmargin=1.6em]
+  \item Read, validate, and build a unified tracking table (Step 01).
+  \item Detect lane changes from stable lane blocks (Step 02).
+  \item Detect cut-ins by identifying the affected follower (Step 03).
+  \item Compute and validate DHW/THW/TTC for correct pairs (Step 04).
+  \item Visualise selected extreme events for sanity checking (Step 05).
+  \item Reconstruct neighbours from geometry and validate against dataset (Step 06).
+  \item Infer lanes from geometry (XY-lane) and re-run detection (Step 07).
+  \item Extract stage-based features around $t_0$ (Step 08) and batch across recordings (Step 09).
+  \item Derive risk summaries from stage outcomes (Step 10).
+  \item Encode local occupancy using Hilbert-ordered binary codes (Step 14) and summarise group differences.
+
+    \end{enumerate}
+
+    The pipeline is structured to answer the research questions directly. Steps 01--03 operationalise lane-change and cut-in detection, including explicit cutter--follower pairing (RQ1). Steps 04 and 08--10 compute and analyse pair-consistent surrogate safety measures and stage-wise summaries (RQ2). Steps 14--15 implement direction-consistent spatial context encoding and aggregation (RQ3).
+
+
+
+    \section{Key configuration values}
+    Table~\ref{tab:config} summarises key configuration values used in the final run (highD 01--60, \SI{25}{\hertz}).
+
+    These values act as explicit cut-offs (e.g., stability requirements, search windows, and stage alignment) and are reported to support reproducibility and sensitivity analysis.
+
+    \begin{table}[H]
+        \centering
+        \caption{Key configuration values for the final pipeline run.}
+        \label{tab:config}
+        {\small
+        \setlength{\tabcolsep}{4pt}
+            \begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+Module & Parameter & Value \\
+\midrule
+Lane-change detection & Min stable before/after & 25 frames ($\approx \SI{1.0}{\second}$) \\
+Lane-change detection & Ignored lane ids & \{0\} \\
+Cut-in detection & Search window & 50 frames ($\approx \SI{2.0}{\second}$) \\
+Cut-in detection & Min relation duration & 10 frames ($\approx \SI{0.4}{\second}$) \\
+Cut-in detection & Max relation delay & 15 frames ($\approx \SI{0.6}{\second}$) \\
+Indicator computation & Min speed for THW & \SI{0.1}{\meter\per\second} \\
+Indicator computation & Closing speed epsilon & $10^{-6}$ \\
+Indicator computation & Window (pre/post) for diagnostics & 50/75 frames ($\approx \SI{2}{\second}/\SI{3}{\second}$) \\
+Stage model & Total analysis window & $\pm \SI{4}{\second}$ around $t_0$ \\
+Risk label & Execution THW threshold & \SI{0.7}{\second} \\
+SFC encoding & Ahead/behind range & \SI{150}{\meter} / \SI{150}{\meter} \\
+SFC encoding & Alongside threshold & \SI{5}{\meter} \\
+SFC encoding & Order & Hilbert \\
+\bottomrule
+            \end{tabularx}}
+    \end{table}
+
+    \section{Lane change detection}
+    A lane change is accepted when a vehicle transitions from one stable lane block to another, where the source lane remains unchanged for at least $N_\text{before}$ frames before the transition and the target lane remains unchanged for at least $N_\text{after}$ frames after the transition. Transitions involving invalid lane ids (e.g., lane id 0) are ignored.
+
+    \section{Cut-in detection (finding the follower)}
+    Given a lane change into target lane $L$ by vehicle $A$:
+    \begin{enumerate}[leftmargin=1.6em]
+  \item starting from the lane change start, scan frames forward within a fixed search window,
+  \item in each frame, find a vehicle $B$ in lane $L$ such that \texttt{precedingId(B) = A},
+  \item if the relationship is established within the allowed delay and holds for at least a minimum number of frames, record a cut-in event with cutter $A$, follower $B$, and onset $t_0$ at the first matching frame.
+    \end{enumerate}
+
+    \section{Surrogate safety computation and geometry model selection}
+    We compute DHW/THW/TTC for arbitrary pairs using geometry and speeds. Because trajectory datasets may define position references differently (e.g., centre point vs bounding-box corner), we \emph{select a geometry model} by comparing our computed indicators against highD-provided indicators for same-lane (ego, predecessor) pairs on a large random sample (20,000 pairs per recording). We test multiple plausible reference conventions and select the one that best matches dataset-provided DHW/THW/TTC. In the final run, the model \texttt{bbox\_topleft} was selected for all 60 recordings.
+
+    To avoid negative gaps due to noise or reference mismatches, thesis-facing minima are clipped to be non-negative for DHW/THW. TTC is treated as infinite when the follower is not closing ($v_B \leq v_A$).
+
+    \section{Neighbour reconstruction and inferred lanes}
+    To reduce reliance on dataset-specific neighbour ids, we reconstruct same-lane neighbours by sorting vehicles within each lane and frame by longitudinal position. We also implement an ``XY-lane'' variant that infers lane index from lateral position and lane markings. These variants provide internal consistency checks by comparing events and neighbour relations across different information sources. The ablation design is illustrated in Figure~\ref{fig:ablation-columns}.
+
+    \begin{figure}[H]
+        \centering
+        \safeincludegraphics[width=0.92\textwidth]{fig_columns_dropped_vs_kept.png}
+        \caption{Ablation design: highD neighbour/lane columns are excluded from the modelling input path, while $x$, $y$, and lane markings are retained to reconstruct lane and neighbour relations for validation (Step 07).}
+        \label{fig:ablation-columns}
+    \end{figure}
+
+    \section{Stage feature extraction}
+    For each detected cut-in, we align a fixed time window around onset $t_0$ and compute stage-wise summaries for the four stages in Chapter~\ref{chap:theory}. The feature table includes stage minima of DHW/THW/TTC and kinematic aggregates for cutter and follower.
+
+    \section{SFC-based context encoding}
+    To capture local traffic context around the cutter compactly, we encode neighbourhood occupancy into an ego-centric \textbf{3$\times$3 semantic grid}:
+    \begin{itemize}[leftmargin=1.2em]
+  \item columns: \{left lane, same lane, right lane\},
+  \item rows: \{preceding, alongside, following\},
+    \end{itemize}
+    with a longitudinal range of \SI{150}{\meter} ahead and behind, and an ``alongside'' threshold of \SI{5}{\meter}. Each frame is mapped to a binary occupancy pattern, and the 3$\times$3 cells are linearised using a Hilbert-type space-filling-curve order. To remove direction-induced asymmetry, events are mirror-normalised to a canonical orientation prior to aggregation. Finally, stage-level weighted context features are computed by aggregating occupancy with distance- or TTC-based weights. The binary encoding procedure is summarised in Figure~\ref{fig:sfc-binary-flow}.
+
+    \begin{figure}[H]
+        \centering
+        \safeincludegraphics[width=0.2\textwidth]{fig_sfc_binary_encoding_flow.png}
+        \caption{Binary context encoding for Step 14: construction of a local 3$\times$3 semantic occupancy grid, embedding into a 4$\times$4 grid, Hilbert (SFC) traversal, and export of a 16-bit binary code and hexadecimal representation per event--stage--frame.}
+        \label{fig:sfc-binary-flow}
+    \end{figure}
+
+    \section{Reproducibility}
+    The pipeline is configuration-driven. Each run produces versioned artefacts (CSV tables and figures) that can be regenerated from the same raw data and configuration. The intended entry point for reproducing the results is the project's artefact package or repository: \ArtifactURL.
+
+% ==============================================================================
+    \chapter{Results}
+    \label{chap:results}
+
+    \section{Detected events and analysis coverage}
+    The final run uses recordings 01--60. Table~\ref{tab:events} summarises event yield.
+
+    \begin{table}[H]
+        \centering
+        \caption{Event counts for the final thesis run (recordings 01--60).}
+        \label{tab:events}
+        \begin{tabularx}{\textwidth}{@{}lrrX@{}}
+\toprule
+Source / Stage & Lane changes & Cut-ins & Notes \\
+\midrule
+Detection totals (Step 02/03) & 11,856 & 10,026 & Raw extraction from stable blocks and follower pairing. \\
+Merged stage-feature table (Step 09) & -- & 10,023 & Three events removed by stage-window validity checks. \\
+Binary occupancy rows (Step 14) & -- & 1,421,980 & Frame-level occupancy rows corresponding to the 10,023 validated cut-in events. \\
+\midrule
+Recordings processed & \multicolumn{3}{c}{60 (01--60)} \\
+\bottomrule
+        \end{tabularx}
+    \end{table}
+
+    \section{Lane-change and cut-in duration statistics}
+    Table~\ref{tab:duration-stats} summarises dataset-wide duration statistics. Lane-change durations are computed from stable-block transitions. Cut-in relation duration is measured as the contiguous duration where the follower's predecessor is the cutter \emph{within the configured search window}. In our configuration, the relation duration is capped at 50 frames (\SI{2}{\second}), which explains the concentration at the cap.
+
+    \begin{table}[H]
+        \centering
+        \caption{Dataset-wide duration statistics (highD 01--60, \SI{25}{\hertz}).}
+        \label{tab:duration-stats}
+        {\small
+        \setlength{\tabcolsep}{4pt}
+            \begin{tabular}{@{}lrrrrrr@{}}
+                \toprule
+                Event type & Min (s) & P25 (s) & Median (s) & Mean (s) & P75 (s) & Max (s) \\
+                \midrule
+                Lane change duration & 0.960 & 3.680 & 6.240 & 6.551 & 8.960 & 69.120 \\
+                Cut-in relation duration & 0.360 & 1.960 & 1.960 & 1.870 & 1.960 & 1.960 \\
+                \bottomrule
+            \end{tabular}}
+    \end{table}
+
+    Overall, 84.56\% of detected lane changes are classified as cut-ins under our definition (10,026 cut-ins out of 11,856 lane changes).
+
+    \section{Internal consistency checks}
+    Geometry-based neighbour reconstruction achieves mean same-lane preceding and following accuracy of 0.999997 across the 60 recordings (Step 06). The inferred-lane (XY-lane) pipeline remains highly consistent with mean preceding accuracy 0.999810 and following accuracy 0.999811, and cut-in event matching against the dataset-driven pipeline yields $F_1 = 0.998938$ (Step 07).
+
+    \section{Execution-stage indicator distributions}
+    Table~\ref{tab:exec-dist} summarises execution-stage minima across all 10,023 events. TTC statistics are shown only for events with finite TTC (i.e., closing speed).
+
+    \begin{table}[H]
+        \centering
+        \caption{Execution-stage indicator minima across all events (10,023 cut-ins).}
+        \label{tab:exec-dist}
+        {\small
+        \setlength{\tabcolsep}{4pt}
+            \begin{tabular}{@{}lrrrrrr@{}}
+                \toprule
+                Indicator & Min & P25 & Median & Mean & P75 & Max \\
+                \midrule
+                DHW$_{\min}$ (m) & 1.37 & 20.69 & 32.21 & 51.28 & 59.82 & 373.98 \\
+                THW$_{\min}$ (s) & 0.051 & 0.769 & 1.194 & 1.700 & 2.028 & 12.383 \\
+                TTC$_{\min}$ (s), finite only (n=3,606) & 0.220 & 10.769 & 19.726 & 74.161 & 42.025 & 14428.50 \\
+                \bottomrule
+            \end{tabular}}
+    \end{table}
+
+    \section{Stage-based risk summaries}
+    Risk is defined as:
+    \[
+        \text{risky} := \min(\mathrm{THW})_{\text{execution}} < \SI{0.7}{\second}.
+    \]
+    Using this rule on the merged stage-feature table (10,023 events), 2,018 events are classified as risky (20.1\%). Table~\ref{tab:risk-summary} reports pooled comparison statistics. Here $\Delta v$ is defined per event as the difference between the cutter and follower mean speeds in the execution stage, i.e., $\Delta v = \bar v_{\text{cutter}}-\bar v_{\text{follower}}$ (reported as the median across events).
+
+    \begin{table}[H]
+        \centering
+        \caption{Execution-stage pooled risk summary (all recordings). $\Delta v$ is in \si{\meter\per\second}.}
+        \label{tab:risk-summary}
+        {\small
+        \setlength{\tabcolsep}{4pt}
+            \begin{tabular}{@{}lrrrr@{}}
+                \toprule
+                Group & Events & THW$_{\min}$ median (s) & DHW$_{\min}$ median (m) & $\Delta v$ median \\
+                \midrule
+                Non-risky & 8,005 & 1.427 & 39.680 & 2.304 \\
+                Risky & 2,018 & 0.539 & 14.945 & 2.853 \\
+                \bottomrule
+            \end{tabular}}
+    \end{table}
+
+    \section{Effect size comparison between risk groups}
+    Because the dataset contains over 10{,}000 cut-in events, even small group differences can appear statistically significant under conventional hypothesis tests. To describe \emph{magnitude} rather than only significance, Table~\ref{tab:effect-sizes} reports Cliff's delta ($\delta$) for selected execution-stage variables. Cliff's $\delta$ ranges from $-1$ (all risky values smaller than non-risky) to $+1$ (all risky values larger), and values near $0$ indicate substantial overlap between the groups.
+
+    \begin{table}[H]
+        \centering
+        \caption{Effect-size comparison between risk groups (execution stage). Medians are reported per group; $\delta$ is Cliff's delta (risky vs non-risky).}
+        \label{tab:effect-sizes}
+        \begin{tabular}{@{}lrrr@{}}
+            \toprule
+            Metric & Median non-risky & Median risky & Cliff's $\delta$ \\
+            \midrule
+            DHW$_{\min}$ (\si{\meter}) & 39.68 & 14.95 & $-0.950$ \\
+            $\Delta v$ (\si{\meter\per\second}) & 2.304 & 2.853 & $0.032$ \\
+            $\lvert v_{y,\text{cutter}}\rvert_{\max}$ (\si{\meter\per\second}) & 0.88 & 0.93 & $0.097$ \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    The separation in DHW$_{\min}$ is expected because THW is directly related to spacing via $\mathrm{THW}=\mathrm{DHW}/v_B$. In contrast, the lateral-velocity difference is modest, indicating that the THW-based label primarily captures longitudinal gap acceptance rather than the lateral kinematics of the lane change.
+
+
+
+    \section{Sensitivity of the THW threshold}
+    To illustrate that the risk label is a design choice, Table~\ref{tab:sensitivity} shows how the risk prevalence changes with the THW threshold.
+
+    \begin{table}[H]
+        \centering
+        \caption{Sensitivity of risk prevalence to the THW execution-stage threshold (10,023 events).}
+        \label{tab:sensitivity}
+        \begin{tabular}{@{}lrr@{}}
+            \toprule
+            THW threshold (s) & Risky events & Risk ratio \\
+            \midrule
+            0.50 & 760 & 7.58\% \\
+            0.70 & 2,018 & 20.13\% \\
+            1.00 & 4,004 & 39.95\% \\
+            1.50 & 6,235 & 62.21\% \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \section{Indicator disagreement example: THW vs TTC}
+    TTC is only finite when the follower is closing in on the cutter ($v_B>v_A$). In this dataset, execution-stage TTC is finite for 3,606 of 10,023 events (35.98\%). Within this finite subset, risky events (by THW) have substantially lower TTC.
+
+    \begin{table}[H]
+        \centering
+        \caption{Execution-stage TTC for events with finite TTC only (3,606 events).}
+        \label{tab:ttc-finite}
+        \begin{tabular}{@{}lrrr@{}}
+            \toprule
+            Group (by THW label) & Events & TTC median (s) & TTC mean (s) \\
+            \midrule
+            Non-risky & 3,177 & 22.30 & 80.27 \\
+            Risky & 429 & 8.98 & 28.94 \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    Table~\ref{tab:ttc-thw-overlap} compares the THW-based label to TTC thresholds over all events, treating infinite TTC as ``not risky''. Strict TTC thresholds have high precision but low recall relative to the THW label because many THW-risky events do not involve a closing-speed situation.
+
+    \begin{table}[H]
+        \centering
+        \caption{Overlap between THW-risky and TTC-threshold flags (all events; infinite TTC counted as not risky).}
+        \label{tab:ttc-thw-overlap}
+        \begin{tabular}{@{}rrrrrr@{}}
+            \toprule
+            TTC thr. (s) & TTC-flagged & TP & FP & Prec. & Rec. \\
+            \midrule
+            1.5 & 10 & 10 & 0 & 1.000 & 0.005 \\
+            3.0 & 43 & 37 & 6 & 0.860 & 0.018 \\
+            5.0 & 156 & 99 & 57 & 0.635 & 0.049 \\
+            10.0 & 788 & 237 & 551 & 0.301 & 0.117 \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \section{Extreme events by TTC}
+    Table~\ref{tab:top-ttc} lists the three events with the lowest execution-stage TTC (finite only), useful for qualitative inspection.
+
+    \begin{table}[H]
+        \centering
+        \caption{Top-3 extreme events by minimum execution-stage TTC (finite only).}
+        \label{tab:top-ttc}
+        \begin{tabular}{@{}rrrrrrr@{}}
+            \toprule
+            Rec. & Cutter & Follower & From & To & TTC$_{\min}$ (s) & THW$_{\min}$ (s) \\
+            \midrule
+            40 & 682 & 687 & 1 & 2 & 0.220 & 0.051 \\
+            26 & 496 & 522 & 1 & 2 & 0.235 & 0.122 \\
+            30 & 839 & 852 & 1 & 2 & 0.288 & 0.067 \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \section{Per-recording variation}
+    Across the 60 recordings, the risk ratio (THW $<$ \SI{0.7}{\second}) varies between 11.1\% and 34.1\% (median 20.0\%). This suggests that traffic composition and local conditions differ across recordings even within the same dataset.
+
+    \section{SFC occupancy maps}
+    Figures~\ref{fig:sfc-decision-grids} and \ref{fig:sfc-stage-diff} show occupancy maps (mean occupancy probability) for risk and non-risk groups and their difference. In these plots, rows correspond to \{preceding, alongside, following\} and columns to \{left, same, right\} relative to the cutter.
+
+    \begin{figure}[H]
+        \centering
+        \safeincludegraphics[width=0.31\textwidth]{decision_nonrisk.png}
+        \safeincludegraphics[width=0.31\textwidth]{decision_risk.png}
+        \safeincludegraphics[width=0.31\textwidth]{decision_diff.png}
+        \caption{Decision-stage occupancy maps: non-risk (left), risk (middle), and risk-minus-non-risk difference (right).}
+        \label{fig:sfc-decision-grids}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \safeincludegraphics[width=0.31\textwidth]{intention_diff.png}
+        \safeincludegraphics[width=0.31\textwidth]{decision_diff.png}
+        \safeincludegraphics[width=0.31\textwidth]{execution_diff.png}
+        \caption{Stage-wise risk-minus-non-risk occupancy differences for intention, decision, and execution stages.}
+        \label{fig:sfc-stage-diff}
+    \end{figure}
+
+% ==============================================================================
+    \chapter{Discussion}
+    \label{chap:discussion}
+
+    \section{Answers to the research questions}
+    \textbf{RQ1 (detection):} Stable-block lane-change detection combined with follower pairing yields 10,026 cut-ins from 11,856 lane changes across recordings 01--60. Internal consistency checks show near-perfect agreement between geometry-based and dataset-provided neighbour relations, and the inferred-lane (XY-lane) variant matches cut-in events with $F_1 = 0.998938$.
+
+    \textbf{RQ2 (pair-consistent indicators):} Pair-consistent DHW/THW/TTC can be computed for the cutter--follower pair after selecting a geometry model that matches dataset-provided indicators for same-lane predecessor pairs. Stage-wise summaries show clear separation between risk groups in execution-stage headway measures under the chosen THW label.
+
+    \textbf{RQ3 (context encoding):} A compact 3$\times$3 occupancy grid provides interpretable local context around the cutter. Mirror normalisation is practically important: approximately half of events are mirrored to enforce a canonical orientation, reducing direction-induced representation differences.
+
+    \section{Interpretation and implications}
+    A key outcome is methodological rather than purely statistical: the pipeline ensures that surrogate safety measures are computed for the correct interaction pair. This is essential when analysing cut-ins, where the default dataset predecessor relation may not correspond to the cutter--follower pair around the lane-change moment.
+
+    The TTC vs THW analysis illustrates that different indicators capture different notions of ``risk''. TTC focuses on closing-speed conflict, while THW can be small even without closing speed (e.g., short gap at similar speeds). Therefore, indicator choice should be matched to the intended interpretation and application.
+
+    \section{Threats to validity}
+    \textbf{Construct validity:} Risk is operationalised via a THW threshold in the execution stage. Alternative operationalisations (e.g., TTC thresholds, required deceleration / braking-demand indicators, or post-encroachment measures) would label different subsets of events, so the reported ``risk ratio'' should be interpreted as \emph{prevalence under this definition}.
+
+    \textbf{Internal validity:} Detection and metric computations depend on lane assignment and coordinate conventions (e.g., bounding-box reference points). Errors in these inputs can shift onset $t_0$ and bias DHW/THW/TTC. We mitigate this via (i) geometry model selection against dataset-provided indicators where applicable, and (ii) independent reconstruction variants (neighbour reconstruction and inferred lanes) that agree closely with the main pipeline.
+
+    \textbf{External validity:} Results are based on \textit{highD} highway recordings and may not transfer directly to urban driving, ramp merges, or different sensing setups. Differences in speed limits, lane geometry, and traffic composition can change both cut-in dynamics and the interpretation of surrogate measures.
+
+    \textbf{Conclusion validity:} We report descriptive differences, sensitivity checks, and consistency checks. The thesis does not make causal claims about driver behaviour or safety outcomes, and statistical significance is not emphasised over effect magnitude.
+
+    \section{Future work}
+    Natural next steps include (i) adding additional surrogate measures for broader comparison, (ii) evaluating threshold sensitivity more systematically, and (iii) assessing how well context features support downstream prediction or clustering under cross-recording splits.
+
+% ==============================================================================
+    \chapter{Conclusion}
+    \label{chap:conclusion}
+
+    This thesis delivers a reproducible cut-in analysis workflow from raw highD trajectories to analysis-ready artefacts. The pipeline detects lane changes and cut-ins, computes DHW/THW/TTC for the correct cutter--follower pair, and aggregates behaviour across intention, decision, execution, and recovery stages. On recordings 01--60, the workflow yields 10,023 valid cut-in events and supports transparent risk labelling (2,018 risky under an execution-stage THW threshold of \SI{0.7}{\second}).
+
+    Beyond scalar safety summaries, the thesis establishes a direction-consistent context encoding branch: binary occupancy codes, mirror normalisation, and stage-level weighted context features. Together, these outputs provide an auditable and reusable baseline for cut-in risk analysis that can be extended to indicator benchmarking and downstream modelling.
+
+% ==============================================================================
+% Bibliography (self-contained, no BibTeX required)
+% ==============================================================================
+    \cleardoublepage
+    \addcontentsline{toc}{chapter}{Bibliography}
+    \begin{thebibliography}{99}
+
+        \bibitem{highd_2018}
+        R.~Krajewski, J.~Bock, L.~Kloeker, and L.~Eckstein.
+        \newblock The highD dataset: A drone dataset of naturalistic vehicle trajectories on German highways for validation of highly automated driving systems.
+        \newblock In \emph{Proceedings of the IEEE 21st International Conference on Intelligent Transportation Systems (ITSC)}, 2018.
+        \newblock doi:10.1109/ITSC.2018.8569552.
+
+        \bibitem{hayward1972}
+        J.~C. Hayward.
+        \newblock Near-miss determination through use of a scale of danger.
+        \newblock \emph{Highway Research Record}, (384):24--34, 1972.
+
+        \bibitem{ssam2008}
+        D.~Gettman, L.~Pu, T.~Sayed, and S.~Shelby.
+        \newblock \emph{Surrogate Safety Assessment Model and Validation}.
+        \newblock Technical Report FHWA-HRT-08-051, Federal Highway Administration (FHWA), 2008.
+
+        \bibitem{minderhoud2001}
+        M.~M. Minderhoud and P.~H.~L. Bovy.
+        \newblock Extended time-to-collision measures for road traffic safety assessment.
+        \newblock \emph{Accident Analysis \& Prevention}, 33(1):89--97, 2001.
+
+        \bibitem{wang2021ssm}
+        C.~Wang, Y.~Xie, H.~Huang, and P.~Liu.
+        \newblock A review of surrogate safety measures and their applications in connected and automated vehicles safety modeling.
+        \newblock \emph{Accident Analysis \& Prevention}, 157:106157, 2021.
+        \newblock doi:10.1016/j.aap.2021.106157.
+
+        \bibitem{johnsson2021validation}
+        C.~Johnsson, A.~Laureshyn, and C.~D'Agostino.
+        \newblock A relative approach to the validation of surrogate measures of safety.
+        \newblock \emph{Accident Analysis \& Prevention}, 161:106350, 2021.
+        \newblock doi:10.1016/j.aap.2021.106350.
+
+        \bibitem{hwang2022fsmrl}
+        S.~Hwang, K.~Lee, H.~Jeon, and D.~Kum.
+        \newblock Autonomous vehicle cut-in algorithm for lane-merging scenarios via policy-based reinforcement learning nested within finite-state machine.
+        \newblock \emph{IEEE Transactions on Intelligent Transportation Systems}, 23(10):17594--17606, 2022.
+        \newblock doi:10.1109/TITS.2022.3153848.
+
+        \bibitem{shangguan2022}
+        Q.~Shangguan, T.~Fu, J.~Wang, S.~Fang, and L.~Fu.
+        \newblock A proactive lane-changing risk prediction framework considering driving intention recognition and different lane-changing patterns.
+        \newblock \emph{Accident Analysis \& Prevention}, 164:106500, 2022.
+        \newblock doi:10.1016/j.aap.2021.106500.
+
+        \bibitem{liu2025multitask}
+        Y.~Liu, J.~Zhang, N.~Lyu, and Q.~Zhao.
+        \newblock Predicting lane change maneuver and associated collision risks based on multi-task learning.
+        \newblock \emph{Accident Analysis \& Prevention}, 209:107830, 2025.
+        \newblock doi:10.1016/j.aap.2024.107830.
+
+        \bibitem{wanggao2025highd}
+        Z.~Wang and Y.~Gao.
+        \newblock Lane change inconsistencies in the highD dataset.
+        \newblock \emph{Findings}, 2025.
+        \newblock doi:10.32866/001c.132341.
+
+        \bibitem{kitchenham2007}
+        B.~Kitchenham and S.~Charters.
+        \newblock Guidelines for performing systematic literature reviews in software engineering.
+        \newblock Technical report, EBSE, 2007.
+
+        \bibitem{wohlin2014}
+        C.~Wohlin.
+        \newblock Guidelines for snowballing in systematic literature studies and a replication in software engineering.
+        \newblock In \emph{Proceedings of the 18th International Conference on Evaluation and Assessment in Software Engineering (EASE)}, 2014.
+
+        \bibitem{treiber2000idm}
+        M.~Treiber, A.~Hennecke, and D.~Helbing.
+        \newblock Congested traffic states in empirical observations and microscopic simulations.
+        \newblock \emph{Physical Review E}, 62(2):1805--1824, 2000.
+        \newblock (Introduces the Intelligent Driver Model, IDM.)
+
+        \bibitem{kesting2007mobil}
+        A.~Kesting, M.~Treiber, and D.~Helbing.
+        \newblock General lane-changing model MOBIL for car-following models.
+        \newblock \emph{Transportation Research Record}, 1999(1):86--94, 2007.
+
+        \bibitem{elfes1989}
+        A.~Elfes.
+        \newblock Using occupancy grids for mobile robot perception and navigation.
+        \newblock \emph{Computer}, 22(6):46--57, 1989.
+
+        \bibitem{deo2018}
+        N.~Deo and M.~M. Trivedi.
+        \newblock Convolutional social pooling for vehicle trajectory prediction.
+        \newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)}, 2018.
+
+        \bibitem{hilbert1891}
+        D.~Hilbert.
+        \newblock \"Uber die stetige Abbildung einer Linie auf ein Fl\"achenst\"uck.
+        \newblock \emph{Mathematische Annalen}, 38:459--460, 1891.
+
+        \bibitem{moon2001}
+        B.~Moon, H.~V. Jagadish, C.~Faloutsos, and J.~H. Saltz.
+        \newblock Analysis of the clustering properties of the Hilbert space-filling curve.
+        \newblock \emph{IEEE Transactions on Knowledge and Data Engineering}, 13(1):124--141, 2001.
+
+    \end{thebibliography}
+
+% ==============================================================================
+% Appendix
+% ==============================================================================
+    \appendix
+    \cleardoublepage
+
+    \chapter{Appendix: Plain-language algorithms}
+
+    \section{Lane change detection (stable blocks)}
+    \begin{enumerate}[leftmargin=1.6em]
+  \item For each vehicle, read its lane id over time.
+  \item When the lane id changes from $L_1$ to $L_2$, check:
+  \begin{itemize}[leftmargin=1.2em]
+    \item the vehicle stayed in $L_1$ for at least $N_\text{before}$ frames before the change,
+    \item the vehicle stayed in $L_2$ for at least $N_\text{after}$ frames after the change.
+  \end{itemize}
+  \item If both checks pass, emit a lane change event from $L_1$ to $L_2$.
+    \end{enumerate}
+
+    \section{Cut-in detection (how we find the follower)}
+    \begin{enumerate}[leftmargin=1.6em]
+  \item Start from a lane change event where the cutter enters a target lane.
+  \item Move forward frame by frame within a configured search window.
+  \item In each frame, look for any vehicle in the target lane whose same-lane \texttt{precedingId} equals the cutter id.
+  \item When this first happens, that vehicle is the follower and the frame is $t_0$.
+  \item Require that the follower relation holds for a minimum number of frames to reduce noise.
+    \end{enumerate}
+
+    \section{DHW, THW, and TTC for the interacting pair}
+    \begin{itemize}[leftmargin=1.2em]
+  \item DHW is computed as the longitudinal gap between the cutter's rear and the follower's front.
+  \item THW is DHW divided by follower speed (with safe handling of near-zero speeds).
+  \item TTC is DHW divided by closing speed when the follower is gaining on the cutter; otherwise TTC is treated as infinite.
+    \end{itemize}
+
+\end{document}

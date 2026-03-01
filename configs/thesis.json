@@ -65,7 +65,8 @@
     }
   },
   "step09": {
-    "recordings": "1-10"
+    "recordings": "1-10",
+    "make_plot": true
   },
   "step11": {
     "lat_min": 0.6,

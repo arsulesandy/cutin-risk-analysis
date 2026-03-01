@@ -240,11 +240,11 @@ ls data/raw/highD-dataset-v1.0/data | head
 .venv/bin/python scripts/step05_visualize_top_cutins.py
 .venv/bin/python scripts/step06_neighbor_reconstruction_report.py
 .venv/bin/python scripts/step07_xy_lane_pipeline_report.py
-.venv/bin/python scripts/step08_stage_features.py --no-make-plot
-.venv/bin/python scripts/step09_batch_stage_features.py --no-make-plot
+.venv/bin/python scripts/step08_stage_features.py
+.venv/bin/python scripts/step09_batch_stage_features.py
 .venv/bin/python scripts/step10_risk_report.py
 .venv/bin/python scripts/step14_sfc_binary_encode.py
-.venv/bin/python scripts/step14_sfc_binary_report.py --no-make-plot
+.venv/bin/python scripts/step14_sfc_binary_report.py
 .venv/bin/python scripts/step15a_sfc_mirror_normalize.py
 .venv/bin/python scripts/step15b_sfc_weighted_stage_features.py --mode distance
 .venv/bin/python scripts/step15b_sfc_weighted_stage_features.py --mode ttc

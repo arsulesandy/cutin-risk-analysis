@@ -1,2 +1,0 @@
-heldout_recording,lat_thr,spd_thr,precision,recall,f1,tp,fp,fn,tn,n_test
-1,0.6,0.0,0.13043478260869565,0.6428571428571429,0.21686746987951808,9,60,5,24,98

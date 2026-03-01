@@ -13,6 +13,7 @@ from cutin_risk.datasets.highd.schema import RECORDING_META_SUFFIX
 from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir, write_step_markdown
 from cutin_risk.paths import dataset_root_path, output_path, project_root
+from cutin_risk.thesis_config import thesis_bool
 
 
 def parse_recordings_arg(value: str) -> list[str]:
@@ -58,8 +59,8 @@ def main() -> None:
     parser.add_argument(
         "--make-plot",
         action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Also generate plots per recording (slower, more files).",
+        default=thesis_bool("step09.make_plot", True),
+        help="Generate plots per recording (disable with --no-make-plot).",
     )
 
     args = parser.parse_args()

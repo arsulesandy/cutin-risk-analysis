@@ -1,2 +1,0 @@
-recording_id,rows,vehicles,preceding_overall_accuracy,preceding_accuracy_when_truth_has_neighbor,following_overall_accuracy,following_accuracy_when_truth_has_neighbor,lane_changes_oracle,lane_changes_xy,cutins_oracle,cutins_xy,cutin_precision,cutin_recall,cutin_f1
-01,348750.0,1047.0,0.9998594982078853,0.9998323560452791,0.9998594982078853,0.9998323560452791,118.0,118.0,103.0,103.0,1.0,1.0,1.0

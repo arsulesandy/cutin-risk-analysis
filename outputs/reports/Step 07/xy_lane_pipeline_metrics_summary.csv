@@ -1,6 +1,0 @@
-metric,value
-mean_preceding_overall_accuracy,0.9998594982078853
-mean_following_overall_accuracy,0.9998594982078853
-mean_cutin_precision,1.0
-mean_cutin_recall,1.0
-mean_cutin_f1,1.0
