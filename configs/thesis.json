@@ -179,8 +179,8 @@
     "thw_risk": 0.7,
     "step15c_stage": "decision",
     "step15c_min_frames": 10,
-    "suspicious_raw_dhw_threshold": 1.0,
-    "suspicious_raw_thw_threshold": 0.05
+    "suspicious_dhw_threshold": 0.0,
+    "suspicious_thw_threshold": 0.0
   },
   "step18": {
     "n_bootstrap": 3000,

@@ -119,10 +119,6 @@ def _event_minima(
     relation_start_frame: int,
     relation_end_frame: int,
 ) -> dict[str, float]:
-    raw_dhw_min = float(ts["dhw"].min())
-    raw_thw_min = _finite_min(ts["thw"].tolist())
-    raw_ttc_min = _finite_min(ts["ttc"].tolist())
-
     relation_mask = (
         (ts["frame"].astype(int) >= int(relation_start_frame))
         & (ts["frame"].astype(int) <= int(relation_end_frame))
@@ -138,9 +134,6 @@ def _event_minima(
         "dhw_min": float(metric_dhw.min()),
         "thw_min": _finite_min(metric_ts["thw"].tolist(), lower_bound=0.0),
         "ttc_min": _finite_min(metric_ts["ttc"].tolist()),
-        "dhw_min_raw_window": raw_dhw_min,
-        "thw_min_raw_window": raw_thw_min,
-        "ttc_min_raw_window": raw_ttc_min,
     }
 
 
@@ -158,9 +151,6 @@ def _write_per_recording_csv(rows: list[dict[str, int | float | str]], out_path:
                 "dhw_min",
                 "thw_min",
                 "ttc_min",
-                "dhw_min_raw_window",
-                "thw_min_raw_window",
-                "ttc_min_raw_window",
                 "finite_thw_events",
                 "finite_ttc_events",
                 "model_position_reference",
@@ -192,9 +182,6 @@ def _write_event_csv(rows: list[dict[str, int | float | str]], out_path: Path) -
                 "dhw_min",
                 "thw_min",
                 "ttc_min",
-                "dhw_min_raw_window",
-                "thw_min_raw_window",
-                "ttc_min_raw_window",
             ],
         )
         writer.writeheader()
@@ -284,8 +271,7 @@ def _build_details_markdown(
         f"- Event window `pre_frames`: {pre_frames}",
         f"- Event window `post_frames`: {post_frames}",
         "- Event minima are computed on relation frames only (`relation_start_frame..relation_end_frame`).",
-        "- Thesis-facing minima are clipped to non-negative for DHW/THW.",
-        "- Raw window minima are still exported as diagnostic columns (`*_raw_window`).",
+        "- Event minima are clipped to non-negative for DHW/THW.",
         f"- Validation `sample_n`: {validation_sample_n}",
         f"- Validation `random_state`: {validation_random_state}",
     ]
@@ -461,9 +447,6 @@ def main() -> None:
                     "dhw_min": dhw_min,
                     "thw_min": thw_min,
                     "ttc_min": ttc_min,
-                    "dhw_min_raw_window": float(mins["dhw_min_raw_window"]),
-                    "thw_min_raw_window": float(mins["thw_min_raw_window"]),
-                    "ttc_min_raw_window": float(mins["ttc_min_raw_window"]),
                 }
                 recording_event_rows.append(row)
                 event_summaries.append(row)
@@ -483,18 +466,6 @@ def main() -> None:
                     "dhw_min": min((float(r["dhw_min"]) for r in recording_event_rows), default=float("nan")),
                     "thw_min": min((float(r["thw_min"]) for r in recording_event_rows), default=float("inf")),
                     "ttc_min": min((float(r["ttc_min"]) for r in recording_event_rows), default=float("inf")),
-                    "dhw_min_raw_window": min(
-                        (float(r["dhw_min_raw_window"]) for r in recording_event_rows),
-                        default=float("nan"),
-                    ),
-                    "thw_min_raw_window": min(
-                        (float(r["thw_min_raw_window"]) for r in recording_event_rows),
-                        default=float("inf"),
-                    ),
-                    "ttc_min_raw_window": min(
-                        (float(r["ttc_min_raw_window"]) for r in recording_event_rows),
-                        default=float("inf"),
-                    ),
                     "finite_thw_events": sum(math.isfinite(float(r["thw_min"])) for r in recording_event_rows),
                     "finite_ttc_events": sum(math.isfinite(float(r["ttc_min"])) for r in recording_event_rows),
                     "model_position_reference": model.position_reference,

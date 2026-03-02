@@ -77,14 +77,14 @@ def main() -> None:
         ),
     )
     ap.add_argument(
-        "--suspicious-raw-dhw-threshold",
+        "--suspicious-dhw-threshold",
         type=float,
-        default=thesis_float("step17.suspicious_raw_dhw_threshold", 1.0, min_value=0.0),
+        default=thesis_float("step17.suspicious_dhw_threshold", 0.0, min_value=0.0),
     )
     ap.add_argument(
-        "--suspicious-raw-thw-threshold",
+        "--suspicious-thw-threshold",
         type=float,
-        default=thesis_float("step17.suspicious_raw_thw_threshold", 0.05, min_value=0.0),
+        default=thesis_float("step17.suspicious_thw_threshold", 0.0, min_value=0.0),
     )
     ap.add_argument("--out-dir", type=str, default=str(output_path("reports/final")))
     args = ap.parse_args()
@@ -120,8 +120,6 @@ def main() -> None:
         "relation_start_frame",
         "dhw_min",
         "thw_min",
-        "dhw_min_raw_window",
-        "thw_min_raw_window",
     }
     missing_events = sorted(required_event_cols - set(events.columns))
     if missing_events:
@@ -160,21 +158,14 @@ def main() -> None:
     events = events.copy()
     events["dhw_min"] = pd.to_numeric(events["dhw_min"], errors="coerce")
     events["thw_min"] = pd.to_numeric(events["thw_min"], errors="coerce")
-    events["dhw_min_raw_window"] = pd.to_numeric(events["dhw_min_raw_window"], errors="coerce")
-    events["thw_min_raw_window"] = pd.to_numeric(events["thw_min_raw_window"], errors="coerce")
 
     suspicious = events.loc[
-        (
-            (events["dhw_min"] <= 0.0) | (events["thw_min"] <= 0.0)
-        )
-        & (
-            (events["dhw_min_raw_window"] < -abs(float(args.suspicious_raw_dhw_threshold)))
-            | (events["thw_min_raw_window"] < -abs(float(args.suspicious_raw_thw_threshold)))
-        )
+        (events["dhw_min"] <= float(args.suspicious_dhw_threshold))
+        | (events["thw_min"] <= float(args.suspicious_thw_threshold))
     ].copy()
 
     suspicious = suspicious.sort_values(
-        ["dhw_min_raw_window", "thw_min_raw_window"],
+        ["dhw_min", "thw_min"],
         ascending=[True, True],
     )
     suspicious_out = out_dir / "geometry_audit_suspicious_events.csv"
@@ -210,8 +201,6 @@ def main() -> None:
                 "Start frame",
                 "dhw_min",
                 "thw_min",
-                "dhw_raw_min",
-                "thw_raw_min",
             ],
             rows=[
                 [
@@ -221,12 +210,10 @@ def main() -> None:
                     int(r.relation_start_frame),
                     f"{float(r.dhw_min):.3f}",
                     f"{float(r.thw_min):.3f}",
-                    f"{float(r.dhw_min_raw_window):.3f}",
-                    f"{float(r.thw_min_raw_window):.3f}",
                 ]
                 for _, r in top_susp.iterrows()
             ],
-            align=["left", "right", "right", "right", "right", "right", "right", "right"],
+            align=["left", "right", "right", "right", "right", "right"],
         )
 
     detail_table = markdown_table(
