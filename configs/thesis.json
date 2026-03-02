@@ -1,6 +1,6 @@
 {
   "pipeline": {
-    "recordings_batch": "1-10",
+    "recordings_batch": "all",
     "recordings_step16": "01,02,03,04,05",
     "thw_risk": 0.7,
     "ci_bootstrap": 3000,
@@ -65,7 +65,7 @@
     }
   },
   "step09": {
-    "recordings": "1-10",
+    "recordings": "all",
     "make_plot": true
   },
   "step11": {

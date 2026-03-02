@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 PYTHON_BIN="${PYTHON_BIN:-python}"
-RECORDINGS_BATCH="${RECORDINGS_BATCH:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_str; print(thesis_str("pipeline.recordings_batch", "1-10"))')}"
+RECORDINGS_BATCH="${RECORDINGS_BATCH:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_str; print(thesis_str("pipeline.recordings_batch", "all"))')}"
 RECORDINGS_STEP16="${RECORDINGS_STEP16:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_str; print(thesis_str("pipeline.recordings_step16", "01,02,03,04,05"))')}"
 THW_RISK="${THW_RISK:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_float; print(thesis_float("pipeline.thw_risk", 0.7, min_value=0.0))')}"
 CI_BOOTSTRAP="${CI_BOOTSTRAP:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_int; print(thesis_int("pipeline.ci_bootstrap", 3000, min_value=1))')}"
