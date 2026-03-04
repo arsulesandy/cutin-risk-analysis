@@ -9,7 +9,7 @@ Workflow:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple, Optional, Literal
+from typing import Dict, Tuple, Optional, Literal, Iterable
 
 import numpy as np
 
@@ -203,10 +203,92 @@ def _nearest_alongside(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float, 
     return best_id
 
 
+def _get_single_row(indexed, vehicle_id: int, frame: int):
+    """Retrieve a single row from a (id, frame)-indexed table."""
+    try:
+        row = indexed.loc[(int(vehicle_id), int(frame))]
+    except Exception:
+        return None
+    try:
+        import pandas as pd  # local import to avoid hard dependency here
+
+        if isinstance(row, pd.DataFrame):
+            return row.iloc[0]
+    except Exception:
+        pass
+    return row
+
+
+def _center_and_half_length(indexed, vehicle_id: int, frame: int) -> tuple[float, float] | None:
+    """Return longitudinal center and half length from highD bbox x/width fields."""
+    row = _get_single_row(indexed, vehicle_id, frame)
+    if row is None:
+        return None
+    try:
+        x = float(row["x"])
+        width = float(row["width"])
+    except Exception:
+        return None
+    if not (np.isfinite(x) and np.isfinite(width)):
+        return None
+    return float(x + (0.5 * width)), float(0.5 * width)
+
+
+def _nearest_alongside_with_geometry(
+        *,
+        indexed,
+        frame: int,
+        cutter_id: int | None,
+        candidate_ids: Iterable[int],
+        s_sorted: np.ndarray,
+        ids_sorted: np.ndarray,
+        s0: float,
+        thresh: float,
+        edge_tol: float = 0.25,
+) -> int:
+    """
+    Geometry-aware alongside lookup.
+
+    Accept as alongside if either:
+    - center-distance criterion passes (legacy-compatible): |delta_s| <= thresh
+    - longitudinal intervals overlap / almost overlap: edge_gap <= edge_tol
+    """
+    if indexed is None or cutter_id is None:
+        return _nearest_alongside(s_sorted, ids_sorted, s0, thresh=thresh)
+
+    cutter_geom = _center_and_half_length(indexed, int(cutter_id), int(frame))
+    if cutter_geom is None:
+        return _nearest_alongside(s_sorted, ids_sorted, s0, thresh=thresh)
+    cutter_center, cutter_half = cutter_geom
+
+    best_id = 0
+    best_metric = float("inf")
+    for cid in candidate_ids:
+        if cid is None or int(cid) == 0:
+            continue
+        geom = _center_and_half_length(indexed, int(cid), int(frame))
+        if geom is None:
+            continue
+        cand_center, cand_half = geom
+        center_gap = abs(cand_center - cutter_center)
+        edge_gap = center_gap - (cutter_half + cand_half)
+        if (center_gap <= float(thresh)) or (edge_gap <= float(edge_tol)):
+            metric = max(0.0, edge_gap)
+            if metric < best_metric:
+                best_metric = metric
+                best_id = int(cid)
+
+    if best_id != 0:
+        return best_id
+    return _nearest_alongside(s_sorted, ids_sorted, s0, thresh=thresh)
+
+
 def build_binary_grid_3x3(
         *,
         snapshots: Dict[Tuple[int, int, int], Tuple[np.ndarray, np.ndarray]],
+        indexed=None,
         frame: int,
+        cutter_id: int | None = None,
         cutter_lane: int,
         cutter_sign: int,
         cutter_s: float,
@@ -246,7 +328,28 @@ def build_binary_grid_3x3(
 
         # "Alongside" only makes sense in adjacent lanes (left/right)
         if d_lane != 0:
-            aid = _nearest_alongside(s_sorted, ids_sorted, cutter_s, thresh=float(options.alongside_s_thresh))
+            pos = int(np.searchsorted(s_sorted, cutter_s, side="left"))
+            candidate_ids = []
+            for idx in (pos - 1, pos, pos + 1):
+                if 0 <= idx < len(s_sorted):
+                    candidate_ids.append(int(ids_sorted[idx]))
+            aid = _nearest_alongside_with_geometry(
+                indexed=indexed,
+                frame=int(frame),
+                cutter_id=cutter_id,
+                candidate_ids=candidate_ids,
+                s_sorted=s_sorted,
+                ids_sorted=ids_sorted,
+                s0=float(cutter_s),
+                thresh=float(options.alongside_s_thresh),
+            )
+            # Adjacent-lane occupancy is exclusive per neighbor assignment.
+            if aid != 0 and aid == pid:
+                pid = 0
+                g[0, col] = 0
+            if aid != 0 and aid == fid:
+                fid = 0
+                g[2, col] = 0
             if aid != 0:
                 g[1, col] = 1
 
@@ -267,7 +370,9 @@ def embed_3x3_into_4x4(g3: np.ndarray) -> np.ndarray:
 def encode_frame_binary_sfc(
         *,
         snapshots: Dict[Tuple[int, int, int], Tuple[np.ndarray, np.ndarray]],
+        indexed=None,
         frame: int,
+        cutter_id: int | None = None,
         cutter_lane: int,
         cutter_sign: int,
         cutter_s: float,
@@ -279,7 +384,9 @@ def encode_frame_binary_sfc(
     """
     g3 = build_binary_grid_3x3(
         snapshots=snapshots,
+        indexed=indexed,
         frame=frame,
+        cutter_id=cutter_id,
         cutter_lane=cutter_lane,
         cutter_sign=cutter_sign,
         cutter_s=cutter_s,

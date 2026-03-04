@@ -190,7 +190,9 @@ def main() -> None:
 
                     code, _ = encode_frame_binary_sfc(
                         snapshots=snapshots,
+                        indexed=indexed,
                         frame=f,
+                        cutter_id=cutter_id,
                         cutter_lane=cutter_lane,
                         cutter_sign=cutter_sign,
                         cutter_s=cutter_s,

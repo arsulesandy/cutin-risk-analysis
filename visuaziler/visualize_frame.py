@@ -83,9 +83,15 @@ class VisualizationPlot(object):
         self.pick_event_cid = None
         self.key_event_cid = None
         self.mouse_event_cid = None
+        self.scroll_event_cid = None
         self.playing = False
         self.playback_fps = 12
         self.playback_timer = None
+        self.sfc_eval_frame = None
+        self.sfc_eval_index = 0
+        self.sfc_eval_slider = None
+        self.sfc_eval_slider_count = 0
+        self._syncing_sfc_eval_slider = False
         self.default_xlim = None
         self.default_ylim = None
         self.timeline_event_points = []
@@ -329,6 +335,7 @@ class VisualizationPlot(object):
     def _build_info_panels(self):
         self.ax_sfc_info = self.fig.add_axes([0.02, self.info_bottom, 0.72, self.info_height])
         self.ax_status = self.fig.add_axes([0.75, self.info_bottom, 0.23, self.info_height])
+        self.ax_sfc_eval_slider = self.fig.add_axes([0.04, self.info_bottom + 0.01, 0.68, 0.018])
 
         for panel in (self.ax_sfc_info, self.ax_status):
             panel.set_facecolor(self.THEME["panel_soft"])
@@ -373,6 +380,7 @@ class VisualizationPlot(object):
             fontweight="bold",
         )
         self._draw_status_legend()
+        self._build_sfc_eval_slider(1)
 
     def _build_controls(self):
         control_gap = 0.01
@@ -567,6 +575,9 @@ class VisualizationPlot(object):
         if self.mouse_event_cid is not None:
             self.fig.canvas.mpl_disconnect(self.mouse_event_cid)
         self.mouse_event_cid = self.fig.canvas.mpl_connect("button_press_event", self.on_mouse_press)
+        if self.scroll_event_cid is not None:
+            self.fig.canvas.mpl_disconnect(self.scroll_event_cid)
+        self.scroll_event_cid = self.fig.canvas.mpl_connect("scroll_event", self.on_scroll)
 
     def _style_button(self, button):
         button.ax.set_facecolor(self.THEME["button"])
@@ -614,6 +625,37 @@ class VisualizationPlot(object):
             fontweight="bold",
             clip_on=False,
         )
+
+    def _build_sfc_eval_slider(self, max_value):
+        self.ax_sfc_eval_slider.cla()
+        self.ax_sfc_eval_slider.set_facecolor(self.THEME["panel_soft"])
+        slider = Slider(
+            self.ax_sfc_eval_slider,
+            "SFC Row",
+            1,
+            max(1, int(max_value)),
+            valinit=max(1, int(self.sfc_eval_index + 1)),
+            valfmt="%0.0f",
+            valstep=1,
+        )
+        self._style_slider(slider)
+        self._decorate_slider_axis(self.ax_sfc_eval_slider, "SFC Row")
+        slider.on_changed(self.update_sfc_eval_slider)
+        self.sfc_eval_slider = slider
+        self.sfc_eval_slider_count = max(1, int(max_value))
+        return slider
+
+    def _sync_sfc_eval_slider(self, evaluations_count):
+        count = max(1, int(evaluations_count))
+        if self.sfc_eval_slider is None or self.sfc_eval_slider_count != count:
+            self._build_sfc_eval_slider(count)
+        if self.sfc_eval_slider is None:
+            return
+        self.sfc_eval_index = int(max(0, min(self.sfc_eval_index, count - 1)))
+        self._syncing_sfc_eval_slider = True
+        self.sfc_eval_slider.set_val(self.sfc_eval_index + 1)
+        self.sfc_eval_slider.valtext.set_text("{}/{}".format(int(self.sfc_eval_index + 1), int(count)))
+        self._syncing_sfc_eval_slider = False
 
     def _build_frame_slider(self):
         self.ax_frame_slider.cla()
@@ -750,6 +792,8 @@ class VisualizationPlot(object):
         self.selected_recording_id = self.active_recording_id
         self.maximum_frames = self._compute_maximum_frame()
         self.current_frame = 1
+        self.sfc_eval_frame = None
+        self.sfc_eval_index = 0
         self.sfc_codes_by_frame = self._load_sfc_codes_by_frame(
             loaded_arguments.get("sfc_codes_csv"),
             loaded_arguments.get("input_path"),
@@ -998,6 +1042,20 @@ class VisualizationPlot(object):
         self._update_header_state()
         self.fig.canvas.draw_idle()
 
+    def update_sfc_eval_slider(self, value):
+        if self._syncing_sfc_eval_slider:
+            return
+        evaluations = self._build_sfc_frame_evaluations()
+        if not evaluations:
+            self.sfc_eval_index = 0
+            return
+        target_index = int(max(0, min(int(round(value)) - 1, len(evaluations) - 1)))
+        if target_index == self.sfc_eval_index:
+            return
+        self.sfc_eval_index = target_index
+        self._update_sfc_matrix_overlay()
+        self.fig.canvas.draw_idle()
+
     def update_button_play_pause(self, _):
         self._toggle_playback(force_stop=False)
 
@@ -1099,6 +1157,25 @@ class VisualizationPlot(object):
         self.current_frame = target_frame
         self.changed_button = True
         self.trigger_update()
+
+    def on_scroll(self, event):
+        if event is None:
+            return
+        if event.inaxes not in (self.ax_sfc_info, self.ax_sfc_eval_slider):
+            return
+
+        evaluations = self._build_sfc_frame_evaluations()
+        if len(evaluations) <= 1:
+            return
+
+        direction = str(getattr(event, "button", "")).lower()
+        delta = -1 if direction == "up" else 1
+        next_index = int(max(0, min(self.sfc_eval_index + delta, len(evaluations) - 1)))
+        if next_index == self.sfc_eval_index:
+            return
+        self.sfc_eval_index = next_index
+        self._update_sfc_matrix_overlay()
+        self.fig.canvas.draw_idle()
 
     def trigger_update(self):
         self.remove_patches()
@@ -1584,6 +1661,11 @@ class VisualizationPlot(object):
 
         evaluations = self._build_sfc_frame_evaluations()
         frame = int(self.current_frame)
+        if self.sfc_eval_frame != frame:
+            _, default_idx = self._select_focus_evaluation(evaluations)
+            self.sfc_eval_index = int(default_idx)
+            self.sfc_eval_frame = frame
+        self._sync_sfc_eval_slider(len(evaluations))
         if not evaluations:
             self.ax_sfc_info.text(
                 0.02,
@@ -1608,7 +1690,8 @@ class VisualizationPlot(object):
             )
             return
 
-        focus, focus_index = self._select_focus_evaluation(evaluations)
+        focus_index = int(max(0, min(self.sfc_eval_index, len(evaluations) - 1)))
+        focus = evaluations[focus_index]
         entry = focus["entry"]
         solution_matrix = focus["solution_matrix"]
         reference_matrix = focus["reference_matrix"]
@@ -1621,7 +1704,7 @@ class VisualizationPlot(object):
         self.ax_sfc_info.text(
             0.02,
             0.97,
-            "Frame {} | SFC Evaluation Board | showing {}/{} (mismatch-first)".format(
+            "Frame {} | SFC Evaluation Board | showing {}/{}".format(
                 frame,
                 int(focus_index + 1),
                 int(len(evaluations)),
@@ -1632,6 +1715,17 @@ class VisualizationPlot(object):
             fontsize=9.0,
             color=self.THEME["text_main"],
             fontweight="bold",
+            fontfamily="monospace",
+        )
+        self.ax_sfc_info.text(
+            0.02,
+            0.92,
+            "Use SFC Row slider or mouse wheel over this panel to browse entries.",
+            transform=self.ax_sfc_info.transAxes,
+            ha="left",
+            va="top",
+            fontsize=7.7,
+            color=self.THEME["text_muted"],
             fontfamily="monospace",
         )
         self.ax_sfc_info.text(

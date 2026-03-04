@@ -75,6 +75,37 @@ def _nearest_alongside(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float, 
     return best_id, float(best_abs) if best_id != 0 else float("inf")
 
 
+def _get_single_row(indexed, vehicle_id: int, frame: int):
+    """Retrieve a single row from a (id, frame)-indexed table."""
+    try:
+        row = indexed.loc[(int(vehicle_id), int(frame))]
+    except Exception:
+        return None
+    try:
+        import pandas as pd  # local import to avoid hard dependency here
+
+        if isinstance(row, pd.DataFrame):
+            return row.iloc[0]
+    except Exception:
+        pass
+    return row
+
+
+def _center_and_half_length(indexed, vehicle_id: int, frame: int) -> tuple[float, float] | None:
+    """Return longitudinal center and half length from highD bbox x/width fields."""
+    row = _get_single_row(indexed, vehicle_id, frame)
+    if row is None:
+        return None
+    try:
+        x = float(row["x"])
+        width = float(row["width"])
+    except Exception:
+        return None
+    if not (np.isfinite(x) and np.isfinite(width)):
+        return None
+    return float(x + (0.5 * width)), float(0.5 * width)
+
+
 def _distance_score(ds: float, rng: Optional[float]) -> float:
     """Map distance to [0, 1] with linear gate or exponential fallback."""
     if not np.isfinite(ds):
@@ -168,9 +199,40 @@ def grid3x3_weighted(
 
         # alongside only in adjacent lanes (still use distance score even in TTC mode)
         if d_lane != 0:
-            aid, ds_side = _nearest_alongside(
-                s_sorted, ids_sorted, cutter_s, thresh=float(options.alongside_s_thresh)
-            )
+            aid = 0
+            ds_side = float("inf")
+            cutter_geom = _center_and_half_length(indexed, cutter_id, frame)
+            if cutter_geom is not None:
+                cutter_center, cutter_half = cutter_geom
+                pos = int(np.searchsorted(s_sorted, cutter_s, side="left"))
+                best_metric = float("inf")
+                for idx in (pos - 1, pos, pos + 1):
+                    if not (0 <= idx < len(s_sorted)):
+                        continue
+                    cand_id = int(ids_sorted[idx])
+                    geom = _center_and_half_length(indexed, cand_id, frame)
+                    if geom is None:
+                        continue
+                    cand_center, cand_half = geom
+                    center_gap = abs(cand_center - cutter_center)
+                    edge_gap = center_gap - (cutter_half + cand_half)
+                    if (center_gap <= float(options.alongside_s_thresh)) or (edge_gap <= 0.25):
+                        metric = max(0.0, edge_gap)
+                        if metric < best_metric:
+                            best_metric = metric
+                            aid = cand_id
+                            ds_side = center_gap
+            if aid == 0:
+                aid, ds_side = _nearest_alongside(
+                    s_sorted, ids_sorted, cutter_s, thresh=float(options.alongside_s_thresh)
+                )
+            # Adjacent-lane occupancy is exclusive per neighbor assignment.
+            if aid != 0 and aid == pid:
+                pid, ds_a = 0, float("inf")
+                g[0, col] = 0.0
+            if aid != 0 and aid == fid:
+                fid, ds_b = 0, float("inf")
+                g[2, col] = 0.0
             if aid != 0:
                 # use distance score for alongside (interpretable & stable)
                 rng = options.max_range_ahead if options.max_range_ahead is not None else options.max_range_behind
