@@ -15,6 +15,8 @@ from matplotlib.widgets import Button, Slider
 from read_csv import *
 
 mpl.rcParams["savefig.dpi"] = 300
+mpl.rcParams["font.family"] = "DejaVu Sans"
+mpl.rcParams["axes.titleweight"] = "bold"
 
 
 class VisualizationPlot(object):
@@ -28,26 +30,28 @@ class VisualizationPlot(object):
     )
 
     THEME = {
-        "figure_bg": "#071521",
-        "road_bg": "#0b1220",
-        "panel": "#0e2031",
-        "panel_soft": "#11283d",
-        "panel_edge": "#27445f",
-        "text_main": "#e5f0ff",
-        "text_muted": "#9eb7d4",
-        "button": "#173650",
-        "button_hover": "#24547c",
-        "button_text": "#eaf4ff",
-        "accent": "#00d4c0",
+        "figure_bg": "#060b12",
+        "road_bg": "#0a1018",
+        "panel": "#0f1a27",
+        "panel_soft": "#152435",
+        "panel_edge": "#2a3f57",
+        "text_main": "#e2e8f0",
+        "text_muted": "#94a3b8",
+        "text_dim": "#64748b",
+        "button": "#1b2b3d",
+        "button_hover": "#2a3f56",
+        "button_active": "#0f1724",
+        "button_text": "#f1f5f9",
+        "accent": "#14b8a6",
         "accent_alt": "#38bdf8",
-        "danger": "#fb7185",
+        "danger": "#f43f5e",
         "success": "#22c55e",
         "cutter": "#f59e0b",
-        "cutter_trail": "#7dd3fc",
-        "neighbor": "#22d3ee",
+        "cutter_trail": "#60a5fa",
+        "neighbor": "#38bdf8",
         "risk_critical": "#ef4444",
         "risk_elevated": "#f59e0b",
-        "risk_normal": "#fb7185",
+        "risk_normal": "#22c55e",
     }
 
     def __init__(
@@ -87,10 +91,10 @@ class VisualizationPlot(object):
         self.timeline_event_points = []
         self.timeline_seek_line = None
         self.timeline_stage_colors = {
-            "decision": "#22d3ee",
+            "decision": "#38bdf8",
             "execution": "#f59e0b",
-            "merge": "#a78bfa",
-            "other": "#94a3b8",
+            "merge": "#14b8a6",
+            "other": "#64748b",
         }
         self.sfc_codes_by_frame = self._load_sfc_codes_by_frame(
             arguments.get("sfc_codes_csv"),
@@ -209,11 +213,11 @@ class VisualizationPlot(object):
         self.ax_header.text(
             0.015,
             0.62,
-            "highD Command Deck",
+            "highD Scenario Intelligence Console",
             transform=self.ax_header.transAxes,
             ha="left",
             va="center",
-            fontsize=17,
+            fontsize=16,
             color=self.THEME["text_main"],
             fontweight="bold",
         )
@@ -224,7 +228,7 @@ class VisualizationPlot(object):
             transform=self.ax_header.transAxes,
             ha="left",
             va="center",
-            fontsize=10,
+            fontsize=9.2,
             color=self.THEME["text_muted"],
         )
         self.ax_header.text(
@@ -234,7 +238,7 @@ class VisualizationPlot(object):
             transform=self.ax_header.transAxes,
             ha="left",
             va="center",
-            fontsize=9.5,
+            fontsize=8.8,
             color=self.THEME["accent_alt"],
         )
         self.header_state_text = self.ax_header.text(
@@ -371,8 +375,8 @@ class VisualizationPlot(object):
         self._draw_status_legend()
 
     def _build_controls(self):
-        control_gap = 0.008
-        button_height = 0.05
+        control_gap = 0.01
+        button_height = 0.048
 
         self.ax_recording_slider = self.fig.add_axes(
             [0.02, self.timeline_bottom, 0.145, self.timeline_height], facecolor=self.THEME["panel_soft"]
@@ -436,7 +440,7 @@ class VisualizationPlot(object):
                 swatch_h,
                 transform=self.ax_status.transAxes,
                 facecolor=color,
-                edgecolor="#dbeafe",
+                edgecolor=self.THEME["panel_edge"],
                 lw=0.6,
                 alpha=0.95,
                 zorder=2,
@@ -509,8 +513,8 @@ class VisualizationPlot(object):
             [1, max(2, int(self.maximum_frames))],
             [0.5, 0.5],
             color=self.THEME["panel_edge"],
-            linewidth=1.0,
-            alpha=0.8,
+            linewidth=1.1,
+            alpha=0.9,
             zorder=1,
         )
 
@@ -521,8 +525,8 @@ class VisualizationPlot(object):
                 0.15,
                 0.85,
                 color=color,
-                linewidth=1.0,
-                alpha=0.85,
+                linewidth=1.05,
+                alpha=0.9,
                 zorder=2,
             )
 
@@ -569,14 +573,17 @@ class VisualizationPlot(object):
         button.color = self.THEME["button"]
         button.hovercolor = self.THEME["button_hover"]
         button.label.set_color(self.THEME["button_text"])
-        button.label.set_fontsize(10)
+        button.label.set_fontsize(9.5)
+        button.label.set_fontweight("bold")
         for spine in button.ax.spines.values():
             spine.set_color(self.THEME["panel_edge"])
-            spine.set_linewidth(0.9)
+            spine.set_linewidth(1.0)
 
     def _style_slider(self, slider):
         slider.poly.set_facecolor(self.THEME["accent"])
+        slider.poly.set_alpha(0.95)
         slider.vline.set_color(self.THEME["accent_alt"])
+        slider.vline.set_linewidth(1.8)
         slider.label.set_visible(False)
         slider.valtext.set_color(self.THEME["text_main"])
         slider.valtext.set_transform(slider.ax.transAxes)
@@ -587,6 +594,9 @@ class VisualizationPlot(object):
         slider.valtext.set_bbox(
             dict(boxstyle="round,pad=0.16", fc=self.THEME["panel"], ec=self.THEME["panel_edge"], lw=0.7, alpha=0.92)
         )
+        if hasattr(slider, "track") and slider.track is not None:
+            slider.track.set_color(self.THEME["text_dim"])
+            slider.track.set_alpha(0.35)
         for spine in slider.ax.spines.values():
             spine.set_color(self.THEME["panel_edge"])
             spine.set_linewidth(0.9)
@@ -708,14 +718,17 @@ class VisualizationPlot(object):
         if background_image_path is not None and os.path.exists(background_image_path):
             self.background_image = imread(background_image_path)
             self.y_sign = 1
-            self.ax.imshow(self.background_image[:, :, :], alpha=0.95)
+            self.ax.imshow(self.background_image[:, :, :], alpha=0.93)
             tint = np.zeros_like(self.background_image[:, :, :], dtype=float)
-            self.ax.imshow(tint, alpha=0.08)
+            tint[..., 0] = 0.04
+            tint[..., 1] = 0.10
+            tint[..., 2] = 0.18
+            self.ax.imshow(tint, alpha=0.18)
         else:
             self.background_image = None
             self.y_sign = -1
             self.outer_line_thickness = 0.2
-            self.lane_color = "#b0c7dc"
+            self.lane_color = "#94a3b8"
             self.plot_highway()
 
         self.plot_highway_information()
@@ -761,6 +774,15 @@ class VisualizationPlot(object):
         fps = max(1, int(round(fps)))
         return int(max(25, round(1000.0 / fps)))
 
+    def _apply_playback_interval(self, immediate=False):
+        if self.playback_timer is None:
+            return
+        self.playback_timer.interval = self._fps_to_interval(self.playback_fps)
+        # Some Matplotlib backends apply interval changes only on next start().
+        if immediate and self.playing:
+            self.playback_timer.stop()
+            self.playback_timer.start()
+
     def _toggle_playback(self, force_stop=False):
         if force_stop:
             self.playing = False
@@ -777,6 +799,7 @@ class VisualizationPlot(object):
         self.playing = not self.playing
         if self.playing:
             if self.playback_timer is not None:
+                self._apply_playback_interval(immediate=False)
                 self.playback_timer.start()
             self.button_play_pause.label.set_text("Pause")
         else:
@@ -970,8 +993,7 @@ class VisualizationPlot(object):
 
     def update_speed_slider(self, value):
         self.playback_fps = int(round(value))
-        if self.playback_timer is not None:
-            self.playback_timer.interval = self._fps_to_interval(self.playback_fps)
+        self._apply_playback_interval(immediate=True)
         self._refresh_control_value_labels()
         self._update_header_state()
         self.fig.canvas.draw_idle()
@@ -1799,7 +1821,7 @@ class VisualizationPlot(object):
             (0, self.y_sign * lower_lanes[lower_lanes_shape[0] - 1] - 5),
             400,
             lower_lanes[lower_lanes_shape[0] - 1] - upper_lanes[0] + 10,
-            color="#1e293b",
+            color="#111827",
             fill=True,
             alpha=1,
             zorder=5,
@@ -1817,7 +1839,7 @@ class VisualizationPlot(object):
                 color=self.lane_color,
                 linestyle="dashed",
                 dashes=(25, 70),
-                alpha=0.8,
+                alpha=0.65,
                 zorder=6,
             )
         upper_inner = patches.Rectangle(
@@ -1841,7 +1863,7 @@ class VisualizationPlot(object):
                 color=self.lane_color,
                 linestyle="dashed",
                 dashes=(25, 70),
-                alpha=0.8,
+                alpha=0.65,
                 zorder=6,
             )
         lower_inner = patches.Rectangle(
