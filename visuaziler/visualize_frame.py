@@ -89,9 +89,7 @@ class VisualizationPlot(object):
         self.playback_timer = None
         self.sfc_eval_frame = None
         self.sfc_eval_index = 0
-        self.sfc_eval_slider = None
-        self.sfc_eval_slider_count = 0
-        self._syncing_sfc_eval_slider = False
+        self.sfc_eval_count = 0
         self.default_xlim = None
         self.default_ylim = None
         self.timeline_event_points = []
@@ -335,7 +333,6 @@ class VisualizationPlot(object):
     def _build_info_panels(self):
         self.ax_sfc_info = self.fig.add_axes([0.02, self.info_bottom, 0.72, self.info_height])
         self.ax_status = self.fig.add_axes([0.75, self.info_bottom, 0.23, self.info_height])
-        self.ax_sfc_eval_slider = self.fig.add_axes([0.04, self.info_bottom + 0.01, 0.68, 0.018])
 
         for panel in (self.ax_sfc_info, self.ax_status):
             panel.set_facecolor(self.THEME["panel_soft"])
@@ -380,7 +377,6 @@ class VisualizationPlot(object):
             fontweight="bold",
         )
         self._draw_status_legend()
-        self._build_sfc_eval_slider(1)
 
     def _build_controls(self):
         control_gap = 0.01
@@ -626,36 +622,22 @@ class VisualizationPlot(object):
             clip_on=False,
         )
 
-    def _build_sfc_eval_slider(self, max_value):
-        self.ax_sfc_eval_slider.cla()
-        self.ax_sfc_eval_slider.set_facecolor(self.THEME["panel_soft"])
-        slider = Slider(
-            self.ax_sfc_eval_slider,
-            "SFC Row",
-            1,
-            max(1, int(max_value)),
-            valinit=max(1, int(self.sfc_eval_index + 1)),
-            valfmt="%0.0f",
-            valstep=1,
-        )
-        self._style_slider(slider)
-        self._decorate_slider_axis(self.ax_sfc_eval_slider, "SFC Row")
-        slider.on_changed(self.update_sfc_eval_slider)
-        self.sfc_eval_slider = slider
-        self.sfc_eval_slider_count = max(1, int(max_value))
-        return slider
+    def _set_sfc_eval_count(self, evaluations_count):
+        self.sfc_eval_count = max(0, int(evaluations_count))
+        if self.sfc_eval_count <= 0:
+            self.sfc_eval_index = 0
+        else:
+            self.sfc_eval_index = int(max(0, min(self.sfc_eval_index, self.sfc_eval_count - 1)))
 
-    def _sync_sfc_eval_slider(self, evaluations_count):
-        count = max(1, int(evaluations_count))
-        if self.sfc_eval_slider is None or self.sfc_eval_slider_count != count:
-            self._build_sfc_eval_slider(count)
-        if self.sfc_eval_slider is None:
+    def _step_sfc_eval(self, delta):
+        if self.sfc_eval_count <= 1:
             return
-        self.sfc_eval_index = int(max(0, min(self.sfc_eval_index, count - 1)))
-        self._syncing_sfc_eval_slider = True
-        self.sfc_eval_slider.set_val(self.sfc_eval_index + 1)
-        self.sfc_eval_slider.valtext.set_text("{}/{}".format(int(self.sfc_eval_index + 1), int(count)))
-        self._syncing_sfc_eval_slider = False
+        next_index = int(max(0, min(self.sfc_eval_index + int(delta), self.sfc_eval_count - 1)))
+        if next_index == self.sfc_eval_index:
+            return
+        self.sfc_eval_index = next_index
+        self._update_sfc_matrix_overlay()
+        self.fig.canvas.draw_idle()
 
     def _build_frame_slider(self):
         self.ax_frame_slider.cla()
@@ -1042,20 +1024,6 @@ class VisualizationPlot(object):
         self._update_header_state()
         self.fig.canvas.draw_idle()
 
-    def update_sfc_eval_slider(self, value):
-        if self._syncing_sfc_eval_slider:
-            return
-        evaluations = self._build_sfc_frame_evaluations()
-        if not evaluations:
-            self.sfc_eval_index = 0
-            return
-        target_index = int(max(0, min(int(round(value)) - 1, len(evaluations) - 1)))
-        if target_index == self.sfc_eval_index:
-            return
-        self.sfc_eval_index = target_index
-        self._update_sfc_matrix_overlay()
-        self.fig.canvas.draw_idle()
-
     def update_button_play_pause(self, _):
         self._toggle_playback(force_stop=False)
 
@@ -1161,21 +1129,13 @@ class VisualizationPlot(object):
     def on_scroll(self, event):
         if event is None:
             return
-        if event.inaxes not in (self.ax_sfc_info, self.ax_sfc_eval_slider):
+        if event.inaxes != self.ax_sfc_info:
             return
 
         evaluations = self._build_sfc_frame_evaluations()
-        if len(evaluations) <= 1:
-            return
-
         direction = str(getattr(event, "button", "")).lower()
-        delta = -1 if direction == "up" else 1
-        next_index = int(max(0, min(self.sfc_eval_index + delta, len(evaluations) - 1)))
-        if next_index == self.sfc_eval_index:
-            return
-        self.sfc_eval_index = next_index
-        self._update_sfc_matrix_overlay()
-        self.fig.canvas.draw_idle()
+        self._set_sfc_eval_count(len(evaluations))
+        self._step_sfc_eval(-1 if direction == "up" else +1)
 
     def trigger_update(self):
         self.remove_patches()
@@ -1665,7 +1625,7 @@ class VisualizationPlot(object):
             _, default_idx = self._select_focus_evaluation(evaluations)
             self.sfc_eval_index = int(default_idx)
             self.sfc_eval_frame = frame
-        self._sync_sfc_eval_slider(len(evaluations))
+        self._set_sfc_eval_count(len(evaluations))
         if not evaluations:
             self.ax_sfc_info.text(
                 0.02,
@@ -1720,7 +1680,7 @@ class VisualizationPlot(object):
         self.ax_sfc_info.text(
             0.02,
             0.92,
-            "Use SFC Row slider or mouse wheel over this panel to browse entries.",
+            "Use mouse wheel on this panel to browse SFC rows.",
             transform=self.ax_sfc_info.transAxes,
             ha="left",
             va="top",
