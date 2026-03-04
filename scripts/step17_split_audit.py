@@ -12,8 +12,8 @@ from pathlib import Path
 import pandas as pd
 
 from cutin_risk.io.markdown import markdown_table
-from cutin_risk.io.step_reports import mirror_file_to_step
-from cutin_risk.paths import output_path, project_root
+from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir
+from cutin_risk.paths import output_path, project_root, step14_codes_csv_path
 from cutin_risk.thesis_config import thesis_float, thesis_int, thesis_str
 
 
@@ -208,25 +208,27 @@ def main() -> None:
     if not merged_csv.exists():
         raise FileNotFoundError(f"Missing input: {merged_csv}")
 
+    step15a_mirrored_csv = step_reports_dir("15A") / f"{step14_codes_csv_path().stem}_mirrored.csv"
+
     targets = [
         AuditTarget(
             name="step11_rule_search",
             script_path=project_root() / "scripts" / "step11_early_warning_rule_search.py",
-            loo_csv=output_path("reports/step11_warning/leave_one_recording_out.csv"),
+            loo_csv=step_reports_dir(11, create=False) / "leave_one_recording_out.csv",
             expected_counts=expected_counts_step11(merged_csv, args.thw_risk),
             expected_source=str(merged_csv),
         ),
         AuditTarget(
             name="step12_logreg",
             script_path=project_root() / "scripts" / "step12_early_warning_logreg.py",
-            loo_csv=output_path("reports/step12_warning_logreg/leave_one_recording_out_logreg.csv"),
+            loo_csv=step_reports_dir(12, create=False) / "leave_one_recording_out_logreg.csv",
             expected_counts=expected_counts_step12_or_13a(merged_csv, args.thw_risk),
             expected_source=str(merged_csv),
         ),
         AuditTarget(
             name="step13a_tuned_logreg",
             script_path=project_root() / "scripts" / "step13a_logreg_tuned.py",
-            loo_csv=output_path("reports/step13a_warning_logreg/leave_one_recording_out_step13a.csv"),
+            loo_csv=step_reports_dir("13A", create=False) / "leave_one_recording_out_step13a.csv",
             expected_counts=expected_counts_step12_or_13a(merged_csv, args.thw_risk),
             expected_source=str(merged_csv),
         ),
@@ -235,11 +237,11 @@ def main() -> None:
             script_path=project_root() / "scripts" / "step15c_sfc_prediction.py",
             loo_csv=output_path("reports/step15c_pred_binary/leave_one_recording_out.csv"),
             expected_counts=expected_counts_step15c_binary(
-                output_path("reports/step15a_sfc_mirror/sfc_binary_codes_long_hilbert_mirrored.csv"),
+                step15a_mirrored_csv,
                 stage=args.step15c_stage,
                 min_frames=int(args.step15c_min_frames),
             ),
-            expected_source=str(output_path("reports/step15a_sfc_mirror/sfc_binary_codes_long_hilbert_mirrored.csv")),
+            expected_source=str(step15a_mirrored_csv),
         ),
         AuditTarget(
             name="step15c_weighted_distance",

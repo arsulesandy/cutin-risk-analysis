@@ -22,7 +22,7 @@ from cutin_risk.encoding.sfc_weighted import (
     grid3x3_weighted,
     sfc_vector_4x4_from_3x3,
 )
-from cutin_risk.thesis_config import thesis_float, thesis_str
+from cutin_risk.thesis_config import thesis_float, thesis_optional_float, thesis_str
 
 
 def normalize_recording_id(v: object) -> str:
@@ -67,6 +67,20 @@ def mirror_3x3(g3: np.ndarray) -> np.ndarray:
     return g
 
 
+def parse_optional_nonnegative_float(value: str) -> float | None:
+    """Parse non-negative float or disable token for optional CLI numeric args."""
+    token = str(value).strip().lower()
+    if token in {"none", "null", "off", "disable", "disabled", "no-limit", "nolimit", "inf", "infinite"}:
+        return None
+    try:
+        parsed = float(token)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"Expected non-negative float or 'none', got {value!r}") from exc
+    if parsed < 0.0:
+        raise argparse.ArgumentTypeError("Value must be >= 0.0")
+    return parsed
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Step 15B: Weighted SFC stage features (distance or TTC).")
     ap.add_argument("--events-csv", default=str(output_path("reports/Step 09/cutin_stage_features_merged.csv")))
@@ -90,8 +104,18 @@ def main() -> None:
     ap.add_argument("--post2-seconds", type=float, default=thesis_float("step15b.post2_seconds", 2.0, min_value=0.0))
 
     ap.add_argument("--alongside-thresh", type=float, default=thesis_float("step15b.alongside_thresh", 5.0, min_value=0.0))
-    ap.add_argument("--range-ahead", type=float, default=thesis_float("step15b.range_ahead", 150.0, min_value=0.0))
-    ap.add_argument("--range-behind", type=float, default=thesis_float("step15b.range_behind", 150.0, min_value=0.0))
+    ap.add_argument(
+        "--range-ahead",
+        type=parse_optional_nonnegative_float,
+        default=thesis_optional_float("step15b.range_ahead", None, min_value=0.0),
+        help="Max ahead range in meters; use 'none' to disable.",
+    )
+    ap.add_argument(
+        "--range-behind",
+        type=parse_optional_nonnegative_float,
+        default=thesis_optional_float("step15b.range_behind", None, min_value=0.0),
+        help="Max behind range in meters; use 'none' to disable.",
+    )
     ap.add_argument("--ttc-max", type=float, default=thesis_float("step15b.ttc_max", 10.0, min_value=1e-9))
 
     ap.add_argument("--from-col", default=thesis_str("step15b.from_col", "from_lane"))
@@ -137,8 +161,8 @@ def main() -> None:
         mode=args.mode,
         order=args.order,
         alongside_s_thresh=float(args.alongside_thresh),
-        max_range_ahead=float(args.range_ahead),
-        max_range_behind=float(args.range_behind),
+        max_range_ahead=args.range_ahead,
+        max_range_behind=args.range_behind,
         ttc_max=float(args.ttc_max),
         include_center=True,
     )

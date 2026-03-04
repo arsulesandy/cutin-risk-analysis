@@ -10,6 +10,8 @@ RECORDINGS_STEP16="${RECORDINGS_STEP16:-$("$PYTHON_BIN" -c 'from cutin_risk.thes
 THW_RISK="${THW_RISK:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_float; print(thesis_float("pipeline.thw_risk", 0.7, min_value=0.0))')}"
 CI_BOOTSTRAP="${CI_BOOTSTRAP:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_int; print(thesis_int("pipeline.ci_bootstrap", 3000, min_value=1))')}"
 CI_SEED="${CI_SEED:-$("$PYTHON_BIN" -c 'from cutin_risk.thesis_config import thesis_int; print(thesis_int("pipeline.ci_seed", 7))')}"
+STEP14_CODES_CSV="${STEP14_CODES_CSV:-$("$PYTHON_BIN" -c 'from cutin_risk.paths import step14_codes_csv_path; print(step14_codes_csv_path())')}"
+STEP15A_MIRRORED_CSV="${STEP15A_MIRRORED_CSV:-$("$PYTHON_BIN" -c 'from cutin_risk.io.step_reports import step_reports_dir; from cutin_risk.paths import step14_codes_csv_path; print(step_reports_dir("15A") / f"{step14_codes_csv_path().stem}_mirrored.csv")')}"
 
 FINAL_DIR="outputs/reports/final"
 mkdir -p "$FINAL_DIR"
@@ -32,6 +34,8 @@ echo "RECORDINGS_STEP16=$RECORDINGS_STEP16"
 echo "THW_RISK=$THW_RISK"
 echo "CI_BOOTSTRAP=$CI_BOOTSTRAP"
 echo "CI_SEED=$CI_SEED"
+echo "STEP14_CODES_CSV=$STEP14_CODES_CSV"
+echo "STEP15A_MIRRORED_CSV=$STEP15A_MIRRORED_CSV"
 
 run_cmd "$PYTHON_BIN" scripts/step09_batch_stage_features.py --recordings "$RECORDINGS_BATCH"
 run_cmd "$PYTHON_BIN" scripts/step10_risk_report.py --thw-risk "$THW_RISK"
@@ -43,13 +47,13 @@ run_cmd "$PYTHON_BIN" scripts/step13b_realistic_follower_warning.py --thw-risk "
 run_cmd "$PYTHON_BIN" scripts/step14_sfc_binary_encode.py
 run_cmd "$PYTHON_BIN" scripts/step14_sfc_binary_report.py
 run_cmd "$PYTHON_BIN" scripts/step15a_sfc_mirror_normalize.py \
-  --codes-csv outputs/reports/step14_sfc_binary/sfc_binary_codes_long_hilbert.csv
+  --codes-csv "$STEP14_CODES_CSV"
 run_cmd "$PYTHON_BIN" scripts/step15b_sfc_weighted_stage_features.py --mode distance
 run_cmd "$PYTHON_BIN" scripts/step15b_sfc_weighted_stage_features.py --mode ttc
 
 run_cmd "$PYTHON_BIN" scripts/step15c_sfc_prediction.py \
   --input-type binary-long \
-  --input-csv outputs/reports/step15a_sfc_mirror/sfc_binary_codes_long_hilbert_mirrored.csv \
+  --input-csv "$STEP15A_MIRRORED_CSV" \
   --stage decision \
   --out-dir outputs/reports/step15c_pred_binary
 

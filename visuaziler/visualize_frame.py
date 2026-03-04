@@ -100,10 +100,15 @@ class VisualizationPlot(object):
             "merge": "#14b8a6",
             "other": "#64748b",
         }
+        self.sfc_canonical_user = False
+        self.sfc_canonical_effective = False
+        self.sfc_orientation_inferred = None
+        self.sfc_orientation_note = None
         self.sfc_codes_by_frame = self._load_sfc_codes_by_frame(
             arguments.get("sfc_codes_csv"),
             arguments.get("input_path"),
         )
+        self._resolve_effective_sfc_mode()
         self.timeline_event_points = self._build_timeline_event_points()
         self.semantic_stats = {
             "visible": 0,
@@ -114,12 +119,14 @@ class VisualizationPlot(object):
             "normal": 0,
         }
 
-        self.road_bottom = 0.455
+        # Allocate more vertical room to the SFC/status information band.
+        # This reduces text overlap on smaller laptop screens.
+        self.road_bottom = 0.475
         self.road_top = 0.885
         self.header_bottom = 0.89
         self.header_height = 0.075
         self.info_bottom = 0.205
-        self.info_height = 0.155
+        self.info_height = 0.205
         self.timeline_bottom = 0.122
         self.timeline_height = 0.03
         self.controls_bottom = 0.055
@@ -477,6 +484,120 @@ class VisualizationPlot(object):
             return "merge"
         return "other"
 
+    def _responsive_scale(self):
+        """Return a conservative UI scale factor based on current figure size."""
+        try:
+            width_in, height_in = self.fig.get_size_inches()
+        except Exception:
+            return 1.0
+        width_scale = float(width_in) / 24.0
+        height_scale = float(height_in) / 9.0
+        return float(max(0.72, min(1.0, min(width_scale, height_scale))))
+
+    def _responsive_font(self, base_size):
+        """Scale font sizes down on smaller windows to avoid overlap."""
+        return max(6.8, float(base_size) * self._responsive_scale())
+
+    @staticmethod
+    def _ellipsize(text, max_chars):
+        if text is None:
+            return ""
+        raw = str(text)
+        if len(raw) <= int(max_chars):
+            return raw
+        return raw[: max(0, int(max_chars) - 3)] + "..."
+
+    @staticmethod
+    def _coerce_bool(value):
+        """Parse bool-like config values robustly (bool, numeric, or common strings)."""
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return False
+        if isinstance(value, (int, float)):
+            return bool(value)
+        token = str(value).strip().lower()
+        if token in {"1", "true", "yes", "y", "on"}:
+            return True
+        if token in {"0", "false", "no", "n", "off", ""}:
+            return False
+        return bool(value)
+
+    def _infer_sfc_orientation(self, sample_limit=320):
+        """
+        Infer whether loaded SFC codes are raw Step14 orientation or canonical Step15A orientation.
+
+        Returns a tuple: (inferred_mode, sample_count, match_raw, match_canonical)
+        where inferred_mode is one of {"raw", "canonical"}.
+        """
+        if not self.sfc_codes_by_frame:
+            return None
+
+        sample_count = 0
+        match_raw = 0
+        match_canonical = 0
+        for frame in sorted(int(k) for k in self.sfc_codes_by_frame.keys()):
+            entries = self.sfc_codes_by_frame.get(frame, [])
+            for entry in entries:
+                if sample_count >= int(sample_limit):
+                    break
+                cutter_id = entry.get("cutter_id")
+                if cutter_id is None:
+                    continue
+
+                reference_matrix = self._build_highd_reference_matrix(cutter_id, int(frame))
+                if reference_matrix is None:
+                    continue
+
+                try:
+                    raw_matrix = np.asarray(self._decode_code_to_3x3_matrix(entry["code"]), dtype=int)
+                except Exception:
+                    continue
+                rtl = self._is_track_right_to_left(cutter_id, int(frame))
+                raw_mode_matrix = np.fliplr(raw_matrix) if rtl else raw_matrix
+
+                if np.array_equal(raw_mode_matrix, np.asarray(reference_matrix, dtype=int)):
+                    match_raw += 1
+                if np.array_equal(raw_matrix, np.asarray(reference_matrix, dtype=int)):
+                    match_canonical += 1
+                sample_count += 1
+            if sample_count >= int(sample_limit):
+                break
+
+        if sample_count <= 0:
+            return None
+        inferred_mode = "raw" if match_raw >= match_canonical else "canonical"
+        return inferred_mode, int(sample_count), int(match_raw), int(match_canonical)
+
+    def _resolve_effective_sfc_mode(self):
+        """Resolve effective SFC code mode and auto-correct obvious flag/code-table mismatches."""
+        self.sfc_canonical_user = self._coerce_bool(self.arguments.get("sfc_codes_canonical", False))
+        self.sfc_canonical_effective = bool(self.sfc_canonical_user)
+        self.sfc_orientation_inferred = None
+        self.sfc_orientation_note = None
+
+        inferred = self._infer_sfc_orientation(sample_limit=320)
+        if inferred is None:
+            return
+        inferred_mode, sample_count, match_raw, match_canonical = inferred
+        self.sfc_orientation_inferred = inferred_mode
+
+        preferred_canonical = bool(inferred_mode == "canonical")
+        preferred_matches = match_canonical if preferred_canonical else match_raw
+        other_matches = match_raw if preferred_canonical else match_canonical
+        margin = int(preferred_matches - other_matches)
+        # Auto-correct only when evidence is strong enough.
+        strong_margin = max(12, int(round(0.18 * sample_count)))
+        if (sample_count >= 40) and (margin >= strong_margin) and (self.sfc_canonical_user != preferred_canonical):
+            self.sfc_canonical_effective = preferred_canonical
+            self.sfc_orientation_note = (
+                "SFC mode auto-corrected (flag={}, inferred={} from {} samples).".format(
+                    "canonical" if self.sfc_canonical_user else "raw",
+                    inferred_mode,
+                    sample_count,
+                )
+            )
+
     def _build_timeline_event_points(self):
         if not self.sfc_codes_by_frame:
             return []
@@ -780,6 +901,7 @@ class VisualizationPlot(object):
             loaded_arguments.get("sfc_codes_csv"),
             loaded_arguments.get("input_path"),
         )
+        self._resolve_effective_sfc_mode()
         self.timeline_event_points = self._build_timeline_event_points()
         self._refresh_timeline_plot()
         self._draw_background()
@@ -1439,7 +1561,7 @@ class VisualizationPlot(object):
             return []
 
         evaluations = []
-        sfc_codes_canonical = bool(self.arguments.get("sfc_codes_canonical", False))
+        sfc_codes_canonical = bool(self.sfc_canonical_effective)
         for entry in frame_entries:
             solution_matrix = self._decode_code_to_3x3_matrix(entry["code"])
             cutter_id = entry.get("cutter_id")
@@ -1452,8 +1574,6 @@ class VisualizationPlot(object):
             match = None
             if cutter_id is not None:
                 reference_matrix = self._build_highd_reference_matrix(cutter_id, frame)
-                if reference_matrix is not None and mirrored:
-                    reference_matrix = np.fliplr(np.asarray(reference_matrix, dtype=int)).tolist()
                 if reference_matrix is not None:
                     match = bool(
                         np.array_equal(
@@ -1508,6 +1628,9 @@ class VisualizationPlot(object):
             spine.set_linewidth(1.0)
 
     def _draw_matrix_grid(self, ax, matrix, *, x0, y0, cell, label, palette):
+        value_font = self._cell_value_font(ax, cell)
+        axis_font = max(5.6, value_font - 1.2)
+        title_font = max(6.5, value_font + 0.4)
         ax.text(
             x0,
             y0 + (cell * 3) + 0.04,
@@ -1515,7 +1638,7 @@ class VisualizationPlot(object):
             transform=ax.transAxes,
             ha="left",
             va="bottom",
-            fontsize=8.6,
+            fontsize=title_font,
             color=self.THEME["text_muted"],
             fontweight="bold",
         )
@@ -1528,7 +1651,7 @@ class VisualizationPlot(object):
                 transform=ax.transAxes,
                 ha="right",
                 va="center",
-                fontsize=7.5,
+                fontsize=axis_font,
                 color=self.THEME["text_muted"],
             )
         for c, col_name in enumerate(("L", "S", "R")):
@@ -1539,7 +1662,7 @@ class VisualizationPlot(object):
                 transform=ax.transAxes,
                 ha="center",
                 va="top",
-                fontsize=7.5,
+                fontsize=axis_font,
                 color=self.THEME["text_muted"],
             )
 
@@ -1566,13 +1689,15 @@ class VisualizationPlot(object):
                     transform=ax.transAxes,
                     ha="center",
                     va="center",
-                    fontsize=8.2,
+                    fontsize=value_font,
                     color="#eaf4ff",
                     fontweight="bold",
                     zorder=3,
                 )
 
     def _draw_diff_grid(self, ax, solution_matrix, reference_matrix, *, x0, y0, cell):
+        value_font = self._cell_value_font(ax, cell)
+        title_font = max(6.5, value_font + 0.4)
         ax.text(
             x0,
             y0 + (cell * 3) + 0.04,
@@ -1580,7 +1705,7 @@ class VisualizationPlot(object):
             transform=ax.transAxes,
             ha="left",
             va="bottom",
-            fontsize=8.6,
+            fontsize=title_font,
             color=self.THEME["text_muted"],
             fontweight="bold",
         )
@@ -1607,11 +1732,25 @@ class VisualizationPlot(object):
                     transform=ax.transAxes,
                     ha="center",
                     va="center",
-                    fontsize=8.5,
+                    fontsize=value_font,
                     color="#f8fafc",
                     fontweight="bold",
                     zorder=3,
                 )
+
+    def _cell_value_font(self, ax, cell):
+        """
+        Scale matrix cell value text from actual rendered cell size (pixels),
+        so text never exceeds the visual cell on small displays.
+        """
+        try:
+            bbox = ax.get_window_extent()
+            dpi = float(self.fig.dpi) if self.fig is not None else 100.0
+            cell_px = min(float(cell) * float(bbox.width), float(cell) * float(bbox.height))
+            pts = (cell_px * 72.0 / max(1.0, dpi)) * 0.68
+            return float(max(5.2, min(8.6, pts)))
+        except Exception:
+            return float(self._responsive_font(7.2))
 
     def _render_sfc_evaluation_panel(self):
         if not hasattr(self, "ax_sfc_info"):
@@ -1656,6 +1795,25 @@ class VisualizationPlot(object):
         solution_matrix = focus["solution_matrix"]
         reference_matrix = focus["reference_matrix"]
         match = focus["match"]
+        compact = self._responsive_scale() < 0.90
+        title_font = self._responsive_font(9.0)
+        meta_font = self._responsive_font(8.0)
+        hint_font = self._responsive_font(7.7)
+        try:
+            axis_h_px = max(1.0, float(self.ax_sfc_info.get_window_extent().height))
+            fig_dpi = max(1.0, float(getattr(self.fig, "dpi", 100.0)))
+            px_per_pt = fig_dpi / 72.0
+            title_step = max(0.075, ((title_font * px_per_pt) * 1.38) / axis_h_px)
+            hint_step = max(0.062, ((hint_font * px_per_pt) * 1.30) / axis_h_px)
+            meta_step = max(0.058, ((meta_font * px_per_pt) * 1.28) / axis_h_px)
+        except Exception:
+            title_step = 0.08
+            hint_step = 0.064
+            meta_step = 0.06
+        y_title = 0.965
+        y_hint = y_title - title_step
+        y_meta_1 = y_hint - hint_step
+        y_meta_2 = y_meta_1 - meta_step
 
         matched = sum(1 for item in evaluations if item.get("match") is True)
         mismatched = sum(1 for item in evaluations if item.get("match") is False)
@@ -1663,7 +1821,7 @@ class VisualizationPlot(object):
 
         self.ax_sfc_info.text(
             0.02,
-            0.97,
+            y_title,
             "Frame {} | SFC Evaluation Board | showing {}/{}".format(
                 frame,
                 int(focus_index + 1),
@@ -1672,45 +1830,103 @@ class VisualizationPlot(object):
             transform=self.ax_sfc_info.transAxes,
             ha="left",
             va="top",
-            fontsize=9.0,
+            fontsize=title_font,
             color=self.THEME["text_main"],
             fontweight="bold",
             fontfamily="monospace",
         )
         self.ax_sfc_info.text(
             0.02,
-            0.92,
+            y_hint,
             "Use mouse wheel on this panel to browse SFC rows.",
             transform=self.ax_sfc_info.transAxes,
             ha="left",
             va="top",
-            fontsize=7.7,
+            fontsize=hint_font,
             color=self.THEME["text_muted"],
             fontfamily="monospace",
         )
-        self.ax_sfc_info.text(
-            0.02,
-            0.86,
-            "event={} cutter={} stage={} code={} hex={} | summary: match={} mismatch={} missing_ref={}".format(
-                entry.get("event_id"),
-                entry.get("cutter_id"),
-                entry.get("stage"),
-                entry.get("code"),
-                entry.get("code_hex"),
-                int(matched),
-                int(mismatched),
-                int(missing_ref),
-            ),
-            transform=self.ax_sfc_info.transAxes,
-            ha="left",
-            va="top",
-            fontsize=8.0,
-            color=self.THEME["text_muted"],
-            fontfamily="monospace",
+        mode_token = "canonical" if self.sfc_canonical_effective else "raw"
+        if self.sfc_canonical_effective != self.sfc_canonical_user:
+            mode_token = "{}*".format(mode_token)
+        event_line = "event={} cutter={} stage={} mirror={} mode={}".format(
+            entry.get("event_id"),
+            entry.get("cutter_id"),
+            entry.get("stage"),
+            "Y" if focus.get("mirrored") else "N",
+            mode_token,
         )
+        code_line = "code={} hex={} | summary: match={} mismatch={} missing_ref={}".format(
+            entry.get("code"),
+            entry.get("code_hex"),
+            int(matched),
+            int(mismatched),
+            int(missing_ref),
+        )
+        if compact:
+            self.ax_sfc_info.text(
+                0.02,
+                y_meta_1,
+                self._ellipsize(event_line, 92),
+                transform=self.ax_sfc_info.transAxes,
+                ha="left",
+                va="top",
+                fontsize=meta_font,
+                color=self.THEME["text_muted"],
+                fontfamily="monospace",
+            )
+            self.ax_sfc_info.text(
+                0.02,
+                y_meta_2,
+                self._ellipsize(code_line, 108),
+                transform=self.ax_sfc_info.transAxes,
+                ha="left",
+                va="top",
+                fontsize=meta_font,
+                color=self.THEME["text_muted"],
+                fontfamily="monospace",
+            )
+            if self.sfc_orientation_note:
+                self.ax_sfc_info.text(
+                    0.02,
+                    max(0.01, y_meta_2 - meta_step),
+                    self._ellipsize(self.sfc_orientation_note, 108),
+                    transform=self.ax_sfc_info.transAxes,
+                    ha="left",
+                    va="top",
+                    fontsize=max(6.2, meta_font - 0.2),
+                    color="#fbbf24",
+                    fontfamily="monospace",
+                )
+        else:
+            self.ax_sfc_info.text(
+                0.02,
+                y_meta_1,
+                self._ellipsize("{} | {}".format(event_line, code_line), 180),
+                transform=self.ax_sfc_info.transAxes,
+                ha="left",
+                va="top",
+                fontsize=meta_font,
+                color=self.THEME["text_muted"],
+                fontfamily="monospace",
+            )
+            if self.sfc_orientation_note:
+                self.ax_sfc_info.text(
+                    0.02,
+                    max(0.01, y_meta_1 - meta_step),
+                    self._ellipsize(self.sfc_orientation_note, 180),
+                    transform=self.ax_sfc_info.transAxes,
+                    ha="left",
+                    va="top",
+                    fontsize=max(6.2, meta_font - 0.2),
+                    color="#fbbf24",
+                    fontfamily="monospace",
+                )
 
-        cell = 0.075
-        y0 = 0.29
+        cell = 0.075 if not compact else 0.069
+        y0 = 0.29 if not compact else 0.18
+        eval_y = 0.18 if not compact else 0.10
+        eval_font = self._responsive_font(9.8 if not compact else 8.4)
         self._draw_matrix_grid(
             self.ax_sfc_info,
             solution_matrix,
@@ -1736,12 +1952,12 @@ class VisualizationPlot(object):
             decision_color = self.THEME["success"] if match else self.THEME["risk_critical"]
             self.ax_sfc_info.text(
                 0.67,
-                0.18,
+                eval_y,
                 "Evaluation: {}".format(decision_text),
                 transform=self.ax_sfc_info.transAxes,
                 ha="left",
                 va="center",
-                fontsize=9.8,
+                fontsize=eval_font,
                 color=decision_color,
                 fontweight="bold",
             )
@@ -1753,7 +1969,7 @@ class VisualizationPlot(object):
                 transform=self.ax_sfc_info.transAxes,
                 ha="left",
                 va="center",
-                fontsize=9.0,
+                fontsize=self._responsive_font(9.0),
                 color=self.THEME["text_muted"],
                 fontweight="bold",
             )
@@ -1764,7 +1980,7 @@ class VisualizationPlot(object):
                 transform=self.ax_sfc_info.transAxes,
                 ha="left",
                 va="center",
-                fontsize=9.5,
+                fontsize=self._responsive_font(9.5),
                 color=self.THEME["text_muted"],
                 fontweight="bold",
             )
@@ -1861,6 +2077,10 @@ class VisualizationPlot(object):
         if hasattr(self, "sfc_info_text"):
             self.sfc_info_text.set_text("")
         self._update_sfc_match_indicator()
+        if hasattr(self, "status_text"):
+            self.status_text.set_fontsize(self._responsive_font(9.2))
+        if hasattr(self, "sfc_match_text"):
+            self.sfc_match_text.set_fontsize(self._responsive_font(10.2))
         if hasattr(self, "status_text"):
             self.status_text.set_text(self._build_status_text())
         self._update_header_state()

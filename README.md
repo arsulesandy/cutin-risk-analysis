@@ -273,7 +273,7 @@ ls data/raw/highD-dataset-v1.0/data | head
 
 ## Visualizer (after pipeline run)
 
-Use visualizer with Step 15A canonical SFC codes so matrix orientation is consistent:
+Use visualizer with Step 15A canonical SFC codes when you want normalized SFC feature inspection:
 
 ```bash
 .venv/bin/python visuaziler/main.py \
@@ -284,4 +284,5 @@ Use visualizer with Step 15A canonical SFC codes so matrix orientation is consis
 
 Notes:
 - `--recording_id` can be any available recording (for example `01` to `20` in your current local run).
-- If you want to use raw Step 14 codes instead, pass `--sfc_codes_canonical false` (default).
+- For strict matrix verification against highD raw neighbor IDs, prefer Step 14 codes with `--sfc_codes_canonical false` (default).
+- If `sfc_codes_canonical` and code-table orientation are inconsistent, visualizer now auto-corrects mode and marks it with `mode=*` in the SFC panel.

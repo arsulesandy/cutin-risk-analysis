@@ -186,6 +186,40 @@ def _nearest_behind(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float) -> 
     return int(ids_sorted[idx]), float(s0 - s_sorted[idx])
 
 
+def _nearest_ahead_excluding(
+        s_sorted: np.ndarray,
+        ids_sorted: np.ndarray,
+        s0: float,
+        *,
+        excluded_ids: set[int],
+) -> tuple[int, float]:
+    """Return nearest ahead vehicle not in `excluded_ids`."""
+    pos = int(np.searchsorted(s_sorted, s0, side="right"))
+    while pos < len(s_sorted):
+        candidate_id = int(ids_sorted[pos])
+        if candidate_id not in excluded_ids and candidate_id != 0:
+            return candidate_id, float(s_sorted[pos] - s0)
+        pos += 1
+    return 0, float("inf")
+
+
+def _nearest_behind_excluding(
+        s_sorted: np.ndarray,
+        ids_sorted: np.ndarray,
+        s0: float,
+        *,
+        excluded_ids: set[int],
+) -> tuple[int, float]:
+    """Return nearest behind vehicle not in `excluded_ids`."""
+    idx = int(np.searchsorted(s_sorted, s0, side="left")) - 1
+    while idx >= 0:
+        candidate_id = int(ids_sorted[idx])
+        if candidate_id not in excluded_ids and candidate_id != 0:
+            return candidate_id, float(s0 - s_sorted[idx])
+        idx -= 1
+    return 0, float("inf")
+
+
 def _nearest_alongside(s_sorted: np.ndarray, ids_sorted: np.ndarray, s0: float, *, thresh: float) -> int:
     """Return closest lateral-neighbor candidate within absolute longitudinal threshold."""
     pos = int(np.searchsorted(s_sorted, s0, side="left"))
@@ -344,12 +378,28 @@ def build_binary_grid_3x3(
                 thresh=float(options.alongside_s_thresh),
             )
             # Adjacent-lane occupancy is exclusive per neighbor assignment.
+            # If the same vehicle is selected as alongside and ahead/behind, fall back to
+            # the next closest ahead/behind vehicle instead of dropping occupancy to zero.
             if aid != 0 and aid == pid:
-                pid = 0
-                g[0, col] = 0
+                pid, ds_ahead = _nearest_ahead_excluding(
+                    s_sorted,
+                    ids_sorted,
+                    cutter_s,
+                    excluded_ids={int(aid)},
+                )
+                if options.max_range_ahead is not None and pid != 0 and ds_ahead > float(options.max_range_ahead):
+                    pid = 0
+                g[0, col] = 1 if pid != 0 else 0
             if aid != 0 and aid == fid:
-                fid = 0
-                g[2, col] = 0
+                fid, ds_behind = _nearest_behind_excluding(
+                    s_sorted,
+                    ids_sorted,
+                    cutter_s,
+                    excluded_ids={int(aid)},
+                )
+                if options.max_range_behind is not None and fid != 0 and ds_behind > float(options.max_range_behind):
+                    fid = 0
+                g[2, col] = 1 if fid != 0 else 0
             if aid != 0:
                 g[1, col] = 1
 
