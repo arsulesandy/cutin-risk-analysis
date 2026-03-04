@@ -41,6 +41,7 @@ class VisualizationPlot(object):
         "accent": "#00d4c0",
         "accent_alt": "#38bdf8",
         "danger": "#fb7185",
+        "success": "#22c55e",
         "cutter": "#f59e0b",
         "cutter_trail": "#7dd3fc",
         "neighbor": "#22d3ee",
@@ -335,12 +336,12 @@ class VisualizationPlot(object):
 
         self.sfc_info_text = self.ax_sfc_info.text(
             0.02,
-            0.95,
+            0.97,
             "",
             transform=self.ax_sfc_info.transAxes,
             ha="left",
             va="top",
-            fontsize=9.7,
+            fontsize=9.1,
             fontfamily="monospace",
             color=self.THEME["text_main"],
         )
@@ -355,6 +356,17 @@ class VisualizationPlot(object):
             fontsize=9.2,
             color=self.THEME["text_main"],
             linespacing=1.25,
+        )
+        self.sfc_match_text = self.ax_status.text(
+            0.03,
+            0.26,
+            "",
+            transform=self.ax_status.transAxes,
+            ha="left",
+            va="top",
+            fontsize=10.2,
+            color=self.THEME["text_muted"],
+            fontweight="bold",
         )
         self._draw_status_legend()
 
@@ -915,6 +927,7 @@ class VisualizationPlot(object):
     def _build_status_text(self):
         state = "PLAYING" if self.playing else "PAUSED"
         stats = self.semantic_stats or {}
+        eval_summary = self._build_sfc_eval_summary()
         return "\n".join(
             [
                 "Rec: {} | Selected: {}".format(self.active_recording_id or "-", self.selected_recording_id or "-"),
@@ -931,6 +944,7 @@ class VisualizationPlot(object):
                     stats.get("elevated", 0),
                     stats.get("normal", 0),
                 ),
+                "SFC Eval: {}".format(eval_summary),
             ]
         )
 
@@ -1305,6 +1319,408 @@ class VisualizationPlot(object):
     def _decode_code_to_3x3_matrix(cls, code):
         return [[(int(code) >> cls.HILBERT_BIT_LAYOUT[r][c]) & 1 for c in range(3)] for r in range(3)]
 
+    @staticmethod
+    def _parse_neighbor_id(raw_value):
+        try:
+            value = int(raw_value)
+        except Exception:
+            try:
+                value = int(float(raw_value))
+            except Exception:
+                return 0
+        return value if value > 0 else 0
+
+    def _build_highd_reference_matrix(self, cutter_id, frame):
+        try:
+            cutter_id_int = int(cutter_id)
+        except Exception:
+            return None
+
+        track = self.track_lookup.get(cutter_id_int)
+        static_track_information = self.static_info.get(cutter_id_int)
+        if track is None or static_track_information is None:
+            return None
+
+        try:
+            initial_frame = int(static_track_information[INITIAL_FRAME])
+            final_frame = int(static_track_information[FINAL_FRAME])
+        except Exception:
+            return None
+        if frame < initial_frame or frame >= final_frame:
+            return None
+
+        current_index = int(frame - initial_frame)
+        g = np.zeros((3, 3), dtype=np.uint8)
+        g[1, 1] = 1
+
+        id_columns = (
+            (LEFT_PRECEDING_ID, LEFT_ALONGSIDE_ID, LEFT_FOLLOWING_ID),
+            (PRECEDING_ID, None, FOLLOWING_ID),
+            (RIGHT_PRECEDING_ID, RIGHT_ALONGSIDE_ID, RIGHT_FOLLOWING_ID),
+        )
+        for col, (preceding_col, alongside_col, following_col) in enumerate(id_columns):
+            for row, column_name in ((0, preceding_col), (1, alongside_col), (2, following_col)):
+                if column_name is None:
+                    continue
+                values = track.get(column_name)
+                if values is None:
+                    continue
+                try:
+                    raw_value = values[current_index]
+                except Exception:
+                    continue
+                if self._parse_neighbor_id(raw_value) != 0:
+                    g[row, col] = 1
+        return g.tolist()
+
+    def _build_sfc_frame_evaluations(self):
+        frame = int(self.current_frame)
+        frame_entries = self.sfc_codes_by_frame.get(frame, [])
+        if not frame_entries:
+            return []
+
+        evaluations = []
+        sfc_codes_canonical = bool(self.arguments.get("sfc_codes_canonical", False))
+        for entry in frame_entries:
+            solution_matrix = self._decode_code_to_3x3_matrix(entry["code"])
+            cutter_id = entry.get("cutter_id")
+            mirrored = False
+            if (not sfc_codes_canonical) and cutter_id is not None and self._is_track_right_to_left(cutter_id, frame):
+                solution_matrix = np.fliplr(np.asarray(solution_matrix, dtype=int)).tolist()
+                mirrored = True
+
+            reference_matrix = None
+            match = None
+            if cutter_id is not None:
+                reference_matrix = self._build_highd_reference_matrix(cutter_id, frame)
+                if reference_matrix is not None and mirrored:
+                    reference_matrix = np.fliplr(np.asarray(reference_matrix, dtype=int)).tolist()
+                if reference_matrix is not None:
+                    match = bool(
+                        np.array_equal(
+                            np.asarray(solution_matrix, dtype=int),
+                            np.asarray(reference_matrix, dtype=int),
+                        )
+                    )
+
+            evaluations.append(
+                {
+                    "entry": entry,
+                    "solution_matrix": solution_matrix,
+                    "reference_matrix": reference_matrix,
+                    "match": match,
+                    "mirrored": mirrored,
+                }
+            )
+        return evaluations
+
+    def _build_sfc_eval_summary(self):
+        evaluations = self._build_sfc_frame_evaluations()
+        if not evaluations:
+            return "n/a (no SFC rows)"
+        matched = 0
+        mismatched = 0
+        missing_ref = 0
+        for item in evaluations:
+            match = item.get("match")
+            if match is True:
+                matched += 1
+            elif match is False:
+                mismatched += 1
+            else:
+                missing_ref += 1
+        return "match={}, mismatch={}, missing_ref={}".format(matched, mismatched, missing_ref)
+
+    @staticmethod
+    def _select_focus_evaluation(evaluations):
+        if not evaluations:
+            return None, 0
+        for idx, item in enumerate(evaluations):
+            if item.get("match") is False:
+                return item, idx
+        return evaluations[0], 0
+
+    def _style_panel_axes(self, panel):
+        panel.set_facecolor(self.THEME["panel_soft"])
+        panel.set_xticks([])
+        panel.set_yticks([])
+        for spine in panel.spines.values():
+            spine.set_color(self.THEME["panel_edge"])
+            spine.set_linewidth(1.0)
+
+    def _draw_matrix_grid(self, ax, matrix, *, x0, y0, cell, label, palette):
+        ax.text(
+            x0,
+            y0 + (cell * 3) + 0.04,
+            label,
+            transform=ax.transAxes,
+            ha="left",
+            va="bottom",
+            fontsize=8.6,
+            color=self.THEME["text_muted"],
+            fontweight="bold",
+        )
+        # Row labels: P/A/F (preceding/alongside/following), column labels: L/S/R.
+        for r, row_name in enumerate(("P", "A", "F")):
+            ax.text(
+                x0 - 0.018,
+                y0 + ((2 - r) * cell) + (cell / 2),
+                row_name,
+                transform=ax.transAxes,
+                ha="right",
+                va="center",
+                fontsize=7.5,
+                color=self.THEME["text_muted"],
+            )
+        for c, col_name in enumerate(("L", "S", "R")):
+            ax.text(
+                x0 + (c * cell) + (cell / 2),
+                y0 - 0.02,
+                col_name,
+                transform=ax.transAxes,
+                ha="center",
+                va="top",
+                fontsize=7.5,
+                color=self.THEME["text_muted"],
+            )
+
+        for r in range(3):
+            for c in range(3):
+                value = int(matrix[r][c])
+                face = palette["on"] if value else palette["off"]
+                rect = patches.Rectangle(
+                    (x0 + (c * cell), y0 + ((2 - r) * cell)),
+                    cell * 0.95,
+                    cell * 0.95,
+                    transform=ax.transAxes,
+                    facecolor=face,
+                    edgecolor=self.THEME["panel_edge"],
+                    linewidth=0.8,
+                    zorder=2,
+                    clip_on=False,
+                )
+                ax.add_patch(rect)
+                ax.text(
+                    x0 + (c * cell) + (cell * 0.475),
+                    y0 + ((2 - r) * cell) + (cell * 0.475),
+                    str(value),
+                    transform=ax.transAxes,
+                    ha="center",
+                    va="center",
+                    fontsize=8.2,
+                    color="#eaf4ff",
+                    fontweight="bold",
+                    zorder=3,
+                )
+
+    def _draw_diff_grid(self, ax, solution_matrix, reference_matrix, *, x0, y0, cell):
+        ax.text(
+            x0,
+            y0 + (cell * 3) + 0.04,
+            "Cell Agreement",
+            transform=ax.transAxes,
+            ha="left",
+            va="bottom",
+            fontsize=8.6,
+            color=self.THEME["text_muted"],
+            fontweight="bold",
+        )
+        for r in range(3):
+            for c in range(3):
+                same = int(solution_matrix[r][c]) == int(reference_matrix[r][c])
+                face = self.THEME["success"] if same else self.THEME["risk_critical"]
+                rect = patches.Rectangle(
+                    (x0 + (c * cell), y0 + ((2 - r) * cell)),
+                    cell * 0.95,
+                    cell * 0.95,
+                    transform=ax.transAxes,
+                    facecolor=face,
+                    edgecolor=self.THEME["panel_edge"],
+                    linewidth=0.8,
+                    zorder=2,
+                    clip_on=False,
+                )
+                ax.add_patch(rect)
+                ax.text(
+                    x0 + (c * cell) + (cell * 0.475),
+                    y0 + ((2 - r) * cell) + (cell * 0.475),
+                    "=" if same else "x",
+                    transform=ax.transAxes,
+                    ha="center",
+                    va="center",
+                    fontsize=8.5,
+                    color="#f8fafc",
+                    fontweight="bold",
+                    zorder=3,
+                )
+
+    def _render_sfc_evaluation_panel(self):
+        if not hasattr(self, "ax_sfc_info"):
+            return
+        self.ax_sfc_info.cla()
+        self._style_panel_axes(self.ax_sfc_info)
+
+        evaluations = self._build_sfc_frame_evaluations()
+        frame = int(self.current_frame)
+        if not evaluations:
+            self.ax_sfc_info.text(
+                0.02,
+                0.7,
+                "Frame {} | No SFC rows for this frame".format(frame),
+                transform=self.ax_sfc_info.transAxes,
+                ha="left",
+                va="center",
+                fontsize=10.0,
+                color=self.THEME["text_main"],
+                fontweight="bold",
+            )
+            self.ax_sfc_info.text(
+                0.02,
+                0.48,
+                "Load a frame with SFC rows to see side-by-side evaluation.",
+                transform=self.ax_sfc_info.transAxes,
+                ha="left",
+                va="center",
+                fontsize=8.8,
+                color=self.THEME["text_muted"],
+            )
+            return
+
+        focus, focus_index = self._select_focus_evaluation(evaluations)
+        entry = focus["entry"]
+        solution_matrix = focus["solution_matrix"]
+        reference_matrix = focus["reference_matrix"]
+        match = focus["match"]
+
+        matched = sum(1 for item in evaluations if item.get("match") is True)
+        mismatched = sum(1 for item in evaluations if item.get("match") is False)
+        missing_ref = sum(1 for item in evaluations if item.get("match") is None)
+
+        self.ax_sfc_info.text(
+            0.02,
+            0.97,
+            "Frame {} | SFC Evaluation Board | showing {}/{} (mismatch-first)".format(
+                frame,
+                int(focus_index + 1),
+                int(len(evaluations)),
+            ),
+            transform=self.ax_sfc_info.transAxes,
+            ha="left",
+            va="top",
+            fontsize=9.0,
+            color=self.THEME["text_main"],
+            fontweight="bold",
+            fontfamily="monospace",
+        )
+        self.ax_sfc_info.text(
+            0.02,
+            0.86,
+            "event={} cutter={} stage={} code={} hex={} | summary: match={} mismatch={} missing_ref={}".format(
+                entry.get("event_id"),
+                entry.get("cutter_id"),
+                entry.get("stage"),
+                entry.get("code"),
+                entry.get("code_hex"),
+                int(matched),
+                int(mismatched),
+                int(missing_ref),
+            ),
+            transform=self.ax_sfc_info.transAxes,
+            ha="left",
+            va="top",
+            fontsize=8.0,
+            color=self.THEME["text_muted"],
+            fontfamily="monospace",
+        )
+
+        cell = 0.075
+        y0 = 0.29
+        self._draw_matrix_grid(
+            self.ax_sfc_info,
+            solution_matrix,
+            x0=0.05,
+            y0=y0,
+            cell=cell,
+            label="Our Matrix (SFC decoded)",
+            palette={"on": "#0891b2", "off": "#12263a"},
+        )
+
+        if reference_matrix is not None:
+            self._draw_matrix_grid(
+                self.ax_sfc_info,
+                reference_matrix,
+                x0=0.36,
+                y0=y0,
+                cell=cell,
+                label="highD Raw-ID Matrix",
+                palette={"on": "#2563eb", "off": "#12263a"},
+            )
+            self._draw_diff_grid(self.ax_sfc_info, solution_matrix, reference_matrix, x0=0.67, y0=y0, cell=cell)
+            decision_text = "MATCH" if match else "MISMATCH"
+            decision_color = self.THEME["success"] if match else self.THEME["risk_critical"]
+            self.ax_sfc_info.text(
+                0.67,
+                0.18,
+                "Evaluation: {}".format(decision_text),
+                transform=self.ax_sfc_info.transAxes,
+                ha="left",
+                va="center",
+                fontsize=9.8,
+                color=decision_color,
+                fontweight="bold",
+            )
+        else:
+            self.ax_sfc_info.text(
+                0.36,
+                0.47,
+                "highD Raw-ID Matrix unavailable",
+                transform=self.ax_sfc_info.transAxes,
+                ha="left",
+                va="center",
+                fontsize=9.0,
+                color=self.THEME["text_muted"],
+                fontweight="bold",
+            )
+            self.ax_sfc_info.text(
+                0.36,
+                0.36,
+                "Evaluation: N/A",
+                transform=self.ax_sfc_info.transAxes,
+                ha="left",
+                va="center",
+                fontsize=9.5,
+                color=self.THEME["text_muted"],
+                fontweight="bold",
+            )
+
+    def _update_sfc_match_indicator(self):
+        if not hasattr(self, "sfc_match_text"):
+            return
+        evaluations = self._build_sfc_frame_evaluations()
+        if not evaluations:
+            self.sfc_match_text.set_text("SFC MATRIX CHECK: N/A")
+            self.sfc_match_text.set_color(self.THEME["text_muted"])
+            return
+
+        has_mismatch = any(item.get("match") is False for item in evaluations)
+        has_match = any(item.get("match") is True for item in evaluations)
+        has_missing = any(item.get("match") is None for item in evaluations)
+        if has_mismatch:
+            self.sfc_match_text.set_text("SFC MATRIX CHECK: RED (MISMATCH)")
+            self.sfc_match_text.set_color(self.THEME["risk_critical"])
+            return
+        if has_match and (not has_missing):
+            self.sfc_match_text.set_text("SFC MATRIX CHECK: GREEN (MATCH)")
+            self.sfc_match_text.set_color(self.THEME["success"])
+            return
+        if has_match:
+            self.sfc_match_text.set_text("SFC MATRIX CHECK: GREEN* (PARTIAL)")
+            self.sfc_match_text.set_color(self.THEME["success"])
+            return
+
+        self.sfc_match_text.set_text("SFC MATRIX CHECK: N/A")
+        self.sfc_match_text.set_color(self.THEME["text_muted"])
+
     def _is_track_right_to_left(self, track_id, frame):
         """Return True when the given track moves toward decreasing x at this frame."""
         try:
@@ -1341,38 +1757,34 @@ class VisualizationPlot(object):
             return False
 
     def _build_sfc_matrix_text(self):
+        # Long multiline matrix dumps are replaced by a visual evaluation board.
+        # Keep this as a compact one-line fallback for any existing callers.
         frame = int(self.current_frame)
-        frame_entries = self.sfc_codes_by_frame.get(frame)
-        if not frame_entries:
-            return "Frame {} SFC matrix: no code".format(frame)
-
-        lines = ["Frame {} SFC 3x3 matrix/matrices:".format(frame)]
-        sfc_codes_canonical = bool(self.arguments.get("sfc_codes_canonical", False))
-        for entry in frame_entries:
-            matrix = self._decode_code_to_3x3_matrix(entry["code"])
-            cutter_id = entry.get("cutter_id")
-            mirrored = False
-            if (not sfc_codes_canonical) and cutter_id is not None and self._is_track_right_to_left(cutter_id, frame):
-                matrix = np.fliplr(np.asarray(matrix, dtype=int)).tolist()
-                mirrored = True
-            lines.append(
-                "event_id={}, cutter_id={}, stage={}, code={}, code_hex={}, mirrored={}".format(
-                    entry.get("event_id"),
-                    cutter_id,
-                    entry.get("stage"),
-                    entry["code"],
-                    entry.get("code_hex"),
-                    mirrored,
-                )
+        evaluations = self._build_sfc_frame_evaluations()
+        if not evaluations:
+            return "Frame {} | SFC eval board: no rows".format(frame)
+        focus, focus_index = self._select_focus_evaluation(evaluations)
+        entry = focus["entry"]
+        return (
+            "Frame {} | showing {}/{} | event={} cutter={} stage={} code={} | {}".format(
+                frame,
+                int(focus_index + 1),
+                int(len(evaluations)),
+                entry.get("event_id"),
+                entry.get("cutter_id"),
+                entry.get("stage"),
+                entry.get("code"),
+                self._build_sfc_eval_summary(),
             )
-            lines.extend(" ".join(str(cell) for cell in row) for row in matrix)
-            lines.append("")
-        return "\n".join(lines).rstrip()
+        )
 
     def _update_sfc_matrix_overlay(self):
-        if not hasattr(self, "sfc_info_text"):
+        if not hasattr(self, "ax_sfc_info"):
             return
-        self.sfc_info_text.set_text(self._build_sfc_matrix_text())
+        self._render_sfc_evaluation_panel()
+        if hasattr(self, "sfc_info_text"):
+            self.sfc_info_text.set_text("")
+        self._update_sfc_match_indicator()
         if hasattr(self, "status_text"):
             self.status_text.set_text(self._build_status_text())
         self._update_header_state()
