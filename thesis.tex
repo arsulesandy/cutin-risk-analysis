@@ -861,7 +861,12 @@ Recordings processed & \multicolumn{3}{c}{60 (01--60)} \\
     Across the 60 recordings, the risk ratio (THW $<$ \SI{0.7}{\second}) varies between 11.1\% and 34.1\% (median 20.0\%). This suggests that traffic composition and local conditions differ across recordings even within the same dataset.
 
     \section{Context signature maps}
-    Figures~\ref{fig:sfc-decision-grids} and \ref{fig:sfc-stage-diff} show occupancy maps (mean occupancy probability) for risk and non-risk groups and their difference. In these plots, rows correspond to \{preceding, alongside, following\} and columns to \{left, same, right\} relative to the cutter.
+    \label{sec:context-maps}
+    To interpret the context signatures, we report mean occupancy probabilities in the semantic 3$\times$3 grid described in Chapter~\ref{chap:theory}. The grid is aligned with the cutter after mirror normalisation; columns correspond to \{left lane, same lane, right lane\} and rows to \{preceding, alongside, following\}. The centre cell (same-lane/alongside) is occupied by construction because it represents the cutter; occupancy in other cells indicates the presence of at least one surrounding vehicle in the corresponding relative region.
+
+    We present the decision stage as a representative example because it captures the traffic configuration immediately before the cut-in interaction becomes established. Figure~\ref{fig:sfc-decision-grids} shows mean occupancy for non-risk and risky events and the risk-minus-non-risk difference for the decision stage.
+
+    To highlight how group differences evolve over time, Figure~\ref{fig:sfc-stage-diff} shows risk-minus-non-risk difference maps for the intention, decision, and execution stages using a consistent colour scale. Because the differences are small in magnitude, they may appear visually subtle; supplementary absolute maps for the intention and execution stages are provided in Appendix~\ref{app:occupancy-supp}.
 
     \begin{figure}[H]
         \centering
@@ -1095,5 +1100,23 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
 
     \section{\texorpdfstring{Reference 3$\times$3}{Reference 3x3} occupancy grid from highD neighbour ids}
     For a given ego vehicle and frame, highD provides surrounding-vehicle ids for left/right/preceding/following/alongside positions. We map these to the 3$\times$3 grid by setting a cell to $1$ if the corresponding neighbour id is non-zero; otherwise $0$. The same grid can be produced by geometry-based reconstruction, enabling code-level verification via SFC signature matching.
+
+
+
+    \chapter{Appendix: Supplementary occupancy maps}
+    \label{app:occupancy-supp}
+
+    Figure~\ref{fig:sfc-decision-grids} in Chapter~\ref{chap:results} presents the decision-stage occupancy maps in the main text because it provides a representative pre-onset view of the surrounding traffic configuration. For completeness, Figure~\ref{fig:sfc-supp-abs} reports additional absolute occupancy maps for the intention and execution stages.
+
+    \begin{figure}[H]
+        \centering
+        \safeincludegraphics[width=0.48\textwidth]{intention_nonrisk.png}
+        \safeincludegraphics[width=0.48\textwidth]{intention_risk.png}\\[2pt]
+        \safeincludegraphics[width=0.48\textwidth]{execution_nonrisk.png}
+        \safeincludegraphics[width=0.48\textwidth]{execution_risk.png}
+        \caption{Supplementary absolute occupancy maps for the intention and execution stages (non-risk vs risky). These plots complement the decision-stage example in Figure~\ref{fig:sfc-decision-grids}.}
+        \label{fig:sfc-supp-abs}
+    \end{figure}
+
 
 \end{document}
