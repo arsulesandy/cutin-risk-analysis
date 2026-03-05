@@ -138,6 +138,10 @@ class VisualizationPlot(object):
         else:
             self.fig = fig
             self.ax = self.fig.gca()
+        try:
+            self.fig.canvas.manager.set_window_title("highd Console")
+        except Exception:
+            pass
         self._center_window_on_screen()
 
         self.fig.patch.set_facecolor(self.THEME["figure_bg"])

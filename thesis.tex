@@ -344,6 +344,10 @@
     \paragraph{Representation-level validation (occupancy and SFC signatures).}
     For cut-in stage frames, occupancy grids are constructed both from reconstructed relations and from reference relations. The resulting binary grids and their derived SFC codes are compared using cell-wise agreement and Hamming distance. This verifies that the spatial-context signatures preserve the same underlying neighbour-occupancy structure implied by the reference relations.
 
+
+    \paragraph{Qualitative verification (interactive dashboard).}
+    To complement the quantitative metrics, we performed qualitative spot checks using an interactive dashboard that synchronises video playback with reconstructed relations, event timing, and context signatures. This helped verify that agreement metrics correspond to visually correct interactions and supported traceable illustrative examples.
+
     \section{Metrics}
     Lane and neighbour reconstruction are evaluated using exact-match accuracy. Because a large fraction of frames contain no neighbour (encoded as id $0$), we report accuracy both over all frames and conditional on frames where the reference id is non-zero; the latter avoids inflated scores from trivial no-neighbour matches.
     Cut-in detection agreement is evaluated using precision, recall, and $F_1$ score. Occupancy agreement is evaluated using:
@@ -454,12 +458,14 @@
 
     Figure~\ref{fig:framework-overview} illustrates the framework and the reconstruction path.
 
+
     \begin{figure}[H]
         \centering
-        \safeincludegraphics[width=\textwidth]{fig_traj2rel_sfc_overview.pdf}
+        \safeincludegraphics[width=1.1\linewidth]{main_figure.png}
         \caption{Overview of \FrameworkName{} and its reference-label evaluation design. The reconstruction path infers lane membership and same-lane relations from trajectories and lane markings; highD lane and neighbour identifiers are used only as reference labels for agreement measurement.}
         \label{fig:framework-overview}
     \end{figure}
+
 
     \begin{table}[H]
         \centering
@@ -487,6 +493,20 @@ Reference-label evaluation & Agreement reporting & Frame-level accuracy, event-l
     \end{table}
 
     The remainder of this chapter describes each component and the corresponding reference-based validation checks.
+
+
+    \subsection{Interactive inspection dashboard}
+    Quantitative agreement metrics provide an overall assessment of reconstruction quality, but they do not on their own reveal whether failures are systematic (e.g., due to direction conventions, onset misalignment, or lane-boundary interpretation). To support qualitative verification, we developed an interactive inspection dashboard that synchronises (i) aerial video playback and track overlays, (ii) the currently selected cut-in event and its cutter--follower pair, and (iii) the derived stage window, indicators, and context signature for the current frame.
+
+    The dashboard was used to inspect representative cases and extremes (e.g., lowest-TTC events) and to verify that reconstructed relations and occupancy signatures correspond to the visible scene. The inspection interface is a verification and communication tool: it was not used to manually correct events or labels, and all reported results are produced by the framework's deterministic components.
+
+
+    \begin{figure}[H]
+        \centering
+        \safeincludegraphics[width=\textwidth]{fig_gui_command_deck.png}
+        \caption{Interactive inspection dashboard used for qualitative verification and illustration. The interface links video playback with reconstructed lane and neighbour relations, highlights the cutter--follower pair for selected cut-in events, and displays the corresponding stage and context signature for the current frame.}
+        \label{fig:gui-dashboard}
+    \end{figure}
 
 
     \section{Key configuration values}
@@ -820,7 +840,7 @@ Recordings processed & \multicolumn{3}{c}{60 (01--60)} \\
     \end{table}
 
     \section{Extreme events by TTC}
-    Table~\ref{tab:top-ttc} lists the three events with the lowest execution-stage TTC (finite only), useful for qualitative inspection.
+    Table~\ref{tab:top-ttc} lists the three events with the lowest execution-stage TTC (finite only), which are useful for qualitative inspection using the dashboard in Figure~\ref{fig:gui-dashboard}.
 
     \begin{table}[H]
         \centering

@@ -14,7 +14,7 @@ from cutin_risk.datasets.highd.transforms import build_tracking_table
 from cutin_risk.io.progress import iter_with_progress
 from cutin_risk.io.step_reports import mirror_file_to_step, step_reports_dir, write_step_markdown
 from cutin_risk.paths import dataset_root_path, output_path
-from cutin_risk.reconstruction.lanes import parse_lane_markings, infer_lane_index
+from cutin_risk.reconstruction.lanes import LaneInferenceOptions, parse_lane_markings, infer_lane_index
 
 from cutin_risk.encoding.sfc_binary import (
     BinarySFCOptions,
@@ -162,6 +162,12 @@ def main() -> None:
     ap.add_argument("--pre2-seconds", type=float, default=thesis_float("step14.pre2_seconds", 2.0, min_value=0.0))
     ap.add_argument("--post2-seconds", type=float, default=thesis_float("step14.post2_seconds", 2.0, min_value=0.0))
     ap.add_argument(
+        "--lane-boundary-eps",
+        type=float,
+        default=thesis_float("step14.lane_boundary_eps", 0.0, min_value=0.0),
+        help="Directional lane-boundary bias (meters) used during lane inference.",
+    )
+    ap.add_argument(
         "--mismatch-sample-limit",
         type=int,
         default=thesis_int("step14.mismatch_sample_limit", 12, min_value=0),
@@ -227,7 +233,8 @@ def main() -> None:
         df = build_tracking_table(rec)
 
         markings = parse_lane_markings(rec.recording_meta)
-        df = df.join(infer_lane_index(df, markings))  # adds laneIndex_xy
+        lane_options = LaneInferenceOptions(lane_boundary_eps=float(args.lane_boundary_eps))
+        df = df.join(infer_lane_index(df, markings, options=lane_options))  # adds laneIndex_xy
         df = add_sign_and_s(df)
 
         indexed = df.set_index(["id", "frame"], drop=False).sort_index()
@@ -410,6 +417,7 @@ def main() -> None:
         f"- Alongside threshold: `{float(args.alongside_thresh):.3f}`",
         f"- Range ahead: `{'disabled' if args.range_ahead is None else f'{float(args.range_ahead):.3f}'}`",
         f"- Range behind: `{'disabled' if args.range_behind is None else f'{float(args.range_behind):.3f}'}`",
+        f"- Lane-boundary epsilon: `{float(args.lane_boundary_eps):.3f}`",
         f"- Rows exported: `{len(out)}`",
         f"- Output CSV: `{canonical_codes}`",
         "",

@@ -39,6 +39,11 @@ class LaneInferenceOptions:
     lower_markings_col: str = "lowerLaneMarkings"
 
     y_reference: YReference = "center"
+    # Optional directional boundary bias (meters) to reduce one-frame lag around lane boundaries.
+    # If >0 and velocity column exists, y_ref is shifted by sign(yVelocity) * lane_boundary_eps.
+    lane_boundary_eps: float = 0.0
+    y_velocity_col: str = "yVelocity"
+    y_velocity_deadband: float = 0.05
 
     out_lane_index_col: str = "laneIndex_xy"
     unknown_lane: int = 0  # 0 means "unassigned / out of bounds"
@@ -153,6 +158,13 @@ def infer_lane_index(
         y_ref = df[options.y_col].astype(float) + 0.5 * df[options.height_col].astype(float)
     else:
         y_ref = df[options.y_col].astype(float)
+
+    # Optional directional boundary bias to reduce transition lag exactly at lane borders.
+    if float(options.lane_boundary_eps) > 0.0 and options.y_velocity_col in df.columns:
+        vy = pd.to_numeric(df[options.y_velocity_col], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+        sign_vy = np.sign(vy)
+        sign_vy[np.abs(vy) < float(options.y_velocity_deadband)] = 0.0
+        y_ref = y_ref + (float(options.lane_boundary_eps) * sign_vy)
 
     dd = df[options.driving_direction_col].astype(int)
 

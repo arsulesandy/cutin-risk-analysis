@@ -118,6 +118,7 @@
     "alongside_thresh": 5.0,
     "range_ahead": null,
     "range_behind": null,
+    "lane_boundary_eps": 0.0,
     "pre4_seconds": 4.0,
     "pre2_seconds": 2.0,
     "post2_seconds": 2.0
