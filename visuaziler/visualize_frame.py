@@ -139,7 +139,7 @@ class VisualizationPlot(object):
             self.fig = fig
             self.ax = self.fig.gca()
         try:
-            self.fig.canvas.manager.set_window_title("highd Console")
+            self.fig.canvas.manager.set_window_title("HighD Console")
         except Exception:
             pass
         self._center_window_on_screen()
@@ -228,7 +228,7 @@ class VisualizationPlot(object):
         self.ax_header.text(
             0.015,
             0.62,
-            "highD Scenario Intelligence Console",
+            "HighD Scenario Intelligence Console",
             transform=self.ax_header.transAxes,
             ha="left",
             va="center",

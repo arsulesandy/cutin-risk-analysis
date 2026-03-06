@@ -115,7 +115,7 @@
   "step14": {
     "risk_thw": 0.7,
     "sfc_order": "hilbert",
-    "alongside_thresh": 5.0,
+    "alongside_thresh": 4.0,
     "range_ahead": null,
     "range_behind": null,
     "lane_boundary_eps": 0.0,

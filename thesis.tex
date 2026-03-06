@@ -82,12 +82,14 @@
 }
 
 % --- Thesis metadata (edit these) ---
-\newcommand{\ThesisTitle}{Cut-in Risk Analysis from Highway Trajectory Data}
+% \newcommand{\ThesisTitle}{Cut-in Risk Analysis from Highway Trajectory Data}
+\newcommand{\ThesisTitle}{An Efficient Approach to Retrieve and Construct Overtaking Scenarios for Automotive Data}
 \newcommand{\FrameworkName}{Traj2Rel-SFC}
-\newcommand{\ThesisSubtitle}{\FrameworkName: Trajectory-to-relation reconstruction and locality-preserving context signatures for cut-in interactions, validated on highD}
+\newcommand{\ThesisSubtitle}{\FrameworkName: An Space-Filling-Curve-based Trajectory-to-relation Reconstruction Approach for Overtaking
+Scenarios of Automotive Vehicles}
 \newcommand{\AuthorOne}{Sandeep Arsule}
 \newcommand{\AuthorTwo}{Shradha Shinde}
-\newcommand{\SupervisorName}{Claude Gu Jun-Yi}
+\newcommand{\SupervisorName}{Junyi Gu, Ph.D.}
 \newcommand{\ExaminerName}{Aris Alissandrakis}
 \newcommand{\UniversityName}{Chalmers University of Technology}
 \newcommand{\DepartmentName}{Department of Computer Science and Engineering}
@@ -534,8 +536,8 @@ Indicator computation & Closing speed epsilon & $10^{-6}$ \\
 Indicator computation & Window (pre/post) for diagnostics & 50/75 frames ($\approx \SI{2}{\second}/\SI{3}{\second}$) \\
 Stage model & Total analysis window & $\pm \SI{4}{\second}$ around $t_0$ \\
 Risk label & Execution THW threshold & \SI{0.7}{\second} \\
-SFC encoding & Ahead/behind range & \SI{150}{\meter} / \SI{150}{\meter} \\
-SFC encoding & Alongside threshold & \SI{5}{\meter} \\
+SFC encoding & Ahead/behind range & Disabled (no fixed cutoff) \\
+SFC encoding & Alongside threshold & \SI{4.0}{\meter} (final Step 14 thesis run) \\
 SFC encoding & Order & Hilbert \\
 \bottomrule
             \end{tabularx}}
@@ -893,6 +895,8 @@ Recordings processed & \multicolumn{3}{c}{60 (01--60)} \\
   \item \textbf{Reference agreement:} for cut-in stage frames, we compute a reference occupancy grid from highD surrounding-vehicle ids and compare its SFC code to the minimal-input code computed from inferred lanes and geometry. Exact matches indicate identical neighbour occupancy under the two definitions; non-matches localise differences to specific cells via Hamming distance.
     \end{itemize}
 
+    Using the final thesis configuration (\SI{4.0}{\meter} alongside threshold; no fixed ahead/behind cutoff), we verify 1,421,980 stage rows and obtain 1,414,762 exact row matches (99.49\%). Stage-wise exact-match rates are 99.35\% (intention), 99.52\% (decision), and 99.60\% (execution). In the thesis event view, stage-window ANY-frame agreement is 100.00\% and stage-window ALL-frame agreement is 79.82\%. The raw unmirrored match rate is 57.56\%, which confirms that direction normalisation is required for like-for-like left/right occupancy comparison across opposite travel directions.
+
 % ==============================================================================
     \chapter{Discussion}
     \label{chap:discussion}
@@ -902,7 +906,7 @@ Recordings processed & \multicolumn{3}{c}{60 (01--60)} \\
 
     \textbf{RQ2 (cut-in consistency):} Stable-block lane-change detection combined with follower pairing yields 10,026 cut-ins from 11,856 lane changes across recordings 01--60. When the full cut-in detector is run end-to-end on reconstructed relations, event matching against the reference-label path achieves $F_1 = 0.998938$.
 
-    \textbf{RQ3 (SFC encoding and verification):} A compact 3$\times$3 occupancy grid encoded into a 16-bit SFC signature provides an interpretable local context representation. The encoding is reversible by design and is validated by exhaustive round-trip checks. Reference-vs-minimal-input signature matching provides an additional end-to-end verification that the reconstructed neighbour occupancy used for SFC encoding corresponds to the reference relations in highD.
+    \textbf{RQ3 (SFC encoding and verification):} A compact 3$\times$3 occupancy grid encoded into a 16-bit SFC signature provides an interpretable local context representation. The encoding is reversible by design and is validated by exhaustive round-trip checks. In the final configuration, reference-vs-minimal-input matching reaches 99.49\% exact row agreement over 1,421,980 verified rows (with 100\% event-level ANY-frame agreement), confirming that the reconstructed occupancy used for SFC encoding corresponds closely to the reference relations in highD when direction is normalised. Reference-vs-minimal-input signature matching provides an additional end-to-end verification that the reconstructed neighbour occupancy used for SFC encoding corresponds to the reference relations in highD.
 
     \section{Interpretation and implications}
     A key outcome is methodological rather than purely statistical: the thesis defines a clear system boundary and shows that cut-in analysis can be executed using only trajectories and lane markings while still matching highD's reference relations to a high degree. This matters if the framework is to be reused on datasets (or sensors) that do not provide neighbour identifiers.
@@ -929,7 +933,7 @@ Recordings processed & \multicolumn{3}{c}{60 (01--60)} \\
 
     This thesis presents \FrameworkName{}, a dataset-independent framework for relation reconstruction and context signatures in cut-in interactions from highway trajectory data. By treating highD's lane and neighbour identifiers as reference labels rather than inputs, we show that lane assignment and same-lane predecessor/follower relations can be reconstructed from minimal geometric information ($x,y$ and lane markings) with near-perfect agreement. This enables cut-in detection and pair-consistent surrogate-safety computation without depending on dataset-specific relation columns.
 
-    On highD recordings 01--60, the framework yields 10,023 valid cut-in events and supports transparent risk labelling (2,018 risky under an execution-stage THW threshold of \SI{0.7}{\second}). Beyond scalar safety summaries, \FrameworkName{} introduces a direction-normalised interaction-context signature: a semantic occupancy grid encoded into a reversible 16-bit Hilbert SFC code. The signature is verified both algorithmically (exhaustive encode$\leftrightarrow$decode checks) and empirically (reference agreement against occupancy derived from highD neighbour relations).
+    On highD recordings 01--60, the framework yields 10,023 valid cut-in events and supports transparent risk labelling (2,018 risky under an execution-stage THW threshold of \SI{0.7}{\second}). Beyond scalar safety summaries, \FrameworkName{} introduces a direction-normalised interaction-context signature: a semantic occupancy grid encoded into a reversible 16-bit Hilbert SFC code. The signature is verified both algorithmically (exhaustive encode$\leftrightarrow$decode checks) and empirically (99.49\% exact row agreement against occupancy derived from highD neighbour relations over 1,421,980 verified rows)
 
     Together, these results establish a reusable foundation for reproducible cut-in scenario mining and context-aware analysis. The reconstruction layer generalises to settings where only trajectories and map/lane boundaries are available, and the integer signature opens the door to fast retrieval, clustering, and dictionary-based pattern matching of interaction motifs at scale.
 
