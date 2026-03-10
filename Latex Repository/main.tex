@@ -148,7 +148,7 @@ Based on these reconstructed relations, the framework detects cut-ins as explici
 
 The framework is evaluated on the \textit{highD} dataset, where highD lane and neighbour identifiers are used only as reference labels and not as method inputs. Across recordings 01--60, same-lane predecessor/follower reconstruction with inferred lanes reaches mean accuracy 0.999810/0.999811, and cut-in events detected from reconstructed relations match the reference-label events with $F_1 = 0.998938$. The detector extracts 10,026 cut-ins, of which 10,023 remain after stage-window validity checks. For 1,421,980 stage rows, reconstructed and reference context signatures agree exactly in 99.49\% of cases, and the SFC encoding is additionally verified through exhaustive round-trip testing over all $2^{16}$ code values.
 
-The main contribution of the thesis is not only that the method matches highD closely, but that it keeps the interacting pair, the indicator computation, and the local context representation explicit. This makes the analysis reproducible, easier to inspect, and reusable on data sources that do not provide neighbour relations directly.
+The main contribution of the thesis is methodological rather than purely dataset-specific. Relation fields that are usually treated as fixed dataset columns become explicit intermediate outputs that can be reconstructed, audited, and reused for pair-consistent indicator computation and reversible context encoding. This makes the analysis reproducible, easier to inspect, and more transferable to datasets that provide trajectories and lane-boundary information but not neighbour relations directly.
 
 \noindent\textbf{Keywords:} cut-in detection, minimal-input reconstruction, pair-specific risk analysis, surrogate safety measures, interaction context signature, space-filling curve, highD, reproducibility.
 
@@ -480,7 +480,7 @@ Figure~\ref{fig:framework-overview} illustrates the framework and the reconstruc
 
 \begin{figure}[H]
     \centering
-    \safeincludegraphics[width=1.1\linewidth]{main_figure.png}
+    \safeincludegraphics[width=0.98\linewidth]{main_figure.png}
 \caption{Overview of \FrameworkName{} and its reference-label evaluation design. The reconstruction path infers lane membership and same-lane relations from trajectories and lane markings; highD lane and neighbour identifiers are used only as reference labels for agreement measurement.}
     \label{fig:framework-overview}
 \end{figure}
@@ -697,7 +697,7 @@ Algorithm~\ref{alg:sfc-signature} summarises how the context signatures are cons
 \end{algorithm}
 
 \section{Post-processing: reproducible outputs}
-The framework is parameterised through a small set of explicit settings (e.g., stability thresholds and stage windows). Each run produces versioned outputs (tables and figures) that can be regenerated from the same raw data and settings. The intended entry point for reproducing the results is the project's reproducibility package or repository: \ArtifactURL.
+The framework is parameterised through a small set of explicit settings (e.g., stability thresholds and stage windows). Each run produces versioned outputs (tables and figures) that can be regenerated from the same raw data and settings. The thesis-facing claims in Chapters~\ref{chap:results}--\ref{chap:conclusion} rely on the all-recordings reconstruction, stage-feature, and context-signature artifacts; exploratory predictive experiments included elsewhere in the repository are separate and are not used as evidence for the thesis claims. The intended entry point for reproducing the reported tables and figures is the project's reproducibility package or repository: \ArtifactURL.
 
 % ==============================================================================
 \chapter{Results}
@@ -712,7 +712,7 @@ The final run uses recordings 01--60. Table~\ref{tab:events} summarises event yi
 \label{tab:events}
 {\small
 \setlength{\tabcolsep}{4pt}
-\begin{tabularx}{\textwidth}{@{}XrrX@{}}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.36\textwidth}rr>{\raggedright\arraybackslash}p{0.34\textwidth}@{}}
 \toprule
 Artefact & \shortstack{Lane\\changes} & \shortstack{Cut\\-ins} & Notes \\
 \midrule
@@ -747,14 +747,14 @@ Cut-in relation duration & 0.360 & 1.960 & 1.960 & 1.870 & 1.960 & 1.960 \\
 \end{tabular}}
 \end{table}
 
-Overall, 84.56\% of detected lane changes are classified as cut-ins under our definition (10,026 cut-ins out of 11,856 lane changes).
+Overall, 84.56\% of detected lane changes are classified as cut-ins under our definition (10,026 cut-ins out of 11,856 lane changes). This proportion should be read as the yield of the operational event definition used in this thesis, not as a general prevalence estimate for highway traffic.
 
 \section{Evaluation of the minimal-input reconstruction (RQ1/RQ2)}
 \paragraph{Same-lane neighbour reconstruction.}
 Geometry-based same-lane neighbour reconstruction matches the reference preceding and following relations with mean accuracy of 0.999997 across the 60 recordings. Unless stated otherwise, accuracies are computed over all frames; conditional accuracies restricted to frames where the reference relation exists (non-zero id) are reported in the supplementary material.
 
 \paragraph{XY-lane variant.}
-When lane membership is also inferred from geometry (XY-lane), agreement remains high with mean preceding and following accuracies of 0.999810 and 0.999811. This corresponds to a frame-level mismatch rate of about 0.02\%. Cut-in detection based on reconstructed relations matches the reference-label events with $F_1 = 0.998938$.
+When lane membership is also inferred from geometry (XY-lane), agreement remains high with mean preceding and following accuracies of 0.999810 and 0.999811. This corresponds to a frame-level mismatch rate of about 0.02\%. Cut-in detection based on reconstructed relations matches the reference-label events with $F_1 = 0.998938$. Across recordings, the per-recording means are tightly concentrated: the approximate 95\% confidence interval over recording means is $\pm 2.3\times10^{-5}$ for preceding/following accuracy and $\pm 7.3\times10^{-4}$ for cut-in $F_1$.
 
 These results answer the correctness question: the minimal-input path reproduces the reference-label path with high agreement. The remaining results address usefulness: how explicit pair construction, stage alignment, and explicit indicator choices affect interpretation once this correctness baseline is established.
 
@@ -777,6 +777,8 @@ TTC$_{\min}$ (s), finite only (n=3,606) & 0.220 & 10.769 & 19.726 & 74.161 & 42.
 \bottomrule
 \end{tabular}}
 \end{table}
+
+The TTC distribution is strongly right-skewed, so the median and quartiles are more informative than the mean for interpreting the typical severity of finite-closing events.
 
 \section{Stage-based risk summaries}
 Risk is defined as:
@@ -938,7 +940,7 @@ We verify the SFC encoding in two complementary ways:
   \item \textbf{Reference agreement:} for cut-in stage frames, we compute a reference occupancy grid from highD surrounding-vehicle ids and compare its SFC code to the minimal-input code computed from inferred lanes and geometry. Exact matches indicate identical neighbour occupancy under the two definitions; non-matches localise differences to specific cells via Hamming distance.
 \end{itemize}
 
-Using the final thesis configuration (\SI{4.0}{\meter} alongside threshold; no fixed ahead/behind cutoff), we verify 1,421,980 stage rows and obtain 1,414,762 exact row matches (99.49\%). Stage-wise exact-match rates are 99.35\% (intention), 99.52\% (decision), and 99.60\% (execution). In the thesis event view, stage-window ANY-frame agreement is 100.00\% and stage-window ALL-frame agreement is 79.82\%. The raw unmirrored match rate is 57.56\%, which confirms that direction normalisation is required for like-for-like left/right occupancy comparison across opposite travel directions.
+Using the final thesis configuration, with an alongside threshold of \SI{4.0}{\meter} and no fixed ahead/behind cutoff, we verify 1,421,980 stage rows and obtain 1,414,762 exact row matches (99.49\%). Stage-wise exact-match rates are 99.35\% (intention), 99.52\% (decision), and 99.60\% (execution). In the thesis event view, stage-window ANY-frame agreement is 100.00\%, while stage-window ALL-frame agreement is 79.82\%. The raw unmirrored match rate is only 57.56\%, which confirms that direction normalisation is necessary for like-for-like left/right occupancy comparison across opposite travel directions.
 
 % ==============================================================================
 \chapter{Discussion}
@@ -949,10 +951,14 @@ Using the final thesis configuration (\SI{4.0}{\meter} alongside threshold; no f
 
 \textbf{RQ2 (cut-in consistency):} Stable-block lane-change detection combined with follower pairing yields 10,026 extracted cut-ins from 11,856 lane changes across recordings 01--60, of which 10,023 remain after stage-window validity checks. When the full cut-in detector is run end-to-end on reconstructed relations, event matching against the reference-label path achieves $F_1 = 0.998938$. Beyond correctness, the explicit cutter--follower representation makes it possible to compute pair-consistent surrogate measures and to keep the event definition explicit.
 
-\textbf{RQ3 (SFC encoding and verification):} A compact 3$\times$3 occupancy grid encoded into a 16-bit SFC signature provides an interpretable local context representation. The encoding is reversible by design and is validated by exhaustive round-trip checks. In the final configuration, reference-vs-minimal-input matching reaches 99.49\% exact row agreement over 1,421,980 verified rows (with 100\% event-level ANY-frame agreement), confirming that the reconstructed occupancy used for SFC encoding corresponds closely to the reference relations in highD when direction is normalised. Reference-vs-minimal-input signature matching provides an additional end-to-end verification that the reconstructed neighbour occupancy used for SFC encoding corresponds to the reference relations in highD.
+\textbf{RQ3 (SFC encoding and verification):} A compact 3$\times$3 occupancy grid encoded into a 16-bit SFC signature provides an interpretable local context representation. The encoding is reversible by design and is validated by exhaustive round-trip checks. In the final configuration, reference-vs-minimal-input matching reaches 99.49\% exact row agreement over 1,421,980 verified rows (with 100\% event-level ANY-frame agreement), confirming that the reconstructed occupancy used for SFC encoding corresponds closely to the reference relations in highD once direction is normalised.
 
 \section{Interpretation and implications}
-The main outcome of the thesis is methodological. What matters here is not the dashboard or the amount of code, but the fact that the method has a clear boundary. The framework uses trajectories and lane markings as inputs and treats highD relation fields as evaluation labels. Because of that, the same approach can be reused on data sources that do not provide neighbour ids, and disagreements with dataset conventions can be studied instead of inherited silently.
+The main outcome of the thesis is methodological. What matters here is not the dashboard or the amount of code, but the fact that the method has a clear boundary. The framework uses trajectories and lane markings as inputs and treats highD relation fields as evaluation labels. Because of that, disagreements with dataset conventions can be studied instead of inherited silently.
+
+The innovative step is relation-first analysis: lane ids and neighbour ids are treated as reconstructable intermediate products rather than immutable dataset facts. That shift is modest algorithmically, but important scientifically because it separates observation, derived relation, event definition, and risk label into auditable layers. The result is a pipeline whose assumptions can be inspected, challenged, and transferred more easily than a pipeline that starts from hidden dataset-specific relation columns.
+
+This transferability still has conditions. The current method assumes trajectories are expressed in a consistent coordinate system and that lane-boundary metadata, or an equivalent road model, is available. The contribution is therefore not that the framework is assumption free, but that its assumptions are explicit and that their consequences can be measured against reference labels.
 
 \begin{table}[H]
 \centering
@@ -989,7 +995,7 @@ The SFC signatures complement the scalar indicators. Because the code is reversi
 \textbf{Conclusion validity:} We report descriptive differences, sensitivity checks, and agreement checks against reference labels. The thesis does not make causal claims about driver behaviour or safety outcomes, and statistical significance is not emphasised over effect magnitude.
 
 \section{Future work}
-Natural next steps include (i) extending the surrogate-measure layer with braking-demand or minimum-safe-deceleration criteria, which have been proposed as complementary lane-change safety indicators \cite{wang2020humanlike}, (ii) adding broader ablation studies over relevance-distance, pair-persistence, and stage-boundary criteria, ideally with manual review of disagreement cases, and (iii) exploiting the integer context signatures for larger-scale scenario mining, for example through retrieval, clustering, and cross-dataset comparison.
+Natural next steps include (i) extending the surrogate-measure layer with braking-demand or minimum-safe-deceleration criteria, which have been proposed as complementary lane-change safety indicators \cite{wang2020humanlike}, (ii) adding broader ablation studies over relevance-distance, pair-persistence, and stage-boundary criteria, ideally with manual review of disagreement cases, and (iii) exploiting the integer context signatures for larger-scale scenario mining, for example through retrieval, clustering, cross-dataset comparison, and predictive tasks where their added value must be demonstrated empirically rather than assumed.
 
 % ==============================================================================
 \chapter{Conclusion}
