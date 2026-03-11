@@ -48,6 +48,7 @@ run_cmd "$PYTHON_BIN" scripts/step14_sfc_binary_encode.py
 run_cmd "$PYTHON_BIN" scripts/step14_sfc_binary_report.py
 run_cmd "$PYTHON_BIN" scripts/step15a_sfc_mirror_normalize.py \
   --codes-csv "$STEP14_CODES_CSV"
+run_cmd "$PYTHON_BIN" scripts/step15d_sfc_archetypes.py
 run_cmd "$PYTHON_BIN" scripts/step15b_sfc_weighted_stage_features.py --mode distance
 run_cmd "$PYTHON_BIN" scripts/step15b_sfc_weighted_stage_features.py --mode ttc
 

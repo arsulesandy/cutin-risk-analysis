@@ -142,11 +142,11 @@
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
 
-Lane ids and neighbour ids are important when studying vehicle interactions in trajectory datasets. The problem is that many analysis pipelines depend on these derived fields directly, which makes them hard to reuse when the fields are unavailable, inconsistent, or defined differently across datasets. This thesis presents \FrameworkName{}, a minimal-input framework that reconstructs lane assignment and same-lane predecessor/follower relations from trajectory geometry ($x,y$) and lane-marking metadata.
+Lane ids and neighbour ids are important when studying vehicle interactions in trajectory datasets. A common limitation, however, is that many analysis pipelines depend on these derived fields directly, which reduces reuse when the fields are unavailable, inconsistent, or defined differently across datasets. This thesis presents \FrameworkName{}, a minimal-input framework that reconstructs lane assignment and same-lane predecessor/follower relations from trajectory geometry ($x,y$) and lane-marking metadata.
 
 Based on these reconstructed relations, the framework detects cut-ins as explicit cutter--follower pairs, computes distance headway (DHW), time headway (THW), and time-to-collision (TTC) for that pair, and represents the surrounding traffic context with an ego-centric occupancy grid. To make the context comparable across travel directions, the grid is mirror-normalised and encoded as a reversible 16-bit Hilbert space-filling-curve signature.
 
-The framework is evaluated on the \textit{highD} dataset, where highD lane and neighbour identifiers are used only as reference labels and not as method inputs. Across recordings 01--60, same-lane predecessor/follower reconstruction with inferred lanes reaches mean accuracy 0.999810/0.999811, and cut-in events detected from reconstructed relations match the reference-label events with $F_1 = 0.998938$. The detector extracts 10,026 cut-ins, of which 10,023 remain after stage-window validity checks. For 1,421,980 stage rows, reconstructed and reference context signatures agree exactly in 99.49\% of cases, and the SFC encoding is additionally verified through exhaustive round-trip testing over all $2^{16}$ code values.
+The framework is evaluated on the \textit{highD} dataset, where highD lane and neighbour identifiers are used only as reference labels and not as method inputs. Across recordings 01--60, same-lane predecessor/follower reconstruction with inferred lanes reaches mean accuracy 0.999810/0.999811, and cut-in events detected from reconstructed relations match the reference-label events with $F_1 = 0.998938$. The detector extracts 10,026 cut-ins, of which 10,023 remain after stage-window validity checks. For 1,421,980 stage rows, reconstructed and reference context signatures agree exactly in 99.49\% of cases, and the SFC encoding is additionally verified through exhaustive round-trip testing over all $2^{16}$ code values. Using the mirrored decision-stage signatures, the thesis further derives seven stable context archetypes; the most risk-enriched archetype shows a 1.32$\times$ higher execution-stage THW risk prevalence than the overall event set.
 
 The main contribution of the thesis is methodological rather than purely dataset-specific. Relation fields that are usually treated as fixed dataset columns become explicit intermediate outputs that can be reconstructed, audited, and reused for pair-consistent indicator computation and reversible context encoding. This makes the analysis reproducible, easier to inspect, and more transferable to datasets that provide trajectories and lane-boundary information but not neighbour relations directly.
 
@@ -218,11 +218,11 @@ This thesis follows the \textbf{method-evaluation perspective}. Concretely, our 
 \section{Problem statement}
 This thesis addresses the lack of a reproducible framework that can rebuild lane and same-lane relations from minimal inputs, define cut-ins as explicit cutter--follower events, compute safety indicators for that pair, and represent the surrounding traffic scene in a compact form.
 
-\section{Why matching highD is not enough}
-High agreement against highD is important, but by itself it is not a full thesis contribution. If the method only reproduces the dataset's provided relations, then the work can still look like a careful reconstruction exercise. The thesis therefore also asks what becomes possible once the relevant pair is reconstructed explicitly. In our case, that means defining a cut-in as a cutter--follower event, computing DHW, THW, and TTC for that pair, and showing how the interpretation changes across stages and thresholds. This is the part that turns reconstruction accuracy into a useful analysis pipeline rather than only a matching exercise.
+\section{Limitations of matching highD alone}
+High agreement against highD is important, but it is not by itself a sufficient thesis contribution. If the method only reproduces the dataset's provided relations, the work may still appear to be a careful reconstruction exercise. The thesis therefore examines the analytical consequences of reconstructing the relevant pair explicitly. In the present case, this means defining a cut-in as a cutter--follower event, computing DHW, THW, and TTC for that pair, and showing how the interpretation changes across stages and thresholds. In this way, reconstruction accuracy is extended into a reusable analysis pipeline rather than remaining a matching exercise alone.
 
 \section{Key idea and novelty}
-The main idea behind \FrameworkName{} is simple: first reconstruct lane and same-lane neighbour relations from minimal inputs, then use those reconstructed relations to define cut-ins in a clear way, and finally encode local context so that events can be compared later. The framework therefore has three connected parts:
+The core design of \FrameworkName{} is to reconstruct lane and same-lane neighbour relations from minimal inputs, use those reconstructed relations to define cut-ins explicitly, and encode local context in a reusable compact form. The framework therefore has three connected parts:
 
 \begin{enumerate}[leftmargin=1.6em]
   \item a \textbf{trajectory-to-relation reconstruction layer} (Traj2Rel) that rebuilds lane assignment and same-lane neighbour relations from minimal geometric inputs ($x,y$ and lane markings),
@@ -230,7 +230,7 @@ The main idea behind \FrameworkName{} is simple: first reconstruct lane and same
   \item a \textbf{context-signature layer} that turns the surrounding traffic configuration into a compact, reversible integer code using a Hilbert space-filling-curve traversal.
 \end{enumerate}
 
-The key design choice is the evaluation boundary. highD lane and neighbour identifiers are used only as reference labels and never as hidden inputs to the method. This lets us test whether the minimal-input path works on its own and keeps the later cut-in analysis independent from dataset-specific relation columns. The individual ingredients are known in the literature; the contribution here is to bring them together in one clear pipeline for cut-in analysis and to evaluate that pipeline explicitly against reference labels.
+The key design choice is the evaluation boundary. highD lane and neighbour identifiers are used only as reference labels and never as hidden inputs to the method. This design permits direct assessment of the minimal-input path and keeps the downstream cut-in analysis independent of dataset-specific relation columns. The individual ingredients are known in the literature; the contribution here is to integrate them into a coherent pipeline for cut-in analysis and to evaluate that pipeline explicitly against reference labels.
 
 \section{Goal}
 The goal is to build and evaluate a reproducible framework that:
@@ -262,7 +262,7 @@ This thesis presents \FrameworkName{}, a reconstruction-and-signature framework 
 
 \begin{enumerate}[leftmargin=1.6em]
   \item \textbf{Minimal-input relation reconstruction:} lane inference (XY-lane) and same-lane predecessor/follower reconstruction from $x,y$ trajectories and lane markings, evaluated frame by frame against highD reference labels.
-  \item \textbf{Explicit cutter--follower cut-in definition:} cut-ins are detected as explicit interacting pairs with a reproducible onset definition ($t_0$), which makes later feature extraction consistent and easy to inspect.
+  \item \textbf{Explicit cutter--follower cut-in definition:} cut-ins are detected as explicit interacting pairs with a reproducible onset definition ($t_0$), thereby making feature extraction consistent and auditable.
   \item \textbf{Pair-specific indicator analysis:} DHW, THW, and TTC are computed for the actual cutter--follower pair and interpreted stage-wise, using literature-backed reasoning for why TTC and THW are useful in different parts of the interaction.
   \item \textbf{Reversible context signatures:} a direction-normalised semantic occupancy grid is encoded into a reversible 16-bit Hilbert SFC signature and verified against reference occupancy built from highD neighbour relations.
   \item \textbf{Clear evaluation setup and reproducible outputs:} a two-path design separates the minimal-input reconstruction path from the reference-label path, and the full run produces deterministic tables and figures that can be regenerated from the same settings.
@@ -279,14 +279,14 @@ Chapter~\ref{chap:background} introduces the dataset and core concepts. Chapter~
 \section{Trajectory data and the highD dataset}
 We use the \textit{highD} dataset, a drone-based collection of naturalistic highway trajectories \cite{highd_2018}. HighD provides per-frame vehicle states (position, velocity, acceleration), lane identifiers, and neighbour identifiers such as same-lane preceding and following vehicles. The recordings are sampled at \SI{25}{\hertz}.
 
-A recording is distributed as three data tables: per-frame trajectories, per-vehicle metadata, and recording-level metadata. For completeness, the corresponding file names in the released dataset are listed in Appendix~\ref{app:field-mapping}. Throughout the thesis we refer to these sources by their role (trajectories / track metadata / recording metadata) to keep the presentation readable.
+A recording is distributed as three data tables: per-frame trajectories, per-vehicle metadata, and recording-level metadata. For completeness, the corresponding file names in the released dataset are listed in Appendix~\ref{app:field-mapping}. Throughout the thesis we refer to these sources by their role (trajectories / track metadata / recording metadata) for terminological consistency.
 
 
 
 \section{Neighbour relations in highD}
 In addition to trajectories, highD provides identifiers of surrounding vehicles for each vehicle and time step (e.g., the closest vehicle ahead and behind in the same lane, and corresponding neighbours in adjacent lanes). These identifiers are convenient for analysing highD itself and, in this thesis, serve as \emph{reference labels} for evaluating the reconstruction method. The reconstruction path described in this thesis does not use these identifiers as inputs; it derives neighbour relations from geometry and compares them against the highD-provided identifiers. A mapping between the terminology used in this thesis and the relevant highD columns is provided in Appendix~\ref{app:field-mapping}.
 
-\section{Why compute indicators ourselves}
+\section{Rationale for pair-specific indicator computation}
 For cut-in risk, the key interaction is between the cutter and the follower that ends up behind the cutter in the target lane. Even if the dataset provides surrogate measures, we compute DHW/THW/TTC ourselves for the cutter--follower pair to ensure that analysis reflects the intended interaction and to support framework variants where neighbours and lanes are reconstructed from $x,y$ and lane markings.
 
 % ==============================================================================
@@ -296,7 +296,7 @@ For cut-in risk, the key interaction is between the cutter and the follower that
 This chapter reviews (i) surrogate safety measures, (ii) lane-changing and cut-in analysis, (iii) highD and dataset constraints, and (iv) compact context encodings for interaction analysis.
 
 \section{Literature identification approach}
-This thesis is not presented as a full systematic literature review. However, to keep the related-work selection transparent and reproducible, we followed a structured search-and-selection approach inspired by evidence-based guidelines \cite{kitchenham2007,wohlin2014}. We searched IEEE Xplore, the ACM Digital Library, and Google Scholar (with Scopus used when available) for peer-reviewed work on (i) surrogate safety measures, (ii) lane changes and cut-ins, (iii) \textit{highD} and similar trajectory datasets, and (iv) spatial/context representations for traffic interactions. The search emphasised recent work relevant to \textit{highD} (primarily 2018--2025) while also including seminal papers needed to define key concepts.
+This thesis is not presented as a full systematic literature review. However, to make the related-work selection transparent and reproducible, we followed a structured search-and-selection approach inspired by evidence-based guidelines \cite{kitchenham2007,wohlin2014}. We searched IEEE Xplore, the ACM Digital Library, and Google Scholar (with Scopus used when available) for peer-reviewed work on (i) surrogate safety measures, (ii) lane changes and cut-ins, (iii) \textit{highD} and similar trajectory datasets, and (iv) spatial/context representations for traffic interactions. The search emphasised recent work relevant to \textit{highD} (primarily 2018--2025) while also including seminal papers needed to define key concepts.
 
 Example search strings used during the search include:
 \begin{quote}\small\ttfamily\raggedright
@@ -342,10 +342,10 @@ Prior work establishes multiple surrogate safety measures, phase models, and pre
 \label{chap:researchmethod}
 
 \section{Methodological framing}
-This thesis follows a design-oriented empirical methodology. We propose a reconstruction and representation method that derives lane indices and same-lane predecessor/follower relations directly from geometric trajectory information. The \textit{highD} dataset is treated as a reference source for evaluation: highD-provided lane and neighbour identifiers are used as reference labels, not as inputs to the method under evaluation.
+This study adopts a design-oriented empirical methodology. We propose a reconstruction and representation method that derives lane indices and same-lane predecessor/follower relations directly from geometric trajectory information. The \textit{highD} dataset is treated as a reference source for evaluation: highD-provided lane and neighbour identifiers are used as reference labels, not as inputs to the method under evaluation.
 
 \section{Evaluation logic: correctness and usefulness}
-The evaluation in this thesis has two jobs. First, it must show that the minimal-input reconstruction is correct enough to reproduce highD's relational structure. Second, it must show why the framework is useful once that correctness baseline is established. For that reason, the evaluation is reported at four levels:
+The evaluation in this thesis serves two purposes. First, it establishes whether the minimal-input reconstruction reproduces highD's relational structure with sufficient accuracy. Second, it evaluates the analytical value of the framework once that correctness baseline has been established. For that reason, the evaluation is reported at four levels:
 
 \paragraph{Frame-level validation (relations).}
 For every frame where a relation exists, the predicted lane assignment and same-lane leader/follower identifiers are compared against the corresponding highD reference labels.
@@ -360,7 +360,7 @@ For cut-in stage frames, occupancy grids are constructed both from reconstructed
 Beyond reference-label agreement, we evaluate whether the framework leads to a clear and interpretable cut-in analysis once the interacting pair has been reconstructed. This part is reported through stage-based summaries, risk-threshold sensitivity, and TTC-versus-THW disagreement analysis. The goal is not to claim one universal threshold, but to show why explicit pair and stage definitions matter.
 
 \paragraph{Qualitative verification (interactive dashboard).}
-To complement the quantitative metrics, we performed qualitative spot checks using an interactive dashboard that synchronises video playback with reconstructed relations, event timing, and context signatures. This helped verify that the reported metrics correspond to visually sensible interactions and supported illustrative examples.
+To complement the quantitative metrics, we performed qualitative spot checks using an interactive dashboard that synchronises video playback with reconstructed relations, event timing, and context signatures. This supported verification that the reported metrics correspond to visually plausible interactions and also provided illustrative examples.
 
 \section{Metrics}
 Lane and neighbour reconstruction are evaluated using exact-match accuracy. Because a large fraction of frames contain no neighbour (encoded as id $0$), we report accuracy both over all frames and conditional on frames where the reference id is non-zero; the latter avoids inflated scores from trivial no-neighbour matches. Cut-in detection agreement is evaluated using precision, recall, and $F_1$ score. Occupancy agreement is evaluated using:
@@ -435,7 +435,7 @@ Because risk is not standardised, we use a transparent label rule for descriptiv
 \[
   \text{risky} := \min(\mathrm{THW}) \text{ in execution stage} < \SI{0.7}{\second}.
 \]
-This rule is not presented as a universal definition of risk. We choose execution-stage THW for this descriptive label because it remains defined after the new follower relation has been established, even when TTC becomes infinite due to non-closing conditions. The thesis therefore reports threshold sensitivity to keep the operational choice explicit rather than implicit \cite{wang2021ssm,zhou2016riskperception}.
+This rule is not presented as a universal definition of risk. Execution-stage THW is used as this descriptive label because it remains defined after the new follower relation has been established, even when TTC becomes infinite due to non-closing conditions. The thesis therefore reports threshold sensitivity to keep the operational choice explicit rather than implicit \cite{wang2021ssm,zhou2016riskperception}.
 
 \section{Interaction context signatures (SFC encoding)}
 For each frame around a cut-in event, we define an ego-centric \textbf{3$\times$3 semantic occupancy grid} around the cutter:
@@ -473,7 +473,7 @@ A central design choice is to execute the same analysis logic in two parallel pa
 This design treats highD as a reference source for evaluation rather than a dependency of the method. It also enables direct, like-for-like agreement measurements at three levels: \textbf{frame-level} (lane and neighbour relations), \textbf{event-level} (cut-in detection), and \textbf{representation-level} (occupancy matrices and SFC signatures).
 
 \subsection*{Macro-phases and component naming}
-To keep the method presentation readable (and to avoid numeric ``01/02/03'' style narration), we group the framework into macro-phases with descriptive names. The reconstruction path can be interpreted as a \emph{sequence of deterministic processing stages}: each component applies explicit acceptance criteria (e.g., lane stability, relation duration, stage-window validity) and emits traceable outputs.
+For clarity, the framework is organised into descriptive macro-phases rather than numbered processing steps. The reconstruction path can be interpreted as a \emph{sequence of deterministic processing stages}: each component applies explicit acceptance criteria (e.g., lane stability, relation duration, stage-window validity) and emits traceable outputs.
 
 Figure~\ref{fig:framework-overview} illustrates the framework and the reconstruction path.
 
@@ -517,7 +517,7 @@ The remainder of this chapter describes each component and the corresponding ref
 \subsection{Qualitative inspection support}
 Quantitative agreement metrics provide an overall assessment of reconstruction quality, but they do not on their own reveal whether failures are systematic (e.g., due to direction conventions, onset misalignment, or lane-boundary interpretation). To support qualitative verification, we developed an interactive inspection dashboard that synchronises (i) aerial video playback and track overlays, (ii) the currently selected cut-in event and its cutter--follower pair, and (iii) the derived stage window, indicators, and context signature for the current frame.
 
-The dashboard was used to inspect representative cases and extremes (e.g., lowest-TTC events) and to verify that reconstructed relations and occupancy signatures correspond to the visible scene. It is a support tool for verification and communication rather than a standalone thesis contribution: it was not used to manually correct events or labels, and all reported results are produced by the framework's deterministic components.
+The dashboard was used to inspect representative cases and extremes (e.g., lowest-TTC events) and to verify that reconstructed relations and occupancy signatures correspond to the visible scene. It served as a support tool for verification and communication rather than as a standalone thesis contribution: it was not used to manually correct events or labels, and all reported results are produced by the framework's deterministic components.
 
 
 \begin{figure}[H]
@@ -647,16 +647,16 @@ initialise $t_0 \leftarrow \text{undefined}$\;
 \end{algorithm}
 
 \subsection{Design choices and their literature basis}
-The framework keeps \emph{event extraction} separate from \emph{risk labelling}. The settings used in the final run are design choices, but they are informed by previous work rather than picked arbitrarily.
+The framework keeps \emph{event extraction} separate from \emph{risk labelling}. The settings used in the final run are design choices, but they are informed by previous work rather than selected arbitrarily.
 
 \begin{itemize}[leftmargin=1.2em]
   \item \textbf{Stable lane blocks.} We detect lane changes between stable lane segments rather than from single-frame label flips. This reduces sensitivity to label jitter and makes the onset definition reproducible.
   \item \textbf{Bounded pair formation.} A new follower must appear within a short delay and persist for a minimum duration. Naturalistic cut-in studies report wide variation in cut-in duration and gap acceptance \cite{wang2019cutin}, so persistence rules should be stated clearly instead of being hidden in later post-processing.
-  \item \textbf{Pair-consistent indicator computation.} DHW, THW, and TTC are computed for the explicit cutter--follower pair, not for a generic dataset predecessor. This matters because recent lane-change risk models on \textit{highD} rely on interaction-specific features and time-to-lane-change rather than on anonymous vehicle states \cite{shangguan2022,liu2025multitask}.
+  \item \textbf{Pair-consistent indicator computation.} DHW, THW, and TTC are computed for the explicit cutter--follower pair, not for a generic dataset predecessor. This is important because recent lane-change risk models on \textit{highD} rely on interaction-specific features and time-to-lane-change rather than on anonymous vehicle states \cite{shangguan2022,liu2025multitask}.
   \item \textbf{Phase-aware interpretation.} Following Zhou and Itoh, TTC is especially informative when evaluating the targeted rear vehicle before or around insertion, while THW remains informative once the pair has been established in the target lane \cite{zhou2016riskperception}. For that reason, the thesis reports all three measures but uses execution-stage THW only as a transparent descriptive risk label.
 \end{itemize}
 
-These choices are not claimed to be universally best. Their purpose is to keep the cut-in definition clear, easy to inspect, and easy to vary in later sensitivity analysis.
+These choices are not claimed to be universally best. Their purpose is to make the cut-in definition explicit, auditable, and amenable to later sensitivity analysis.
 
 \section{Safety quantification: surrogate measures and geometry model selection}
 We compute DHW/THW/TTC for arbitrary pairs using geometry and speeds. Because trajectory datasets may define position references differently (e.g., centre point vs bounding-box corner), we \emph{select a geometry model} by comparing our computed indicators against highD-provided indicators for same-lane (ego, predecessor) pairs on a large random sample. We test multiple plausible reference conventions and select the one that best matches dataset-provided DHW/THW/TTC. In the final run, the best match was obtained with a bounding-box--based interpretation of the position variables (a top-left reference point), combined with vehicle length to compute front and rear positions.
@@ -726,7 +726,7 @@ Recordings processed & \multicolumn{3}{c}{60 (01--60)} \\
 }
 \end{table}
 
-Throughout the remainder of the thesis, we distinguish clearly between \emph{extracted cut-ins} (10,026) and \emph{validated analysis events} (10,023 after stage-window checks). This distinction is important because the framework exposes each acceptance criterion explicitly instead of silently dropping events in downstream scripts.
+Throughout the remainder of the thesis, we distinguish clearly between \emph{extracted cut-ins} (10,026) and \emph{validated analysis events} (10,023 after stage-window checks). This distinction is important because the framework exposes each acceptance criterion explicitly rather than implicitly excluding events in downstream scripts.
 
 \section{Lane-change and cut-in duration statistics}
 Table~\ref{tab:duration-stats} summarises dataset-wide duration statistics. Lane-change durations are computed from stable-block transitions. Cut-in relation duration is measured as the contiguous duration where the follower's predecessor is the cutter \emph{within the configured search window}. In our configuration, the relation duration is capped at 50 frames (\SI{2}{\second}), which explains the concentration at the cap.
@@ -877,14 +877,14 @@ TTC thr. (s) & TTC-flagged & TP & FP & Prec. & Rec. \\
 \end{tabular}
 \end{table}
 
-\section{Why explicit pairing and phase-aware indicators matter}
-The high agreement reported above answers the correctness question, but it does not by itself explain why the framework is useful. The extra value comes from making the event definition and the indicator interpretation explicit.
+\section{Importance of explicit pairing and phase-aware measures}
+The high agreement reported above addresses the correctness question, but it does not by itself establish the analytical value of the framework. That value arises from making the event definition and the indicator interpretation explicit.
 
 First, the event pipeline is traceable from end to end: 10,026 cut-ins were extracted, 10,023 remained after stage-window validity checks, and the stage feature table keeps the cutter and follower identities throughout the aligned window. This means the acceptance rules are visible in the method instead of being hidden inside dataset-specific scripts.
 
 Second, Table~\ref{tab:sensitivity} and Table~\ref{tab:ttc-finite} show that one indicator cannot explain all phases equally well. When the execution-stage THW threshold is changed from 0.50 to 1.50 s, the risky-event share changes from 7.58\% to 62.21\%. At the same time, TTC is finite in only 35.98\% of execution-stage events. A TTC-only post-merge analysis would therefore ignore most established cut-ins even though the interacting pair is clearly defined.
 
-This pattern is consistent with previous work showing that lane-change risk perception is stage dependent and that TTC and THW describe different parts of the interaction \cite{zhou2016riskperception,wang2021ssm}. In that sense, the contribution of \FrameworkName{} is not a claim that one threshold is universally correct. The contribution is that the framework reconstructs the right pair, computes the indicators for that pair, and keeps the later label choice explicit.
+This pattern is consistent with previous work showing that lane-change risk perception is stage dependent and that TTC and THW describe different parts of the interaction \cite{zhou2016riskperception,wang2021ssm}. In that sense, the contribution of \FrameworkName{} is not a claim that one threshold is universally correct. The contribution is that the framework reconstructs the relevant interaction pair, computes the indicators for that pair, and keeps the later label choice explicit.
 
 \section{Extreme events by TTC}
 Table~\ref{tab:top-ttc} lists the three events with the lowest execution-stage TTC (finite only), which are useful for qualitative inspection using the dashboard in Figure~\ref{fig:gui-dashboard}.
@@ -933,6 +933,27 @@ To highlight how group differences evolve over time, Figure~\ref{fig:sfc-stage-d
 \label{fig:sfc-stage-diff}
 \end{figure}
 
+\section{Decision-stage context archetypes}
+Mean occupancy maps show group-level differences, but they do not directly answer whether the verified SFC representation can recover a small set of reusable scene families. To test that, we decode the mirrored binary SFC signatures back into the semantic 3$\times$3 grid, average the decision-stage grids within each event, and cluster the resulting event-level context vectors. We use the \emph{decision} stage rather than the execution stage so that clustering is based on pre-outcome context rather than on the same time window used to define the THW risk label.
+
+Searching $K=3,\dots,8$ with $k$-means, the best solution is $K=7$, with silhouette score 0.498 and mean stability ARI 0.992 across repeated initialisations. The resulting archetypes remain reasonably balanced, spanning 6.0\%--30.7\% of all 10,023 validated cut-ins. After mirror normalisation, all lane changes are represented in a common canonical direction, so the right column in Figure~\ref{fig:sfc-archetypes} corresponds to the target lane for interpretation.
+
+Figure~\ref{fig:sfc-archetypes} shows the seven archetypes, and Figure~\ref{fig:sfc-archetype-risk} compares their execution-stage THW risk prevalence. The most risk-enriched archetype (A4, 10.27\% of events) reaches 26.63\% risky outcomes versus 20.13\% overall (risk ratio 1.32) and has median execution THW \SI{0.975}{\second}. Its mean grid is dominated by occupied target-lane preceding and following cells, indicating insertion into a relatively constrained target-lane corridor. Lower-risk archetypes such as A2 and A5 remain below the overall prevalence (17.18\% and 17.51\%, respectively). This result shows that the reversible SFC code is not only verifiable against reference labels, but also rich enough to support interpretable unsupervised grouping of cut-in scenes before outcome labels are applied.
+
+\begin{figure}[H]
+\centering
+\safeincludegraphics[width=0.93\textwidth]{archetype_heatmaps.png}
+\caption{Seven decision-stage context archetypes derived from mirrored binary SFC signatures. After mirror normalisation, the right column corresponds to the target lane, so each panel visualises one canonical cut-in scene family.}
+\label{fig:sfc-archetypes}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\safeincludegraphics[width=0.70\textwidth]{archetype_risk_prevalence.png}
+\caption[THW risk prevalence by context archetype]{Execution-stage THW risk prevalence by decision-stage context archetype.}
+\label{fig:sfc-archetype-risk}
+\end{figure}
+
 \section{Reference agreement for context signatures (RQ3)}
 We verify the SFC encoding in two complementary ways:
 \begin{itemize}[leftmargin=1.2em]
@@ -949,14 +970,14 @@ Using the final thesis configuration, with an alongside threshold of \SI{4.0}{\m
 \section{Answers to the research questions}
 \textbf{RQ1 (reconstruction accuracy):} Same-lane neighbour reconstruction from geometry reaches near-perfect agreement with highD reference neighbours. With inferred lanes (XY-lane), the agreement remains above 0.9998 for both preceding and following.
 
-\textbf{RQ2 (cut-in consistency):} Stable-block lane-change detection combined with follower pairing yields 10,026 extracted cut-ins from 11,856 lane changes across recordings 01--60, of which 10,023 remain after stage-window validity checks. When the full cut-in detector is run end-to-end on reconstructed relations, event matching against the reference-label path achieves $F_1 = 0.998938$. Beyond correctness, the explicit cutter--follower representation makes it possible to compute pair-consistent surrogate measures and to keep the event definition explicit.
+\textbf{RQ2 (cut-in consistency):} Stable-block lane-change detection combined with follower pairing yields 10,026 extracted cut-ins from 11,856 lane changes across recordings 01--60, of which 10,023 remain after stage-window validity checks. When the full cut-in detector is run end-to-end on reconstructed relations, event matching against the reference-label path achieves $F_1 = 0.998938$. Beyond correctness, the explicit cutter--follower representation enables pair-consistent surrogate-measure computation and preserves an explicit event definition.
 
-\textbf{RQ3 (SFC encoding and verification):} A compact 3$\times$3 occupancy grid encoded into a 16-bit SFC signature provides an interpretable local context representation. The encoding is reversible by design and is validated by exhaustive round-trip checks. In the final configuration, reference-vs-minimal-input matching reaches 99.49\% exact row agreement over 1,421,980 verified rows (with 100\% event-level ANY-frame agreement), confirming that the reconstructed occupancy used for SFC encoding corresponds closely to the reference relations in highD once direction is normalised.
+\textbf{RQ3 (SFC encoding and verification):} A compact 3$\times$3 occupancy grid encoded into a 16-bit SFC signature provides an interpretable local context representation. The encoding is reversible by design and is validated by exhaustive round-trip checks. In the final configuration, reference-vs-minimal-input matching reaches 99.49\% exact row agreement over 1,421,980 verified rows (with 100\% event-level ANY-frame agreement), confirming that the reconstructed occupancy used for SFC encoding corresponds closely to the reference relations in highD once direction is normalised. The same representation also supports stable unsupervised grouping: decision-stage context clustering yields seven archetypes, with the most constrained target-lane corridor archetype showing a 1.32$\times$ higher execution-stage THW risk prevalence than the overall set.
 
 \section{Interpretation and implications}
-The main outcome of the thesis is methodological. What matters here is not the dashboard or the amount of code, but the fact that the method has a clear boundary. The framework uses trajectories and lane markings as inputs and treats highD relation fields as evaluation labels. Because of that, disagreements with dataset conventions can be studied instead of inherited silently.
+The principal outcome of the thesis is methodological. The framework defines a clear system boundary: trajectories and lane markings serve as inputs, whereas highD relation fields serve as evaluation labels. This separation allows disagreements with dataset conventions to be analysed explicitly rather than inherited as hidden assumptions.
 
-The innovative step is relation-first analysis: lane ids and neighbour ids are treated as reconstructable intermediate products rather than immutable dataset facts. That shift is modest algorithmically, but important scientifically because it separates observation, derived relation, event definition, and risk label into auditable layers. The result is a pipeline whose assumptions can be inspected, challenged, and transferred more easily than a pipeline that starts from hidden dataset-specific relation columns.
+The innovative step is relation-first analysis: lane ids and neighbour ids are treated as reconstructable intermediate products rather than immutable dataset facts. Although algorithmically modest, this shift is scientifically important because it separates observation, derived relation, event definition, and risk label into auditable layers. The result is a pipeline whose assumptions can be inspected, challenged, and transferred more readily than those of a pipeline that starts from hidden dataset-specific relation columns.
 
 This transferability still has conditions. The current method assumes trajectories are expressed in a consistent coordinate system and that lane-boundary metadata, or an equivalent road model, is available. The contribution is therefore not that the framework is assumption free, but that its assumptions are explicit and that their consequences can be measured against reference labels.
 
@@ -973,17 +994,17 @@ Contribution claim & Evidence in this thesis & Why it matters \\
 Minimal-input relation reconstruction & Mean preceding/following accuracy 0.999810/0.999811; cut-in $F_1=0.998938$ & Makes cut-in mining reusable on data sources that lack neighbour ids. \\
 Explicit cutter--follower pairing & 10,026 extracted cut-ins; 10,023 validated analysis events with stage-aligned pair features & Avoids reusing dataset indicators for the wrong interaction pair. \\
 Phase-aware indicator analysis & TTC finite in 35.98\% of execution-stage events; THW sensitivity changes risk prevalence from 7.58\% to 62.21\% & Shows that risk interpretation depends on explicit pair and stage definitions rather than on one universal threshold. \\
-Verified context signatures & Reversible 16-bit Hilbert code; 99.49\% exact row agreement over 1,421,980 stage rows & Provides compact, reversible context descriptors that can later support grouping or retrieval. \\
+Verified context signatures & Reversible 16-bit Hilbert code; 99.49\% exact row agreement over 1,421,980 stage rows; 7 stable decision-stage archetypes with peak risk ratio 1.32 & Provides compact, reversible context descriptors that support interpretable grouping of cut-in scenes rather than only average occupancy plots. \\
 Clear evaluation boundary & Two-path design, parameter table, and deterministic exports & Separates method inputs from reference labels and makes the evaluation reproducible. \\
 \bottomrule
 \end{tabularx}}
 \end{table}
 
-Explicit pairing matters because the safety-relevant interaction after a cut-in is the cutter and the new follower in the target lane. Dataset-provided indicators computed for a generic predecessor relation may be correct for that dataset convention and still correspond to the wrong pair for a cut-in study. \FrameworkName{} addresses this by defining cut-ins as explicit cutter--follower events and computing DHW, THW, and TTC for that pair only.
+Explicit pairing matters because the safety-relevant interaction after a cut-in is the cutter and the new follower in the target lane. Dataset-provided indicators computed for a generic predecessor relation may be consistent with dataset conventions yet still correspond to a different interaction pair in a cut-in study. \FrameworkName{} addresses this by defining cut-ins as explicit cutter--follower events and computing DHW, THW, and TTC for that pair only.
 
 The phase-aware indicator results matter for the same reason. TTC and THW are not interchangeable: TTC focuses on closing-speed conflict, while THW focuses on accepted gap. In our data, TTC is finite for only 35.98\% of execution-stage events, which means that a TTC-only post-insertion analysis would miss the majority of established cut-ins. This matches literature that treats lane-change risk perception as phase dependent \cite{zhou2016riskperception} and broader reviews that warn against one-size-fits-all interpretation of surrogate measures \cite{wang2021ssm}. The contribution here is therefore not a claim of one universally correct threshold, but a method that makes the indicator choice explicit and ties it to the correct interacting pair.
 
-The SFC signatures complement the scalar indicators. Because the code is reversible, it does not replace interpretation with a black-box embedding. Instead, it provides a compact summary that can be decoded, checked, and later used for large-scale comparison, retrieval, or clustering of interaction patterns.
+The SFC signatures complement the scalar indicators. Because the code is reversible, it does not replace interpretation with a black-box embedding. Instead, it provides a compact summary that can be decoded, checked, and then used for large-scale comparison, retrieval, or clustering of interaction patterns. The archetype analysis makes this concrete: a pre-outcome decision-stage taxonomy can be learned directly from the verified signatures, and the resulting scene families are meaningfully associated with later execution-stage THW risk.
 
 \section{Threats to validity}
 \textbf{Construct validity:} Risk is defined via a THW threshold in the execution stage. Alternative definitions (e.g., TTC thresholds, required deceleration / braking-demand indicators, or post-encroachment measures) would label different subsets of events, so the reported ``risk ratio'' should be interpreted as \emph{prevalence under this definition}. More generally, our criteria should be read as a stricter, pair-consistent definition of cut-in relevance, not as proof that highD is absolutely ``wrong''. This matters especially because highD lacks wider upstream/downstream context that may influence discretionary lane changes \cite{wanggao2025highd}.
@@ -995,7 +1016,7 @@ The SFC signatures complement the scalar indicators. Because the code is reversi
 \textbf{Conclusion validity:} We report descriptive differences, sensitivity checks, and agreement checks against reference labels. The thesis does not make causal claims about driver behaviour or safety outcomes, and statistical significance is not emphasised over effect magnitude.
 
 \section{Future work}
-Natural next steps include (i) extending the surrogate-measure layer with braking-demand or minimum-safe-deceleration criteria, which have been proposed as complementary lane-change safety indicators \cite{wang2020humanlike}, (ii) adding broader ablation studies over relevance-distance, pair-persistence, and stage-boundary criteria, ideally with manual review of disagreement cases, and (iii) exploiting the integer context signatures for larger-scale scenario mining, for example through retrieval, clustering, cross-dataset comparison, and predictive tasks where their added value must be demonstrated empirically rather than assumed.
+Natural next steps include (i) extending the surrogate-measure layer with braking-demand or minimum-safe-deceleration criteria, which have been proposed as complementary lane-change safety indicators \cite{wang2020humanlike}, (ii) adding broader ablation studies over relevance-distance, pair-persistence, and stage-boundary criteria, ideally with manual review of disagreement cases, and (iii) testing whether the learned context archetypes transfer across datasets, road classes, or prediction tasks rather than remaining specific to \textit{highD}'s highway setting.
 
 % ==============================================================================
 \chapter{Conclusion}
@@ -1005,9 +1026,9 @@ This thesis presents \FrameworkName{}, a minimal-input framework for reconstruct
 
 On highD recordings 01--60, the framework reaches mean preceding/following accuracy 0.999810/0.999811 and event-level cut-in matching of $F_1 = 0.998938$. The detector extracts 10,026 cut-ins, of which 10,023 remain after stage-window checks. For 1,421,980 stage rows, the reconstructed and reference context signatures match exactly in 99.49\% of cases, and the 16-bit SFC encoding is verified by exhaustive encode$\leftrightarrow$decode round-trip checks.
 
-The thesis also shows why this is more than a reconstruction exercise. Once the cutter and follower are made explicit, DHW, THW, and TTC can be computed for the correct pair and interpreted in a stage-based way. The threshold sensitivity analysis and TTC coverage results show that the later risk interpretation depends strongly on indicator choice and phase.
+The thesis also demonstrates that the contribution extends beyond reconstruction accuracy. Once the cutter and follower are made explicit, DHW, THW, and TTC can be computed for the correct pair and interpreted in a stage-based way. The threshold sensitivity analysis and TTC coverage results show that subsequent risk interpretation depends strongly on indicator choice and phase.
 
-Overall, the contribution is a clear and reusable pipeline for cut-in analysis: minimal inputs, explicit interacting pair, verified context representation, and an evaluation setup that makes each step easy to inspect and reproduce. This gives a solid base for future retrieval, clustering, or cross-dataset use of cut-in scenarios.
+Overall, the contribution is a clear and reusable pipeline for cut-in analysis: minimal inputs, explicit interacting pair, verified context representation, and an evaluation setup that makes each step auditable and reproducible. The added archetype analysis further shows that the context signatures support an interpretable scene taxonomy rather than only frame-level verification. This provides a solid basis for future retrieval, cross-dataset archetype transfer, or predictive use of cut-in scenarios.
 
 % ==============================================================================
 % Bibliography (self-contained, no BibTeX required)
@@ -1144,7 +1165,7 @@ Z.~Wang and Y.~Gao.
 \chapter{Appendix: Terminology and highD field mapping}
 \label{app:field-mapping}
 
-To keep the main chapters focused on concepts rather than code-level details, we describe lanes and neighbour relations in descriptive terms such as \emph{same-lane leader} or \emph{right-lane follower}. Table~\ref{tab:field-mapping} lists the corresponding column names in the released highD dataset for readers who want to reproduce the evaluation directly from the raw files.
+To maintain the focus of the main chapters on concepts rather than code-level details, we describe lanes and neighbour relations in descriptive terms such as \emph{same-lane leader} or \emph{right-lane follower}. Table~\ref{tab:field-mapping} lists the corresponding column names in the released highD dataset for readers who want to reproduce the evaluation directly from the raw files.
 
 \begin{table}[H]
 \centering
@@ -1189,7 +1210,7 @@ HighD distributes each recording as three CSV files:
   \item If both checks pass, emit a lane change event from $L_1$ to $L_2$.
 \end{enumerate}
 
-\section{Cut-in detection (how we find the follower)}
+\section{Cut-in detection (follower identification)}
 \begin{enumerate}[leftmargin=1.6em]
   \item Start from a lane change event where the cutter enters a target lane.
   \item Move forward frame by frame within a configured search window.

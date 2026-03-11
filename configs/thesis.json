@@ -157,6 +157,17 @@
     "threshold_grid_steps": 91,
     "logreg_max_iter": 2000
   },
+  "step15d": {
+    "stage": "decision",
+    "risk_thw": 0.7,
+    "k_min": 3,
+    "k_max": 8,
+    "min_cluster_fraction": 0.03,
+    "random_state": 7,
+    "n_init": 50,
+    "stability_runs": 5,
+    "make_plot": true
+  },
   "step16": {
     "recordings": "01,02,03,04,05",
     "decision_seconds": 2.0,
