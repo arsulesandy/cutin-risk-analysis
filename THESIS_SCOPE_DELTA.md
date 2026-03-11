@@ -10,9 +10,10 @@ This file documents explicit scope differences between the accepted proposal and
   - THW (time headway)
   - TTC (time-to-collision)
 - Stage-wise feature engineering (`intention`, `decision`, `execution`, `recovery`).
-- Warning-rule and logistic baselines with leave-one-recording-out evaluation.
-- SFC-based encodings and prediction experiments.
-- Split-integrity and metrics-with-CI audits.
+- Minimal-input neighbour and XY-lane reconstruction audits.
+- Binary SFC encoding, canonical mirroring, and reversible occupancy verification.
+- SFC archetype analysis with execution-stage risk prevalence comparison.
+- Bootstrap confidence intervals for the Step 07 reconstruction metrics.
 
 ## Not implemented as thesis output metrics
 
@@ -24,14 +25,10 @@ Note: placeholder APIs exist under `src/cutin_risk/indicators/`, but these are n
 ## Critical geometry assumption (highD)
 
 - highD `x` is treated as bbox top-left; thesis runs use `indicators.position_reference = "bbox_topleft"`.
-- Geometry/model consistency is audited by:
-  - `scripts/step17_geometry_audit.py`
-  - output: `outputs/reports/Step 17/geometry_audit.md`
+- Geometry consistency is handled directly in the retained reconstruction and indicator steps rather than by a separate audit branch.
 
 ## Dataset coverage in current reproducible defaults
 
 - `configs/thesis.json` default pipeline subset:
-  - Step 09 batch recordings: `1-10`
-  - Step 16 recordings: `01,02,03,04,05`
-- Claims in thesis text/results should state this exact evaluated subset unless rerun on all 60 recordings.
-
+  - Step 09 batch recordings: `all`
+- The retained thesis pipeline is aligned to the reported all-recordings evaluation over highD 01--60.
