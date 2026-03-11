@@ -1,7 +1,6 @@
 {
   "pipeline": {
     "recordings_batch": "all",
-    "recordings_step16": "01,02,03,04,05",
     "thw_risk": 0.7,
     "ci_bootstrap": 3000,
     "ci_seed": 7
@@ -68,50 +67,6 @@
     "recordings": "all",
     "make_plot": true
   },
-  "step11": {
-    "lat_min": 0.6,
-    "lat_max": 1.6,
-    "lat_step": 0.05,
-    "spd_min": 0.0,
-    "spd_max": 10.0,
-    "spd_step": 0.25
-  },
-  "step12": {
-    "threshold_grid_min": 0.05,
-    "threshold_grid_max": 0.95,
-    "threshold_grid_steps": 91,
-    "logreg": {
-      "class_weight": "none",
-      "solver": "lbfgs",
-      "max_iter": 2000,
-      "c": 1.0
-    }
-  },
-  "step13a": {
-    "feature_set": "full",
-    "with_interaction": false,
-    "class_weight": "none",
-    "c": 1.0,
-    "logreg_solver": "lbfgs",
-    "logreg_max_iter": 4000,
-    "beta": 0.5,
-    "min_recall": null,
-    "threshold_grid_min": 0.05,
-    "threshold_grid_max": 0.95,
-    "threshold_grid_steps": 91
-  },
-  "step13b": {
-    "decision_seconds": 2.0,
-    "lane_col": "laneIndex_xy",
-    "baseline_lat_thr": 0.8,
-    "baseline_spd_thr": 1.25,
-    "lat_min": 0.6,
-    "lat_max": 1.6,
-    "lat_step": 0.05,
-    "spd_min": 0.0,
-    "spd_max": 10.0,
-    "spd_step": 0.25
-  },
   "step14": {
     "risk_thw": 0.7,
     "sfc_order": "hilbert",
@@ -128,60 +83,16 @@
     "to_col": "to_lane",
     "canonical_direction": "positive"
   },
-  "step15b": {
-    "mode": "distance",
-    "order": "hilbert",
-    "risk_thw": 0.7,
-    "pre4_seconds": 4.0,
-    "pre2_seconds": 2.0,
-    "post2_seconds": 2.0,
-    "alongside_thresh": 5.0,
-    "range_ahead": null,
-    "range_behind": null,
-    "ttc_max": 10.0,
-    "from_col": "from_lane",
-    "to_col": "to_lane",
-    "canonical_direction": "positive"
-  },
-  "step15c": {
+  "step15d": {
     "stage": "decision",
-    "min_frames": 10,
-    "c": 1.0,
-    "class_weight": "none",
-    "beta": 1.0,
-    "min_recall": null,
-    "threshold_strategy": "train_opt",
-    "fixed_threshold": 0.5,
-    "threshold_grid_min": 0.05,
-    "threshold_grid_max": 0.95,
-    "threshold_grid_steps": 91,
-    "logreg_max_iter": 2000
-  },
-  "step16": {
-    "recordings": "01,02,03,04,05",
-    "decision_seconds": 2.0,
-    "ahead_m": 50.0,
-    "behind_m": 50.0,
-    "alongside_m": 10.0,
-    "seed": 0,
-    "min_relation_frames": 19,
-    "max_relation_frames": 50,
-    "mirror_enabled": true,
-    "threshold_grid_min": 0.05,
-    "threshold_grid_max": 0.95,
-    "threshold_grid_steps": 91,
-    "logreg_max_iter": 2000,
-    "logreg_c": 1.0,
-    "negative_to_positive_ratio": 1.0,
-    "negative_sampling_max_attempts_base": 20000,
-    "negative_sampling_max_attempts_per_negative": 20
-  },
-  "step17": {
-    "thw_risk": 0.7,
-    "step15c_stage": "decision",
-    "step15c_min_frames": 10,
-    "suspicious_dhw_threshold": 0.0,
-    "suspicious_thw_threshold": 0.0
+    "risk_thw": 0.7,
+    "k_min": 3,
+    "k_max": 8,
+    "min_cluster_fraction": 0.03,
+    "random_state": 7,
+    "n_init": 50,
+    "stability_runs": 5,
+    "make_plot": true
   },
   "step18": {
     "n_bootstrap": 3000,

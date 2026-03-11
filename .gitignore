@@ -222,3 +222,4 @@ configs/detection.local.json
 configs/thesis.local.json
 .DS_Store
 outputs
+.DS_Store
