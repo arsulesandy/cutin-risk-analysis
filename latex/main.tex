@@ -143,11 +143,11 @@
     \chapter*{Abstract}
     \addcontentsline{toc}{chapter}{Abstract}
 
-    Lane identifiers and neighbour identifiers are important when studying vehicle interactions in trajectory datasets. A common limitation, however, is that many analysis pipelines depend on these derived fields directly, which reduces reuse when the fields are unavailable, inconsistent, or defined differently across datasets. This thesis presents \FrameworkName{}, a minimal-input framework that reconstructs lane assignment and same-lane predecessor/follower relations from trajectory geometry ($x,y$) and lane-marking metadata.
+    When a vehicle cuts into another driver's lane on a highway, the follower may need to brake or adjust speed to maintain a safe gap. Quantifying these interactions at scale is important for traffic safety assessment and for building scenario libraries that support automated driving validation. However, most analysis pipelines depend on dataset-provided lane and neighbour identifiers, which limits reuse when these fields are unavailable or inconsistently defined across datasets. This thesis presents \FrameworkName{}, a minimal-input framework that reconstructs lane assignment and same-lane predecessor/follower relations from trajectory geometry ($x,y$) and lane-marking metadata.
 
     Based on these reconstructed relations, the framework detects cut-ins as explicit cutter--follower pairs, computes distance headway (DHW), time headway (THW), time-to-collision (TTC), and deceleration rate to avoid crash (DRAC) for that pair, and represents the surrounding traffic context with an ego-centric occupancy grid. The grid is mirror-normalised and encoded as a reversible 16-bit Hilbert space-filling-curve signature to make the context comparable across travel directions.
 
-    The framework is evaluated on the \textit{highD} dataset, where highD lane and neighbour identifiers are used only as reference labels and not as method inputs. Across recordings 01--60, same-lane predecessor/follower reconstruction with inferred lanes reaches mean accuracy 0.999810/0.999811, and cut-in events detected from reconstructed relations match the reference-label events with $F_1 = 0.998938$. The detector extracts 10,026 cut-ins, of which 10,023 remain after stage-window validity checks. For 1,421,980 stage rows, reconstructed and reference context signatures agree exactly in 99.49\% of cases. The SFC encoding is verified through exhaustive round-trip testing over all $2^{16}$ code values. The mirrored decision-stage signatures yield seven stable context archetypes; the most risk-enriched archetype shows a 1.32$\times$ higher execution-stage THW risk prevalence than the overall event set.
+    The framework is evaluated on the \textit{highD} dataset, where highD lane and neighbour identifiers are used only as reference labels and not as method inputs. Across recordings 01--60, same-lane predecessor/follower reconstruction with inferred lanes reaches mean accuracy 0.999810/0.999811, and cut-in events detected from reconstructed relations match the reference-label events with $F_1 = 0.998938$. The detector extracts 10,026 cut-ins, of which 10,023 remain after stage-window validity checks. For 1,421,980 stage rows, reconstructed and reference context signatures agree exactly in 99.49\% of cases. The SFC encoding is confirmed to be reversible through exhaustive round-trip testing over all $2^{16}$ code values. The mirrored decision-stage signatures yield seven stable context archetypes; the most risk-enriched archetype shows a 1.32$\times$ higher execution-stage THW risk prevalence than the overall event set.
 
     Beyond reconstruction accuracy, a leave-one-recording-out cross-validation experiment shows that decision-stage features predict execution-stage THW risk with ROC-AUC 0.81. SFC context features alone achieve AUC 0.61, showing that the spatial context signatures carry independent risk-relevant information beyond scalar indicators. The addition of DRAC as a deceleration-based indicator shows that the framework's pair-consistent computation extends naturally to complementary safety measures. Most detected cut-ins (99.9\%) involve routine gap acceptance rather than hard-braking situations.
 
@@ -241,7 +241,7 @@
     \begin{enumerate}[leftmargin=1.6em]
   \item \textbf{Minimal-input relation reconstruction:} lane inference and same-lane predecessor/follower reconstruction from $x,y$ trajectories and lane markings, evaluated frame by frame against highD reference labels (mean accuracy $>$0.9998).
   \item \textbf{Explicit cutter--follower pairing and pair-consistent indicators:} cut-ins are detected as explicit interacting pairs with a reproducible onset definition; DHW, THW, TTC, and DRAC are computed for the actual cutter--follower pair and interpreted stage-wise.
-  \item \textbf{Reversible context signatures:} a direction-normalised 3$\times$3 occupancy grid encoded into a 16-bit Hilbert SFC signature, verified against highD reference occupancy (99.49\% exact row agreement over 1.4\,M stage rows).
+  \item \textbf{Reversible context signatures:} a direction-normalised 3$\times$3 occupancy grid encoded into a 16-bit Hilbert SFC signature, validated against highD reference occupancy (99.49\% exact row agreement over 1.4\,M stage rows).
   \item \textbf{Predictive evaluation:} a LORO-CV experiment showing that decision-stage features predict execution-stage THW risk with ROC-AUC 0.81; SFC context features alone achieve AUC 0.61, showing that the framework produces predictive features beyond descriptive agreement.
   \item \textbf{Reproducible two-path evaluation:} the minimal-input reconstruction path and the reference-label path are executed in parallel, producing deterministic outputs that can be regenerated from the same settings.
     \end{enumerate}
@@ -263,7 +263,7 @@
     In this thesis, highD's lane and neighbour identifiers are used exclusively as \emph{reference labels} for evaluating the reconstruction method. The framework derives all relations from trajectory geometry and lane-marking metadata; it never uses highD's derived fields as inputs. This separation is important because recent work has identified lane-change inconsistencies in highD that motivate careful validation when reconstructing events from provided identifiers~\cite{wanggao2025highd}.
 
     \section{Surrogate safety measures}
-    Because crashes are rare in naturalistic data, surrogate safety measures (SSMs) are widely used to assess interaction severity without requiring crash observations. The main indicators used in this thesis are time-to-collision (TTC), time headway (THW), distance headway (DHW), and the deceleration rate to avoid crash (DRAC). Recent reviews emphasise that SSM values depend strongly on modelling assumptions, measurement noise, and traffic state, and therefore require careful interpretation~\cite{wang2021ssm,johnsson2021validation}. Archer~\cite{archer2005indicators} introduced DRAC as a deceleration-based complement to time-based indicators, with values above \SI{3.35}{\meter\per\second\squared} commonly interpreted as hard-braking situations.
+    Because crashes are rare in naturalistic data, surrogate safety measures (SSMs) are widely used to assess interaction severity without requiring crash observations. The main indicators used in this thesis are time-to-collision (TTC), time headway (THW), distance headway (DHW), and the deceleration rate to avoid crash (DRAC). Recent reviews and validation studies emphasise that SSMs require careful interpretation and validation because their values depend on modelling assumptions and data quality~\cite{wang2021ssm,johnsson2021validation}. Braking-rate-based indicators such as DRAC complement time-based measures; Archer~\cite{archer2005indicators} uses \SI{3.35}{\meter\per\second\squared} as a threshold to distinguish serious from non-serious conflicts, while Wang et al.~\cite{wang2021ssm} report DRAC thresholds in the range of \SIrange{3.0}{3.5}{\meter\per\second\squared} across the literature.
 
     \section{Lane-changing and cut-in analysis}
     Lane changes and cut-ins are often described through a combination of incentive, safety, and temporal structure.
@@ -275,12 +275,12 @@
     For cut-in and lane-merging behaviour in automated driving, structured phase models with explicit risk logic are also common. For example, Hwang et al. propose a finite-state-machine approach for lane-merging cut-ins with TTC-based risk handling \cite{hwang2022fsmrl}. While this thesis does not implement a controller, such phase-based framing motivates clear scenario segmentation and transparent risk definitions for offline analysis.
 
     \section{Context encoding for interaction analysis}
-    Scalar indicators (e.g., minimum THW) compress interactions to a few values and may miss relevant local traffic structure. Grid-based representations such as occupancy grids are widely used for compactly describing local surroundings \cite{elfes1989}.
+    Scalar indicators such as minimum THW compress an interaction to a single number and discard information about the surrounding traffic configuration. A vehicle cutting in with an empty adjacent lane faces a different situation than one merging between closely spaced neighbours, yet both may produce identical THW values. Grid-based representations such as occupancy grids address this limitation by encoding the presence or absence of surrounding vehicles in a structured spatial layout~\cite{elfes1989}. Occupancy grids have been adopted widely in robotics and automated driving perception, but their use as an analysis-level context descriptor for offline interaction studies is less common.
 
-    To compress spatial grids into a compact signature while preserving locality, Hilbert-type space-filling curves order 2D cells into 1D sequences \cite{moon2001}. This thesis uses a small ego-centric 3$\times$3 occupancy grid encoded into a 16-bit SFC signature for a reversible integer-code representation of local context.
+    When the grid is small (e.g., 3$\times$3 cells), the resulting binary pattern can be compressed into a compact integer signature using a space-filling curve (SFC). Among the available SFC orderings, the Hilbert curve preserves two-dimensional spatial locality better than simpler alternatives such as the Morton (Z-order) curve, meaning that grid patterns that differ by a single neighbouring cell tend to map to numerically close codes~\cite{moon2001}. This property is useful when clustering or comparing context patterns, because small spatial changes produce small code changes. This thesis uses an ego-centric 3$\times$3 occupancy grid encoded into a 16-bit Hilbert SFC signature, yielding a reversible integer-code representation of local context that supports efficient storage, retrieval, and grouping.
 
     \section{Research gap}
-    The reviewed literature establishes surrogate safety measures, phase-aware lane-change models, and predictive risk frameworks, but three gaps motivate this thesis. First, cut-in analysis requires explicit pairing between the cutter and the impacted follower, yet dataset-provided SSMs may correspond to a different vehicle pair. Second, existing highD-based risk models assume that scenario samples and interaction partners are already available; they do not address the minimal-input reconstruction problem when lane and neighbour identifiers are unavailable or inconsistent. Third, compact context representations (e.g., occupancy grids with SFC encoding) have not been combined with end-to-end reference-label verification for cut-in interactions. This thesis addresses these gaps through a framework that reconstructs relations from minimal inputs, computes pair-consistent and phase-aware indicators, and produces verified SFC-based context signatures.
+    The reviewed literature establishes surrogate safety measures, phase-aware lane-change models, and predictive risk frameworks, but three gaps motivate this thesis. First, cut-in analysis requires explicit pairing between the cutter and the impacted follower, yet dataset-provided SSMs may correspond to a different vehicle pair. Second, existing highD-based risk models assume that scenario samples and interaction partners are already available; they do not address the minimal-input reconstruction problem when lane and neighbour identifiers are unavailable or inconsistent. Third, compact context representations (e.g., occupancy grids with SFC encoding) have not been combined with end-to-end reference-label verification for cut-in interactions. This thesis addresses these gaps through a framework that reconstructs relations from minimal inputs, computes pair-consistent and phase-aware indicators, and produces reference-validated SFC-based context signatures.
 
 % ==============================================================================
     \chapter{Research Method}
@@ -342,7 +342,7 @@
     \end{figure}
 
     \paragraph{Justification of stage durations.}
-    The choice of \SI{2}{\second} per stage (and \SI{4}{\second} total pre-onset window) is grounded in empirical findings from the lane-change literature. Wang et al.~\cite{wang2019cutin} report that cut-in durations in naturalistic data range from 0.7 to \SI{12.4}{\second} with a mean of approximately \SI{3.9}{\second}, while Yang et al.~\cite{yang2019lanechange} find that lane-change durations and gap acceptance windows are typically concentrated in the 2 to \SI{6}{\second} range. Zhou and Itoh~\cite{zhou2016riskperception} identify two distinct phases of risk perception during lane changes: an initial phase where drivers assess the situation primarily through TTC, and a later phase during lane insertion where both TTC and THW become relevant. Splitting the pre-onset window at \SI{2}{\second} separates these two phases. On the post-onset side, a \SI{2}{\second} execution window captures the initial gap closure after the cutter--follower relation is established, and a \SI{2}{\second} recovery window covers the subsequent stabilisation period. The $\pm\SI{4}{\second}$ analysis window is also consistent with intention recognition studies that use multi-second observation windows preceding the lane-change manoeuvre for reliable prediction~\cite{liu2021intention}. Overall, the \SI{2}{\second} split provides a balanced partition that aligns with the empirical phase structure reported in the literature.
+    The $\pm\SI{4}{\second}$ window and \SI{2}{\second} stage width are informed by three empirical observations. First, Liu et al.~\cite{liu2025multitask} report recall above 94\% for lane-change prediction at horizons of 3.2--\SI{3.6}{\second} before the vehicle crosses lane boundaries, supporting a multi-second pre-onset window. Second, Zhou and Itoh~\cite{zhou2016riskperception} distinguish two phases of driver risk perception: an earlier phase dominated by TTC and a later insertion phase where both TTC and THW are relevant; the \SI{2}{\second} split separates these phases. Third, Wang et al.~\cite{wang2019cutin} report that cut-in durations range from 0.7 to \SI{12.4}{\second} (mean $\approx$\SI{3.9}{\second}), so a \SI{2}{\second} execution window captures the initial post-onset interaction without assuming the event is instantaneous. The sensitivity of this choice is addressed through the threshold analysis in the results.
 
     \section{Surrogate safety measures}
     Let $A$ be the leader (cutter) and $B$ the follower. We use:
@@ -371,7 +371,7 @@
             \text{undefined}, & \text{otherwise.}
         \end{cases}
     \]
-    DRAC represents the minimum constant deceleration the follower must apply to avoid a collision under constant-speed assumptions. Values above \SI{3.35}{\meter\per\second\squared} are commonly interpreted as a hard-braking situation \cite{archer2005indicators,wang2021ssm}. Unlike TTC, which describes \emph{time until} a potential collision, DRAC describes the \emph{deceleration required} to prevent one, providing a complementary perspective on interaction severity. DRAC is only defined when the follower is closing, the same condition as TTC. We report DRAC alongside TTC and THW in the execution stage to see how often closing events require non-trivial braking demand.
+    DRAC represents the minimum constant deceleration the follower must apply to avoid a collision under constant-speed assumptions. Following Archer~\cite{archer2005indicators}, who uses \SI{3.35}{\meter\per\second\squared} as a conflict-severity threshold, values above this level are interpreted as a hard-braking situation in this thesis. Unlike TTC, which describes \emph{time until} a potential collision, DRAC describes the \emph{deceleration required} to prevent one, providing a complementary perspective on interaction severity. DRAC is only defined when the follower is closing, the same condition as TTC. We report DRAC alongside TTC and THW in the execution stage to see how often closing events require non-trivial braking demand.
 
     \section{Risk label}
     We define a binary risk label for descriptive comparison:
@@ -381,6 +381,8 @@
     The threshold of \SI{0.7}{\second} represents a deliberately strict cut-off corresponding to a very short accepted gap. Tscharn et al.~\cite{tscharn2018thw} evaluate \SI{0.7}{\second} as a short time headway in their perceived-criticality experiments, while guidance values for safety-critical situations are typically in the range \SIrange{1.8}{2.0}{\second}. We use execution-stage THW because it remains defined after the follower relation is established, even when TTC becomes infinite under non-closing conditions. Threshold sensitivity is reported in the results to make the operational choice explicit~\cite{wang2021ssm}.
 
     \section{Interaction context signatures (SFC encoding)}
+    Scalar indicators like THW or TTC reduce each interaction to a single number and discard information about the surrounding traffic layout. Two cut-ins with identical THW may differ considerably in how constrained the cutter's manoeuvre space is: one may occur in light traffic with empty adjacent lanes, while the other may involve a dense corridor with vehicles on both sides. To capture this spatial context in a form that is compact enough for storage and comparison yet rich enough to distinguish different scene configurations, we encode the local traffic layout as a short integer code.
+
     For each frame around a cut-in event, we define an ego-centric \textbf{3$\times$3 semantic occupancy grid} around the cutter:
     \begin{itemize}[leftmargin=1.2em]
   \item columns: \{left lane, same lane, right lane\},
@@ -396,7 +398,7 @@
         \label{fig:sfc-signature-overview}
     \end{figure}
 
-    We perform an exhaustive round-trip test across all $2^{16}$ possible bit patterns to verify the encoding; encoding followed by decoding returns the original grid for both Hilbert and Morton (Z-order) traversals.
+    We perform an exhaustive round-trip test across all $2^{16}$ possible bit patterns to confirm reversibility; encoding followed by decoding returns the original grid for both Hilbert and Morton (Z-order) traversals.
 
 % ==============================================================================
     \chapter{Methods}
@@ -446,40 +448,7 @@ Reference-label evaluation & Agreement reporting & Frame-level accuracy, event-l
             \end{tabularx}}
     \end{table}
 
-    The remainder of this chapter describes each component. Qualitative verification was additionally performed using an interactive inspection dashboard (Appendix~\ref{app:dashboard}).
-
-    \section{Configuration}
-    Table~\ref{tab:config} summarises the key parameters used in the final run (highD 01--60, \SI{25}{\hertz}).
-
-    \begin{table}[H]
-        \centering
-        \caption{Key configuration values for the final framework run.}
-        \label{tab:config}
-        {\small
-        \setlength{\tabcolsep}{4pt}
-            \begin{tabularx}{\textwidth}{@{}l l X@{}}
-\toprule
-Component & Parameter & Value \\
-\midrule
-Lane-change detection & Min stable before/after & 25 frames ($\approx \SI{1.0}{\second}$) \\
-Lane-change detection & Ignored lane ids & \{0\} \\
-Cut-in detection & Search window & 50 frames ($\approx \SI{2.0}{\second}$) \\
-Cut-in detection & Min relation duration & 10 frames ($\approx \SI{0.4}{\second}$) \\
-Cut-in detection & Max relation delay & 15 frames ($\approx \SI{0.6}{\second}$) \\
-Indicator computation & Min speed for THW & \SI{0.1}{\meter\per\second} \\
-Indicator computation & Closing speed epsilon & $10^{-6}$ \\
-Indicator computation & Window (pre/post) for diagnostics & 50/75 frames ($\approx \SI{2}{\second}/\SI{3}{\second}$) \\
-Stage model & Total analysis window & $\pm \SI{4}{\second}$ around $t_0$ \\
-Risk label & Execution THW threshold & \SI{0.7}{\second} \\
-SFC encoding & Ahead/behind range & Disabled (no fixed cutoff) \\
-SFC encoding & Alongside threshold & \SI{4.0}{\meter} (final Step 14 thesis run) \\
-SFC encoding & Order & Hilbert \\
-\bottomrule
-            \end{tabularx}}
-    \end{table}
-
-    These parameters are informed by empirical cut-in duration distributions~\cite{wang2019cutin} and the two-phase risk perception model~\cite{zhou2016riskperception}, and are reported to support reproducibility.
-
+    The remainder of this chapter describes each component. Qualitative inspection was additionally performed using an interactive inspection dashboard (Appendix~\ref{app:dashboard}).
 
     \section{Preliminary processing: data harmonisation}
     Each highD recording is distributed as three data tables: (i) per-frame trajectories, (ii) per-vehicle metadata, and (iii) recording-level metadata. In preliminary processing we load these tables, perform basic consistency checks (e.g., frame rate and track bounds), and combine them into a consolidated per-frame dataset where each row corresponds to one vehicle at one time step together with the metadata needed in later phases. This consolidated representation is used by both the reference-label path and the reconstruction path so that subsequent comparisons are like-for-like.
@@ -565,9 +534,41 @@ initialise $t_0 \leftarrow \text{undefined}$\;
     \end{algorithm}
 
     \subsection{Design rationale}
-    The framework separates event extraction from risk labelling. Lane changes are detected between stable segments (reducing sensitivity to label jitter), and follower pairing requires a minimum persistence duration to avoid pairing transient overtake encounters. DHW, THW, and TTC are computed for the explicit cutter--follower pair rather than a generic predecessor, consistent with recent risk models that use interaction-specific features~\cite{shangguan2022,liu2025multitask}. Following Zhou and Itoh~\cite{zhou2016riskperception}, we interpret TTC and THW as complementary indicators across the stage-aligned window.
+    The framework separates event extraction from risk labelling. Lane changes are detected between stable segments, which reduces sensitivity to label jitter, and follower pairing requires a minimum persistence duration to avoid one-frame oscillations. This is consistent with naturalistic evidence that cut-ins have non-trivial duration rather than occurring instantaneously~\cite{wang2019cutin}.
+
+    \section{Configuration}
+    Table~\ref{tab:config} summarises the key parameters used in the final run (highD 01--60, \SI{25}{\hertz}). These parameters are informed by empirical cut-in duration distributions~\cite{wang2019cutin} and the two-phase risk perception model~\cite{zhou2016riskperception}, and are reported to support reproducibility.
+
+    \begin{table}[H]
+        \centering
+        \caption{Key configuration values for the final framework run.}
+        \label{tab:config}
+        {\small
+        \setlength{\tabcolsep}{4pt}
+            \begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+Component & Parameter & Value \\
+\midrule
+Lane-change detection & Min stable before/after & 25 frames ($\approx \SI{1.0}{\second}$) \\
+Lane-change detection & Ignored lane ids & \{0\} \\
+Cut-in detection & Search window & 50 frames ($\approx \SI{2.0}{\second}$) \\
+Cut-in detection & Min relation duration & 10 frames ($\approx \SI{0.4}{\second}$) \\
+Cut-in detection & Max relation delay & 15 frames ($\approx \SI{0.6}{\second}$) \\
+Indicator computation & Min speed for THW & \SI{0.1}{\meter\per\second} \\
+Indicator computation & Closing speed epsilon & $10^{-6}$ \\
+Indicator computation & Window (pre/post) for diagnostics & 50/75 frames ($\approx \SI{2}{\second}/\SI{3}{\second}$) \\
+Stage model & Total analysis window & $\pm \SI{4}{\second}$ around $t_0$ \\
+Risk label & Execution THW threshold & \SI{0.7}{\second} \\
+SFC encoding & Ahead/behind range & Disabled (no fixed cutoff) \\
+SFC encoding & Alongside threshold & \SI{4.0}{\meter} (final Step 14 thesis run) \\
+SFC encoding & Order & Hilbert \\
+\bottomrule
+            \end{tabularx}}
+    \end{table}
 
     \section{Safety quantification: surrogate measures and geometry model selection}
+    All safety indicators are computed for the explicit cutter--follower pair rather than a generic predecessor, consistent with recent risk models that use interaction-specific features~\cite{shangguan2022,liu2025multitask}. Following Zhou and Itoh~\cite{zhou2016riskperception}, we interpret TTC and THW as complementary indicators across the stage-aligned window.
+
     We compute DHW/THW/TTC for arbitrary pairs using geometry and speeds. Because trajectory datasets may define position references differently (e.g., centre point vs bounding-box corner), we \emph{select a geometry model} by comparing our computed indicators against highD-provided indicators for same-lane (ego, predecessor) pairs on a large random sample. We test multiple plausible reference conventions and select the one that best matches dataset-provided DHW/THW/TTC. In the final run, the best match was obtained with a bounding-box--based interpretation of the position variables (a top-left reference point), combined with vehicle length to compute front and rear positions.
 
     To avoid negative gaps due to noise or reference mismatches, thesis-facing minima are clipped to be non-negative for DHW/THW. TTC is treated as infinite when the follower is not closing ($v_B \leq v_A$).
@@ -575,20 +576,20 @@ initialise $t_0 \leftarrow \text{undefined}$\;
     \section{Safety quantification: stage-wise features}
     For each detected cut-in, we align a fixed time window around onset $t_0$ and compute stage-wise summaries for the four stages in Chapter~\ref{chap:theory}. The feature table includes stage minima of DHW/THW/TTC and kinematic aggregates for cutter and follower. These stage-wise summaries are later used not only for descriptive risk analysis, but also for operational-usefulness evaluation through threshold sensitivity and TTC-versus-THW disagreement analysis.
 
-    \section{Context signatures: encoding and reference verification}
+    \section{Context signatures: encoding and reference comparison}
     To capture local traffic context around the cutter compactly, we encode neighbourhood occupancy into the 3$\times$3 semantic grid defined in Chapter~\ref{chap:theory}. Each frame is mapped to a binary occupancy pattern, and the 3$\times$3 cells are embedded into a 4$\times$4 grid and linearised using a Hilbert-type space-filling-curve order. To remove direction-induced asymmetry, events are mirror-normalised to a canonical orientation prior to aggregation.
 
     \paragraph{Minimal-input SFC signatures.}
     In the minimal-input path, occupancy is computed from inferred lanes (XY-lane) and lane-snapshot neighbour queries (geometry). This means SFC signatures can be generated without accessing highD neighbour columns.
 
     \paragraph{Reference SFC signatures.}
-    For verification, we also construct a reference occupancy grid from the highD surrounding-vehicle identifiers (same-lane preceding/following plus left/right neighbours and alongside vehicles). Mapping each non-zero neighbour id to occupancy yields a reference 3$\times$3 grid per frame, which can be encoded into a reference SFC signature.
+    For comparison, we also construct a reference occupancy grid from the highD surrounding-vehicle identifiers (same-lane preceding/following plus left/right neighbours and alongside vehicles). Mapping each non-zero neighbour id to occupancy yields a reference 3$\times$3 grid per frame, which can be encoded into a reference SFC signature.
 
     \paragraph{Signature agreement.}
-    We verify the SFC branch by comparing the reference and minimal-input codes for matching (event, frame) rows. We report both exact code match rate and the distribution of Hamming distances (bitwise differences), which localises whether mismatches affect a single cell or multiple cells.
+    We assess the SFC branch by comparing the reference and minimal-input codes for matching (event, frame) rows. We report both exact code match rate and the distribution of Hamming distances (bitwise differences), which localises whether mismatches affect a single cell or multiple cells.
 
     \paragraph{Exploratory clustering of decision-stage signatures.}
-    As an additional analysis of representational usefulness, we cluster event-level decision-stage context signatures after the core verification step. For each validated cut-in event, the mirror-normalised decision-stage 3$\times$3 occupancy grids are averaged over the frames in that stage, yielding a 9-dimensional vector of cell-wise occupancy probabilities. We then apply $k$-means clustering for $K=3,\dots,8$, assess internal cohesion with the silhouette score, and assess solution stability with the mean adjusted Rand index (ARI) across repeated random initialisations. This clustering is not used as a primary correctness criterion; it is reported only as an exploratory check of whether the verified SFC representation supports interpretable grouping of decision-stage interaction contexts.
+    As an additional analysis of representational usefulness, we cluster event-level decision-stage context signatures after the core agreement check. For each validated cut-in event, the mirror-normalised decision-stage 3$\times$3 occupancy grids are averaged over the frames in that stage, yielding a 9-dimensional vector of cell-wise occupancy probabilities. We then apply $k$-means clustering for $K=3,\dots,8$, assess internal cohesion with the silhouette score, and assess solution stability with the mean adjusted Rand index (ARI) across repeated random initialisations. This clustering is not used as a primary correctness criterion; it is reported only as an exploratory check of whether the validated SFC representation supports interpretable grouping of decision-stage interaction contexts.
 
     Algorithm~\ref{alg:sfc-signature} summarises how the context signatures are constructed for each stage-aligned frame.
 
@@ -603,7 +604,7 @@ initialise $t_0 \leftarrow \text{undefined}$\;
     (optional) mirror-normalise the grid to a canonical direction\;
     embed the 3$\times$3 grid into a 4$\times$4 grid with fixed padding\;
     traverse cells in Hilbert order and write occupancy bits into a 16-bit code\;
-    store the code and (optionally) the decoded grid for verification\;
+    store the code and (optionally) the decoded grid for inspection\;
 }
     \end{algorithm}
 
@@ -767,13 +768,13 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
         \caption{Execution-stage DRAC distribution (finite only, $n=3{,}393$).}
         \label{tab:drac-dist}
         {\small
-        \begin{tabular}{@{}lrrrrrr@{}}
-        \toprule
-        Indicator & Min & P25 & Median & Mean & P75 & P95 \\
-        \midrule
-        DRAC (\si{\meter\per\second\squared}) & $<$0.001 & 0.016 & 0.071 & 0.193 & 0.202 & 0.693 \\
-        \bottomrule
-        \end{tabular}}
+            \begin{tabular}{@{}lrrrrrr@{}}
+                \toprule
+                Indicator & Min & P25 & Median & Mean & P75 & P95 \\
+                \midrule
+                DRAC (\si{\meter\per\second\squared}) & $<$0.001 & 0.016 & 0.071 & 0.193 & 0.202 & 0.693 \\
+                \bottomrule
+            \end{tabular}}
     \end{table}
 
     \begin{table}[H]
@@ -781,15 +782,15 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
         \caption{DRAC threshold sensitivity (10,023 events).}
         \label{tab:drac-sensitivity}
         \begin{tabular}{@{}lrr@{}}
-        \toprule
-        DRAC threshold (\si{\meter\per\second\squared}) & Flagged events & Ratio \\
-        \midrule
-        1.0  &  80  &  0.80\% \\
-        2.0  &  18  &  0.18\% \\
-        3.0  &   9  &  0.09\% \\
-        3.35 &   8  &  0.08\% \\
-        5.0  &   6  &  0.06\% \\
-        \bottomrule
+            \toprule
+            DRAC threshold (\si{\meter\per\second\squared}) & Flagged events & Ratio \\
+            \midrule
+            1.0  &  80  &  0.80\% \\
+            2.0  &  18  &  0.18\% \\
+            3.0  &   9  &  0.09\% \\
+            3.35 &   8  &  0.08\% \\
+            5.0  &   6  &  0.06\% \\
+            \bottomrule
         \end{tabular}
     \end{table}
 
@@ -870,7 +871,7 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
     \end{figure}
 
     \subsection{Exploratory decision-stage context archetypes}
-    Mean occupancy maps show group-level differences, but they do not directly answer whether the verified SFC representation can recover a small set of reusable scene families. As an additional representational-usefulness check, we therefore decode the mirrored binary SFC signatures back into the semantic 3$\times$3 grid, average the decision-stage grids within each event, and cluster the resulting event-level context vectors. We use the \emph{decision} stage rather than the execution stage so that clustering is based on decision-stage context rather than on the same time window used to define the THW risk label.
+    Mean occupancy maps show group-level differences, but they do not directly answer whether the validated SFC representation can recover a small set of reusable scene families. As an additional representational-usefulness check, we therefore decode the mirrored binary SFC signatures back into the semantic 3$\times$3 grid, average the decision-stage grids within each event, and cluster the resulting event-level context vectors. We use the \emph{decision} stage rather than the execution stage so that clustering is based on decision-stage context rather than on the same time window used to define the THW risk label.
 
     Searching $K=3,\dots,8$ with $k$-means, the best solution is $K=7$, with silhouette score 0.498 and mean stability ARI 0.992 across repeated initialisations. The resulting archetypes remain reasonably balanced, spanning 6.0\%--30.7\% of all 10,023 validated cut-ins. After mirror normalisation, all lane changes are represented in a common canonical direction, so the right column in Figure~\ref{fig:sfc-archetypes} corresponds to the target lane.
 
@@ -900,16 +901,16 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
         \caption{Risk prediction: LORO-CV summary (stump ensemble, 34 features from the intention and decision stages, 60 held-out folds).}
         \label{tab:prediction-summary}
         \begin{tabular}{@{}lr@{}}
-        \toprule
-        Metric & Value \\
-        \midrule
-        Mean ROC-AUC       & 0.810 \\
-        Mean $F_1$ (risky class) & 0.518 \\
-        Mean precision     & 0.376 \\
-        Mean recall        & 0.874 \\
-        Baseline $F_1$     & 0.000 \\
-        $\Delta F_1$ vs baseline & +0.518 \\
-        \bottomrule
+            \toprule
+            Metric & Value \\
+            \midrule
+            Mean ROC-AUC       & 0.810 \\
+            Mean $F_1$ (risky class) & 0.518 \\
+            Mean precision     & 0.376 \\
+            Mean recall        & 0.874 \\
+            Baseline $F_1$     & 0.000 \\
+            $\Delta F_1$ vs baseline & +0.518 \\
+            \bottomrule
         \end{tabular}
     \end{table}
 
@@ -923,15 +924,15 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
         \caption{Top-5 features by Gini importance (stump ensemble, LORO-CV).}
         \label{tab:feature-importance}
         \begin{tabular}{@{}lr@{}}
-        \toprule
-        Feature & Importance \\
-        \midrule
-        Decision-stage THW$_{\min}$  & 0.314 \\
-        Decision-stage DHW$_{\min}$  & 0.228 \\
-        Intention-stage DHW$_{\min}$ & 0.120 \\
-        Intention-stage THW$_{\min}$ & 0.100 \\
-        Decision-stage TTC$_{\min}$  & 0.028 \\
-        \bottomrule
+            \toprule
+            Feature & Importance \\
+            \midrule
+            Decision-stage THW$_{\min}$  & 0.314 \\
+            Decision-stage DHW$_{\min}$  & 0.228 \\
+            Intention-stage DHW$_{\min}$ & 0.120 \\
+            Intention-stage THW$_{\min}$ & 0.100 \\
+            Decision-stage TTC$_{\min}$  & 0.028 \\
+            \bottomrule
         \end{tabular}
     \end{table}
 
@@ -945,13 +946,13 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
         \caption{Feature ablation: LORO-CV (stump ensemble).}
         \label{tab:ablation}
         \begin{tabular}{@{}lrrr@{}}
-        \toprule
-        Feature set & $n$ features & Mean AUC & Mean $F_1$ \\
-        \midrule
-        All (kinematic + SFC) & 34 & 0.810 & 0.518 \\
-        Kinematic only        & 18 & 0.816 & 0.521 \\
-        SFC only              & 16 & 0.613 & 0.344 \\
-        \bottomrule
+            \toprule
+            Feature set & $n$ features & Mean AUC & Mean $F_1$ \\
+            \midrule
+            All (kinematic + SFC) & 34 & 0.810 & 0.518 \\
+            Kinematic only        & 18 & 0.816 & 0.521 \\
+            SFC only              & 16 & 0.613 & 0.344 \\
+            \bottomrule
         \end{tabular}
     \end{table}
 
@@ -961,13 +962,13 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
     The strongest individual predictors are decision-stage THW$_{\min}$ ($r=-0.34$) and decision-stage DHW$_{\min}$ ($r=-0.31$), both negatively correlated with risk: smaller pre-onset gaps predict riskier outcomes.
 
     \section{Reference agreement for context signatures (RQ3)}
-    We verify the SFC encoding in two complementary ways:
+    We assess the SFC encoding in two complementary ways:
     \begin{itemize}[leftmargin=1.2em]
-  \item \textbf{Algorithmic round-trip:} exhaustive decode$\leftrightarrow$encode verification across all $2^{16}$ codes confirms that the 16-bit SFC mapping is reversible for both Hilbert and Morton orders.
+  \item \textbf{Algorithmic round-trip:} exhaustive decode$\leftrightarrow$encode testing across all $2^{16}$ codes confirms that the 16-bit SFC mapping is reversible for both Hilbert and Morton orders.
   \item \textbf{Reference agreement:} for cut-in stage frames, we compute a reference occupancy grid from highD surrounding-vehicle ids and compare its SFC code to the minimal-input code computed from inferred lanes and geometry. Exact matches indicate identical neighbour occupancy under the two definitions; non-matches localise differences to specific cells via Hamming distance.
     \end{itemize}
 
-    Using the final thesis configuration, with an alongside threshold of \SI{4.0}{\meter} and no fixed ahead/behind cutoff, we verify 1,421,980 stage rows and obtain 1,414,762 exact row matches (99.49\%). Stage-wise exact-match rates are 99.35\% (intention), 99.52\% (decision), and 99.60\% (execution). In the thesis event view, stage-window ANY-frame agreement is 100.00\%, while stage-window ALL-frame agreement is 79.82\%. The raw unmirrored match rate is only 57.56\%, which confirms that direction normalisation is necessary for like-for-like left/right occupancy comparison across opposite travel directions.
+    Using the final thesis configuration, with an alongside threshold of \SI{4.0}{\meter} and no fixed ahead/behind cutoff, we compare 1,421,980 stage rows and obtain 1,414,762 exact row matches (99.49\%). Stage-wise exact-match rates are 99.35\% (intention), 99.52\% (decision), and 99.60\% (execution). In the thesis event view, stage-window ANY-frame agreement is 100.00\%, while stage-window ALL-frame agreement is 79.82\%. The raw unmirrored match rate is only 57.56\%, which confirms that direction normalisation is necessary for like-for-like left/right occupancy comparison across opposite travel directions.
 
 % ==============================================================================
     \chapter{Discussion}
@@ -1001,7 +1002,7 @@ Contribution & Evidence & Significance \\
 \midrule
 Minimal-input reconstruction & Accuracy $>$0.9998; $F_1=0.999$ & Enables cut-in mining without dataset-specific relation columns. \\
 Pair-consistent indicators & 10,023 events; THW/TTC/DRAC disagreement analysis & Ensures indicators describe the correct interaction pair. \\
-Verified context signatures & 99.49\% row agreement; 7 archetypes; peak risk ratio 1.32 & Compact, reversible descriptors supporting scene retrieval and grouping. \\
+Validated context signatures & 99.49\% row agreement; 7 archetypes; peak risk ratio 1.32 & Compact, reversible descriptors supporting scene retrieval and grouping. \\
 Predictive evaluation & AUC 0.81 (all); AUC 0.61 (SFC alone) & Features carry predictive value; SFC adds independent signal. \\
 Reproducible evaluation & Two-path design; parameter table; deterministic outputs & Separates method inputs from reference labels. \\
 \bottomrule
@@ -1111,11 +1112,11 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
         B.~Moon, H.~V. Jagadish, C.~Faloutsos, and J.~H. Saltz.
         \newblock Analysis of the clustering properties of the Hilbert space-filling curve.
         \newblock \emph{IEEE Transactions on Knowledge and Data Engineering}, 13(1):124--141, 2001.
-        \newblock DOI: \url{https://doi.org/10.1109/69.908985}.
+        \newblock DOI: \url{https://doi.org/10.1109/TKDE.2001.859372}.
 
         \bibitem{archer2005indicators}
         J.~Archer.
-        \newblock Indicators for traffic safety assessment and prediction and their application in micro-simulation modelling: A study of micro-simulation modelling for the evaluation of safety effects of ITS.
+        \newblock Indicators for traffic safety assessment and prediction and their application in micro-simulation modelling: A study of urban and suburban intersections.
         \newblock PhD thesis, Royal Institute of Technology (KTH), Stockholm, 2005.
 
         \bibitem{wanggao2025highd}
@@ -1123,18 +1124,6 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
         \newblock Lane change inconsistencies in the highD dataset.
         \newblock \emph{Findings}, 2025.
         \newblock DOI: \url{https://doi.org/10.32866/001c.132341}.
-
-        \bibitem{liu2021intention}
-        Z.-Q.~Liu, M.-C.~Peng, and Y.-C.~Sun.
-        \newblock Estimation of driver lane change intention based on the LSTM and Dempster--Shafer evidence theory.
-        \newblock \emph{Journal of Advanced Transportation}, 2021:8858902, 2021.
-        \newblock DOI: \url{https://doi.org/10.1155/2021/8858902}.
-
-        \bibitem{yang2019lanechange}
-        M.~Yang, X.~Wang, and M.~Quddus.
-        \newblock Examining lane change gap acceptance, duration and impact using naturalistic driving data.
-        \newblock \emph{Transportation Research Part C: Emerging Technologies}, 104:317--331, 2019.
-        \newblock DOI: \url{https://doi.org/10.1016/j.trc.2019.05.024}.
 
     \end{thebibliography}
 
@@ -1182,16 +1171,16 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
     \chapter{Appendix: Qualitative Inspection Dashboard}
     \label{app:dashboard}
 
-    Quantitative agreement metrics provide an overall assessment of reconstruction quality, but they do not on their own reveal whether failures are systematic (e.g., due to direction conventions, onset misalignment, or lane-boundary interpretation). To support qualitative verification, we use an interactive inspection dashboard that synchronises (i) aerial video playback and track overlays, (ii) the currently selected cut-in event and its cutter--follower pair, and (iii) the derived stage window, indicators, and context signature for the current frame.
+    Quantitative agreement metrics provide an overall assessment of reconstruction quality, but they do not on their own reveal whether failures are systematic (e.g., due to direction conventions, onset misalignment, or lane-boundary interpretation). To support qualitative inspection, we use an interactive inspection dashboard that synchronises (i) aerial video playback and track overlays, (ii) the currently selected cut-in event and its cutter--follower pair, and (iii) the derived stage window, indicators, and context signature for the current frame.
 
     The dashboard was not developed from scratch. It builds on the official \textit{highD} tools repository, which provides functions for handling and visualising \textit{highD} data in Matlab and Python\footnote{Official repository: \url{https://github.com/RobertKrajewski/highD-dataset}.}. For this thesis, that tooling was adapted and extended with cut-in-specific event selection, cutter--follower highlighting, stage-window synchronisation, and context-signature/indicator panels needed for qualitative inspection of the reconstructed interaction pair.
 
-    The dashboard was used to inspect representative cases and extremes (e.g., lowest-TTC events) and to verify that reconstructed relations and occupancy signatures correspond to the visible scene. It served as a support tool for verification and communication rather than as a standalone thesis contribution: it was not used to manually correct events or labels, and all reported results are produced by the framework's deterministic components.
+    The dashboard was used to inspect representative cases and extremes (e.g., lowest-TTC events) and to confirm that reconstructed relations and occupancy signatures correspond to the visible scene. It served as a support tool for validation and communication rather than as a standalone thesis contribution: it was not used to manually correct events or labels, and all reported results are produced by the framework's deterministic components.
 
     \begin{figure}[H]
         \centering
         \safeincludegraphics[width=\textwidth]{fig_gui_command_deck.png}
-        \caption{Interactive inspection dashboard used for qualitative verification. The dashboard is based on a modified version of the official \textit{highD} visualisation tools and was extended with cut-in-specific overlays, event selection, and stage/context displays.}
+        \caption{Interactive inspection dashboard used for qualitative review. The dashboard is based on a modified version of the official \textit{highD} visualisation tools and was extended with cut-in-specific overlays, event selection, and stage/context displays.}
         \label{fig:gui-dashboard}
     \end{figure}
 
@@ -1225,7 +1214,7 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
     \end{itemize}
 
     \section{\texorpdfstring{Reference 3$\times$3}{Reference 3x3} occupancy grid from highD neighbour ids}
-    For a given ego vehicle and frame, highD provides surrounding-vehicle ids for left/right/preceding/following/alongside positions. We map these to the 3$\times$3 grid by setting a cell to $1$ if the corresponding neighbour id is non-zero; otherwise $0$. The same grid can be produced by geometry-based reconstruction, allowing code-level verification via SFC signature matching.
+    For a given ego vehicle and frame, highD provides surrounding-vehicle ids for left/right/preceding/following/alongside positions. We map these to the 3$\times$3 grid by setting a cell to $1$ if the corresponding neighbour id is non-zero; otherwise $0$. The same grid can be produced by geometry-based reconstruction, allowing code-level comparison via SFC signature matching.
 
 
 
