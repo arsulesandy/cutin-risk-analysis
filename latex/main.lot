@@ -1,0 +1,30 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Macro-phases and outputs of Traj2Rel-SFC{}.}}{17}{table.caption.14}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Key configuration values for the final framework run.}}{18}{table.caption.15}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces Event counts for the final run (recordings 01--60).}}{25}{table.caption.29}%
+\contentsline {table}{\numberline {6.2}{\ignorespaces Duration statistics (highD 01--60, \SI {25}{\hertz }).}}{25}{table.caption.30}%
+\contentsline {table}{\numberline {6.3}{\ignorespaces Execution-stage indicator minima across all events (10,023 cut-ins).}}{26}{table.caption.31}%
+\contentsline {table}{\numberline {6.4}{\ignorespaces Execution-stage risk summary. $\Delta v = \bar v_{\text {cutter}}-\bar v_{\text {follower}}$.}}{26}{table.caption.32}%
+\contentsline {table}{\numberline {6.5}{\ignorespaces Effect sizes between risk groups (execution stage). $\delta $ is Cliff's delta.}}{27}{table.caption.33}%
+\contentsline {table}{\numberline {6.6}{\ignorespaces THW threshold sensitivity (10,023 events).}}{27}{table.caption.35}%
+\contentsline {table}{\numberline {6.7}{\ignorespaces Execution-stage DRAC distribution (finite only, $n=3{,}393$).}}{27}{table.caption.37}%
+\contentsline {table}{\numberline {6.8}{\ignorespaces DRAC threshold sensitivity (10,023 events).}}{28}{table.caption.38}%
+\contentsline {table}{\numberline {6.9}{\ignorespaces Execution-stage TTC by THW risk group (finite TTC only, $n=3{,}606$).}}{28}{table.caption.39}%
+\contentsline {table}{\numberline {6.10}{\ignorespaces THW-risky vs TTC-threshold overlap (infinite TTC counted as not risky).}}{28}{table.caption.40}%
+\contentsline {table}{\numberline {6.11}{\ignorespaces Top-3 extreme events by minimum execution-stage TTC (finite only).}}{28}{table.caption.42}%
+\contentsline {table}{\numberline {6.12}{\ignorespaces Risk prediction: LORO-CV summary (stump ensemble, 34 features from the intention and decision stages, 60 held-out folds).}}{32}{table.caption.47}%
+\contentsline {table}{\numberline {6.13}{\ignorespaces Top-5 features by Gini importance (stump ensemble, LORO-CV).}}{32}{table.caption.49}%
+\contentsline {table}{\numberline {6.14}{\ignorespaces Feature ablation: LORO-CV (stump ensemble).}}{33}{table.caption.51}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {7.1}{\ignorespaces Contribution claims and supporting evidence.}}{36}{table.caption.53}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {A.1}{\ignorespaces Mapping between thesis terminology and highD columns (tracks file).}}{43}{table.caption.55}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
