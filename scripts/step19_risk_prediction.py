@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy.stats import wilcoxon
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUTPUTS = PROJECT_ROOT / "outputs" / "reports"
@@ -164,6 +165,70 @@ def feature_groups(bc):
     return {"All (kin+SFC)": kin + bc, "Kinematic only": kin, "SFC only": bc}
 
 
+def _slug(name: str) -> str:
+    return (
+        name.lower()
+        .replace(" ", "_")
+        .replace("(", "")
+        .replace(")", "")
+        .replace("+", "plus")
+        .replace("-", "_")
+    )
+
+
+def summarize_results(res: pd.DataFrame) -> dict[str, float]:
+    auc = res["auc"].dropna()
+    return {
+        "mean_auc": float(auc.mean()),
+        "std_auc": float(auc.std(ddof=1)),
+        "mean_f1": float(res["f1"].mean()),
+        "std_f1": float(res["f1"].std(ddof=1)),
+        "mean_precision": float(res["precision"].mean()),
+        "std_precision": float(res["precision"].std(ddof=1)),
+        "mean_recall": float(res["recall"].mean()),
+        "std_recall": float(res["recall"].std(ddof=1)),
+        "mean_delta_f1": float(res["delta_f1"].mean()),
+        "std_delta_f1": float(res["delta_f1"].std(ddof=1)),
+    }
+
+
+def sanitize_features(df: pd.DataFrame, features: list[str]) -> pd.DataFrame:
+    return df[features].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+
+def wilcoxon_vs_chance(res: pd.DataFrame, *, chance: float = 0.5) -> dict[str, float | str]:
+    auc = res[["rec", "auc"]].dropna()
+    test = wilcoxon(auc["auc"] - chance, alternative="greater", zero_method="wilcox")
+    return {
+        "comparison": "SFC only AUC > chance",
+        "metric": "auc",
+        "alternative": "greater",
+        "n_folds": int(len(auc)),
+        "statistic": float(test.statistic),
+        "p_value": float(test.pvalue),
+        "reference": chance,
+    }
+
+
+def wilcoxon_paired(left: pd.DataFrame, right: pd.DataFrame, *, label: str) -> dict[str, float | str]:
+    merged = left[["rec", "auc"]].merge(right[["rec", "auc"]], on="rec", suffixes=("_left", "_right"))
+    test = wilcoxon(
+        merged["auc_left"],
+        merged["auc_right"],
+        alternative="two-sided",
+        zero_method="wilcox",
+    )
+    return {
+        "comparison": label,
+        "metric": "auc",
+        "alternative": "two-sided",
+        "n_folds": int(len(merged)),
+        "statistic": float(test.statistic),
+        "p_value": float(test.pvalue),
+        "reference": np.nan,
+    }
+
+
 # ---------------------------------------------------------------------------
 # LORO-CV
 # ---------------------------------------------------------------------------
@@ -179,9 +244,9 @@ def loro_cv(df, features, model_type="ensemble"):
         if len(te) < 3:
             continue
 
-        Xtr = tr[features].fillna(0).values.astype(float)
+        Xtr = sanitize_features(tr, features).values.astype(float)
         ytr = tr["risk_label"].values.astype(float)
-        Xte = te[features].fillna(0).values.astype(float)
+        Xte = sanitize_features(te, features).values.astype(float)
         yte = te["risk_label"].values.astype(float)
 
         if model_type == "logreg":
@@ -249,12 +314,17 @@ def main():
     for mt in ["logreg", "ensemble"]:
         res, fi = loro_cv(df, fg["All (kin+SFC)"], model_type=mt)
         name = "LogisticRegression" if mt == "logreg" else "StumpEnsemble"
+        summary = summarize_results(res)
         print(f"\n  {name}:")
-        print(f"    mean F1={res['f1'].mean():.4f} (±{res['f1'].std():.4f})")
-        print(f"    mean AUC={res['auc'].dropna().mean():.4f}")
-        print(f"    mean Prec={res['precision'].mean():.4f}  Recall={res['recall'].mean():.4f}")
-        print(f"    mean ΔF1 vs baseline={res['delta_f1'].mean():.4f}")
+        print(f"    mean F1={summary['mean_f1']:.4f} (±{summary['std_f1']:.4f})")
+        print(f"    mean AUC={summary['mean_auc']:.4f} (±{summary['std_auc']:.4f})")
+        print(
+            f"    mean Prec={summary['mean_precision']:.4f} (±{summary['std_precision']:.4f})"
+            f"  Recall={summary['mean_recall']:.4f} (±{summary['std_recall']:.4f})"
+        )
+        print(f"    mean ΔF1 vs baseline={summary['mean_delta_f1']:.4f}")
         res.to_csv(OUT_DIR / f"loro_{mt}.csv", index=False)
+        pd.DataFrame([summary]).to_csv(OUT_DIR / f"summary_{mt}.csv", index=False)
         if fi is not None:
             fi.to_csv(OUT_DIR / f"importance_{mt}.csv", index=False)
             print(f"    Top features: {', '.join(fi.head(5)['feature'].tolist())}")
@@ -262,28 +332,65 @@ def main():
     # --- Ablation (ensemble only) ---
     print("\n=== Feature Ablation (StumpEnsemble) ===")
     ablation = []
+    ablation_folds = {}
     for name, feats in fg.items():
         res, _ = loro_cv(df, feats, model_type="ensemble")
+        ablation_folds[name] = res
+        res.to_csv(OUT_DIR / f"loro_ablation_{_slug(name)}.csv", index=False)
+        summary = summarize_results(res)
         row = {
-            "feature_set": name, "n_features": len(feats),
-            "mean_f1": round(res["f1"].mean(), 4),
-            "mean_auc": round(res["auc"].dropna().mean(), 4),
-            "mean_prec": round(res["precision"].mean(), 4),
-            "mean_recall": round(res["recall"].mean(), 4),
-            "mean_delta_f1": round(res["delta_f1"].mean(), 4),
+            "feature_set": name,
+            "n_features": len(feats),
+            "mean_f1": round(summary["mean_f1"], 4),
+            "std_f1": round(summary["std_f1"], 4),
+            "mean_auc": round(summary["mean_auc"], 4),
+            "std_auc": round(summary["std_auc"], 4),
+            "mean_prec": round(summary["mean_precision"], 4),
+            "std_prec": round(summary["std_precision"], 4),
+            "mean_recall": round(summary["mean_recall"], 4),
+            "std_recall": round(summary["std_recall"], 4),
+            "mean_delta_f1": round(summary["mean_delta_f1"], 4),
+            "std_delta_f1": round(summary["std_delta_f1"], 4),
         }
         ablation.append(row)
-        print(f"  {name}: F1={row['mean_f1']:.4f}, AUC={row['mean_auc']:.4f}, ΔF1={row['mean_delta_f1']:.4f}")
+        print(
+            f"  {name}: F1={row['mean_f1']:.4f} (±{row['std_f1']:.4f}), "
+            f"AUC={row['mean_auc']:.4f} (±{row['std_auc']:.4f}), "
+            f"ΔF1={row['mean_delta_f1']:.4f}"
+        )
 
     abl_df = pd.DataFrame(ablation)
     abl_df.to_csv(OUT_DIR / "ablation.csv", index=False)
+
+    tests = [
+        wilcoxon_vs_chance(ablation_folds["SFC only"], chance=0.5),
+        wilcoxon_paired(
+            ablation_folds["All (kin+SFC)"],
+            ablation_folds["Kinematic only"],
+            label="All vs Kinematic only",
+        ),
+    ]
+    tests_df = pd.DataFrame(tests)
+    tests_df.to_csv(OUT_DIR / "ablation_tests.csv", index=False)
+
+    print("\n=== Paired Statistical Tests ===")
+    for row in tests:
+        print(
+            f"  {row['comparison']}: statistic={row['statistic']:.4f}, "
+            f"p={row['p_value']:.6f} ({row['alternative']})"
+        )
 
     # --- Correlations ---
     print("\n=== Top Feature-Risk Correlations ===")
     corrs = []
     for col in fg["All (kin+SFC)"]:
-        v = df[col].fillna(0)
-        c = float(np.corrcoef(v, df["risk_label"])[0, 1])
+        v = df[col].replace([np.inf, -np.inf], np.nan).fillna(0)
+        if float(v.std(ddof=0)) == 0.0:
+            c = 0.0
+        else:
+            c = float(np.corrcoef(v, df["risk_label"])[0, 1])
+            if not np.isfinite(c):
+                c = 0.0
         corrs.append({"feature": col, "corr": round(c, 4)})
     corr_df = pd.DataFrame(corrs).sort_values("corr", key=abs, ascending=False)
     corr_df.to_csv(OUT_DIR / "correlations.csv", index=False)

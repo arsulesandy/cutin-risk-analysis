@@ -143,13 +143,9 @@
     \chapter*{Abstract}
     \addcontentsline{toc}{chapter}{Abstract}
 
-    When a vehicle cuts into another driver's lane on a highway, the follower may need to brake or adjust speed to maintain a safe gap. Quantifying these interactions at scale is important for traffic safety assessment and for building scenario libraries that support automated driving validation. However, most analysis pipelines depend on dataset-provided lane and neighbour identifiers, which limits reuse when these fields are unavailable or inconsistently defined across datasets. This thesis presents \FrameworkName{}, a minimal-input framework that reconstructs lane assignment and same-lane predecessor/follower relations from trajectory geometry ($x,y$) and lane-marking metadata.
+    Highway cut-ins create new longitudinal interactions that may require the follower to brake, yet most analysis pipelines depend on dataset-provided lane and neighbour identifiers, limiting reuse across datasets. This thesis presents \FrameworkName{}, a minimal-input framework that reconstructs lane assignment and same-lane relations from trajectory geometry ($x,y$) and lane-marking metadata, detects cut-ins as explicit cutter--follower pairs, computes pair-specific surrogate safety measures (DHW, THW, TTC, DRAC), and encodes surrounding traffic context as reversible 16-bit Hilbert space-filling-curve signatures.
 
-    Based on these reconstructed relations, the framework detects cut-ins as explicit cutter--follower pairs, computes distance headway (DHW), time headway (THW), time-to-collision (TTC), and deceleration rate to avoid crash (DRAC) for that pair, and represents the surrounding traffic context with an ego-centric occupancy grid. The grid is mirror-normalised and encoded as a reversible 16-bit Hilbert space-filling-curve signature to make the context comparable across travel directions.
-
-    The framework is evaluated on the \textit{highD} dataset, where highD lane and neighbour identifiers are used only as reference labels and not as method inputs. Across recordings 01--60, same-lane predecessor/follower reconstruction with inferred lanes reaches mean accuracy 0.999810/0.999811, and cut-in events detected from reconstructed relations match the reference-label events with $F_1 = 0.998938$. The detector extracts 10,026 cut-ins, of which 10,023 remain after stage-window validity checks. For 1,421,980 stage rows, reconstructed and reference context signatures agree exactly in 99.49\% of cases. The SFC encoding is confirmed to be reversible through exhaustive round-trip testing over all $2^{16}$ code values. The mirrored decision-stage signatures yield seven stable context archetypes; the most risk-enriched archetype shows a 1.32$\times$ higher execution-stage THW risk prevalence than the overall event set.
-
-    Beyond reconstruction accuracy, a leave-one-recording-out cross-validation experiment shows that decision-stage features predict execution-stage THW risk with ROC-AUC 0.81. SFC context features alone achieve AUC 0.61, showing that the spatial context signatures carry independent risk-relevant information beyond scalar indicators. The addition of DRAC as a deceleration-based indicator shows that the framework's pair-consistent computation extends naturally to complementary safety measures. Most detected cut-ins (99.9\%) involve routine gap acceptance rather than hard-braking situations.
+    Evaluated on 60 \textit{highD} recordings (with highD identifiers used only as reference labels), the framework achieves mean reconstruction accuracy $>$0.9998, cut-in detection $F_1 > 0.999$, and context-signature agreement of 99.49\% over 1.4\,M stage rows. Multi-indicator analysis shows that THW, TTC, and DRAC capture complementary severity aspects; only 0.08\% of events exceed the hard-braking DRAC threshold. Decision-stage features predict execution-stage THW risk with ROC-AUC 0.82 under leave-one-recording-out cross-validation, and SFC context features alone achieve AUC 0.61, demonstrating that spatial context signatures carry independent risk-relevant information beyond scalar indicators.
 
     \noindent\textbf{Keywords:} cut-in detection, minimal-input reconstruction, pair-specific risk analysis, surrogate safety measures, deceleration rate to avoid crash, interaction context signature, space-filling curve, risk prediction, highD, reproducibility.
 
@@ -181,15 +177,17 @@
         \toprule
         Abbreviation & Meaning \\
         \midrule
+        AUC & Area under the ROC curve \\
         DHW & Distance headway (longitudinal gap) \\
+        DRAC & Deceleration rate to avoid crash \\
+        highD & Highway drone dataset~\cite{highd_2018} \\
+        LORO-CV & Leave-one-recording-out cross-validation \\
+        ROC & Receiver operating characteristic \\
+        SFC & Space-filling curve \\
+        SSM & Surrogate safety measure \\
         THW & Time headway (gap divided by follower speed) \\
         TTC & Time-to-collision (gap divided by closing speed, if closing) \\
-        DRAC & Deceleration rate to avoid crash \\
-        SSM & Surrogate safety measure \\
-        SFC & Space-filling curve \\
         XY-lane & Lane inference from $y$ and lane markings \\
-        LORO-CV & Leave-one-recording-out cross-validation \\
-        AUC & Area under the ROC curve \\
         \bottomrule
     \end{tabular}
 
@@ -242,13 +240,13 @@
   \item \textbf{Minimal-input relation reconstruction:} lane inference and same-lane predecessor/follower reconstruction from $x,y$ trajectories and lane markings, evaluated frame by frame against highD reference labels (mean accuracy $>$0.9998).
   \item \textbf{Explicit cutter--follower pairing and pair-consistent indicators:} cut-ins are detected as explicit interacting pairs with a reproducible onset definition; DHW, THW, TTC, and DRAC are computed for the actual cutter--follower pair and interpreted stage-wise.
   \item \textbf{Reversible context signatures:} a direction-normalised 3$\times$3 occupancy grid encoded into a 16-bit Hilbert SFC signature, validated against highD reference occupancy (99.49\% exact row agreement over 1.4\,M stage rows).
-  \item \textbf{Predictive evaluation:} a LORO-CV experiment showing that decision-stage features predict execution-stage THW risk with ROC-AUC 0.81; SFC context features alone achieve AUC 0.61, showing that the framework produces predictive features beyond descriptive agreement.
+  \item \textbf{Predictive evaluation:} a LORO-CV experiment showing that decision-stage features predict execution-stage THW risk with ROC-AUC 0.82; SFC context features alone achieve AUC 0.61, showing that the framework produces predictive features beyond descriptive agreement.
   \item \textbf{Reproducible two-path evaluation:} the minimal-input reconstruction path and the reference-label path are executed in parallel, producing deterministic outputs that can be regenerated from the same settings.
     \end{enumerate}
 
     \section{Thesis outline}
 
-    Chapter~\ref{chap:relatedwork} reviews the dataset, related work, and research gap. Chapter~\ref{chap:researchmethod} describes the evaluation methodology. Chapter~\ref{chap:theory} formally defines cut-in events, stage models, safety indicators, and SFC signatures. Chapter~\ref{chap:methods} details the framework components and the predictive evaluation protocol. Chapter~\ref{chap:results} reports results. Chapter~\ref{chap:discussion} discusses implications and limitations, and Chapter~\ref{chap:conclusion} concludes.
+    Chapter~\ref{chap:relatedwork} positions the thesis within the literature on surrogate safety measures, cut-in analysis, and context encoding, and identifies three research gaps that motivate the framework. Chapter~\ref{chap:researchmethod} describes the four-level evaluation methodology (frame, event, representation, and prediction). Chapter~\ref{chap:theory} formally defines cut-in events, the stage model, safety indicators (DHW, THW, TTC, DRAC), and the SFC context-signature encoding. Chapter~\ref{chap:methods} details each framework component, the two-path evaluation design, and the predictive evaluation protocol. Chapter~\ref{chap:results} reports reconstruction accuracy, risk characterisation, multi-indicator analysis, context-signature verification, and prediction results. Chapter~\ref{chap:discussion} discusses implications, per-recording variability, and threats to validity. Chapter~\ref{chap:conclusion} summarises the contributions and outlines future work.
 
 % ==============================================================================
     \chapter{Related Work}
@@ -274,8 +272,31 @@
 
     For cut-in and lane-merging behaviour in automated driving, structured phase models with explicit risk logic are also common. For example, Hwang et al. propose a finite-state-machine approach for lane-merging cut-ins with TTC-based risk handling \cite{hwang2022fsmrl}. While this thesis does not implement a controller, such phase-based framing motivates clear scenario segmentation and transparent risk definitions for offline analysis.
 
+    \paragraph{Positioning summary.}
+    Table~\ref{tab:related-comparison} compares the present framework to the most closely related studies across five dimensions that together define the research gap.
+
+    \begin{table}[H]
+        \centering
+        \caption{Comparison of the present framework with related lane-change and cut-in studies. \checkmark\ = supported, -- = not addressed.}
+        \label{tab:related-comparison}
+        {\small
+        \setlength{\tabcolsep}{3pt}
+            \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.20\textwidth} c c c c c@{}}
+\toprule
+Study & \shortstack{Minimal\\input} & \shortstack{Explicit\\pair} & \shortstack{Multi-\\indicator} & \shortstack{Context\\encoding} & \shortstack{Reference\\validation} \\
+\midrule
+Wang et al.~\cite{wang2019cutin} & -- & \checkmark & -- & -- & -- \\
+Zhou \& Itoh~\cite{zhou2016riskperception} & -- & -- & \checkmark & -- & -- \\
+Shangguan et al.~\cite{shangguan2022} & -- & -- & -- & -- & -- \\
+Liu et al.~\cite{liu2025multitask} & -- & -- & \checkmark & -- & -- \\
+Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
+\textbf{This thesis} & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+            \end{tabularx}}
+    \end{table}
+
     \section{Context encoding for interaction analysis}
-    Scalar indicators such as minimum THW compress an interaction to a single number and discard information about the surrounding traffic configuration. A vehicle cutting in with an empty adjacent lane faces a different situation than one merging between closely spaced neighbours, yet both may produce identical THW values. Grid-based representations such as occupancy grids address this limitation by encoding the presence or absence of surrounding vehicles in a structured spatial layout~\cite{elfes1989}. Occupancy grids have been adopted widely in robotics and automated driving perception, but their use as an analysis-level context descriptor for offline interaction studies is less common.
+    Scalar indicators such as minimum THW compress an interaction to a single number and discard information about the surrounding traffic configuration. A vehicle cutting in with an empty adjacent lane faces a different situation than one merging between closely spaced neighbours, yet both may produce identical THW values. Grid-based representations such as occupancy grids address this limitation by encoding the presence or absence of surrounding vehicles in a structured spatial layout~\cite{elfes1989}. In the trajectory-prediction literature, Deo and Trivedi~\cite{deo2018csp} demonstrate that a spatial grid populated with encoded vehicle states (convolutional social pooling) captures interaction structure that improves manoeuvre prediction on highway data, which supports the premise that grid-based context carries information beyond scalar gap measures. Occupancy grids have been adopted widely in robotics and automated driving perception, but their use as an analysis-level context descriptor for offline interaction studies is less common.
 
     When the grid is small (e.g., 3$\times$3 cells), the resulting binary pattern can be compressed into a compact integer signature using a space-filling curve (SFC). Among the available SFC orderings, the Hilbert curve preserves two-dimensional spatial locality better than simpler alternatives such as the Morton (Z-order) curve, meaning that grid patterns that differ by a single neighbouring cell tend to map to numerically close codes~\cite{moon2001}. This property is useful when clustering or comparing context patterns, because small spatial changes produce small code changes. This thesis uses an ego-centric 3$\times$3 occupancy grid encoded into a 16-bit Hilbert SFC signature, yielding a reversible integer-code representation of local context that supports efficient storage, retrieval, and grouping.
 
@@ -623,7 +644,7 @@ SFC encoding & Order & Hilbert \\
     We use Leave-One-Recording-Out Cross-Validation (LORO-CV): for each of the 60 recordings, the model is trained on the remaining 59 recordings and tested on the held-out recording. This ensures that all test events come from a traffic environment not seen during training. The classification threshold is optimised on the training fold by maximising $F_1$.
 
     \paragraph{Model.}
-    We train a bagged decision-stump ensemble (50 trees with random feature subsampling), which provides both predictions and feature-importance estimates via Gini gain.
+    We train a bagged decision-stump ensemble (50 trees with random feature subsampling), which provides both predictions and feature-importance estimates via Gini gain. The choice of a shallow ensemble rather than a deeper model (e.g., gradient boosting or neural network) is deliberate: with 34 features, 10,023 events, and a 20\% minority class, a high-capacity model risks overfitting to recording-specific artefacts. A decision-stump ensemble offers stable feature-importance rankings for interpretability and has low variance under the 60-fold LORO-CV protocol. The goal of RQ4 is to test whether the reconstructed features carry predictive value at all, not to maximise classification accuracy; a simple model that clearly exceeds the baseline provides stronger evidence for this claim than a tuned model whose performance is harder to attribute to the features alone.
 
     \paragraph{Baseline.}
     The majority-class baseline assigns the most frequent training-set label to all test events. Because the minority class (risky, 20.1\%) is never the majority, the baseline predicts ``non-risky'' for all events and achieves $F_1 = 0$ for the risky class.
@@ -900,21 +921,21 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
         \centering
         \caption{Risk prediction: LORO-CV summary (stump ensemble, 34 features from the intention and decision stages, 60 held-out folds).}
         \label{tab:prediction-summary}
-        \begin{tabular}{@{}lr@{}}
+        \begin{tabular}{@{}lrl@{}}
             \toprule
-            Metric & Value \\
+            Metric & Mean & $\pm$ Std \\
             \midrule
-            Mean ROC-AUC       & 0.810 \\
-            Mean $F_1$ (risky class) & 0.518 \\
-            Mean precision     & 0.376 \\
-            Mean recall        & 0.874 \\
-            Baseline $F_1$     & 0.000 \\
-            $\Delta F_1$ vs baseline & +0.518 \\
+            ROC-AUC       & 0.824 & $\pm 0.056$ \\
+            $F_1$ (risky class) & 0.519 & $\pm 0.094$ \\
+            Precision     & 0.372 & $\pm 0.094$ \\
+            Recall        & 0.898 & $\pm 0.060$ \\
+            Baseline $F_1$     & 0.000 & $\pm 0.000$ \\
+            $\Delta F_1$ vs baseline & +0.519 & $\pm 0.094$ \\
             \bottomrule
         \end{tabular}
     \end{table}
 
-    The model achieves ROC-AUC of 0.81, indicating good discriminative ability between risky and non-risky events based on features available before the execution stage. The high recall (0.87) means the model identifies most risky events before the execution stage, while the lower precision (0.38) reflects false positives: events that appear risky based on decision-stage features but resolve safely. This asymmetry is expected because not all tight decision-stage gaps lead to risky outcomes; follower adaptation and cutter acceleration can widen the gap during execution.
+    The model achieves ROC-AUC of 0.82, indicating good discriminative ability between risky and non-risky events based on features available before the execution stage. The high recall (0.90) means the model identifies most risky events before the execution stage, while the lower precision (0.37) reflects false positives: events that appear risky based on decision-stage features but resolve safely. This asymmetry is expected because not all tight decision-stage gaps lead to risky outcomes; follower adaptation and cutter acceleration can widen the gap during execution.
 
     \paragraph{Feature importance.}
     Table~\ref{tab:feature-importance} lists the five most important features by Gini importance.
@@ -927,16 +948,16 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
             \toprule
             Feature & Importance \\
             \midrule
-            Decision-stage THW$_{\min}$  & 0.314 \\
-            Decision-stage DHW$_{\min}$  & 0.228 \\
-            Intention-stage DHW$_{\min}$ & 0.120 \\
-            Intention-stage THW$_{\min}$ & 0.100 \\
-            Decision-stage TTC$_{\min}$  & 0.028 \\
+            Decision-stage THW$_{\min}$  & 0.300 \\
+            Decision-stage DHW$_{\min}$  & 0.220 \\
+            Intention-stage DHW$_{\min}$ & 0.113 \\
+            Intention-stage THW$_{\min}$ & 0.094 \\
+            Decision-stage TTC$_{\min}$  & 0.056 \\
             \bottomrule
         \end{tabular}
     \end{table}
 
-    Decision-stage DHW and THW minima together account for over 54\% of the total importance, which confirms that gap acceptance in the decision stage is the strongest predictor of execution-stage risk. Among the SFC features, the two most informative bits (SFC positions 13 and 8) contribute modestly, suggesting that specific occupancy configurations carry additional predictive information.
+    Decision-stage DHW and THW minima together account for about 52\% of the total importance, which confirms that gap acceptance in the decision stage is the strongest predictor of execution-stage risk. Among the SFC features, the two most informative bits (SFC positions 13 and 8) contribute modestly, suggesting that specific occupancy configurations carry additional predictive information.
 
     \paragraph{Ablation study.}
     Table~\ref{tab:ablation} compares models trained on different feature subsets.
@@ -945,18 +966,18 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
         \centering
         \caption{Feature ablation: LORO-CV (stump ensemble).}
         \label{tab:ablation}
-        \begin{tabular}{@{}lrrr@{}}
+        \begin{tabular}{@{}lrll@{}}
             \toprule
-            Feature set & $n$ features & Mean AUC & Mean $F_1$ \\
+            Feature set & $n$ & Mean AUC ($\pm$ std) & Mean $F_1$ ($\pm$ std) \\
             \midrule
-            All (kinematic + SFC) & 34 & 0.810 & 0.518 \\
-            Kinematic only        & 18 & 0.816 & 0.521 \\
-            SFC only              & 16 & 0.613 & 0.344 \\
+            All (kinematic + SFC) & 34 & 0.824 ($\pm 0.056$) & 0.519 ($\pm 0.094$) \\
+            Kinematic only        & 18 & 0.829 ($\pm 0.067$) & 0.518 ($\pm 0.100$) \\
+            SFC only              & 16 & 0.613 ($\pm 0.058$) & 0.344 ($\pm 0.055$) \\
             \bottomrule
         \end{tabular}
     \end{table}
 
-    Kinematic features alone achieve comparable performance (AUC 0.816), while SFC features alone still achieve AUC 0.613, well above chance (0.50). The spatial context signature carries meaningful information about future risk even without scalar speed or gap information. The SFC signature encodes which surrounding cells are occupied during the decision stage, showing that traffic configuration provides an independent risk signal.
+    Kinematic features alone achieve slightly higher AUC (0.829) than the full model (0.824), while SFC features alone still achieve AUC 0.613, well above chance (0.50). A Wilcoxon signed-rank test across the 60 held-out folds confirms that SFC-only AUC is significantly above chance ($p = 1.65 \times 10^{-11}$), while the difference between the full model and kinematic-only is not statistically significant ($p = 0.125$), indicating that the kinematic features already capture the dominant predictive signal. The spatial context signature carries meaningful information about future risk even without scalar speed or gap information. The SFC signature encodes which surrounding cells are occupied during the decision stage, showing that traffic configuration provides an independent risk signal.
 
     \paragraph{Point-biserial correlations.}
     The strongest individual predictors are decision-stage THW$_{\min}$ ($r=-0.34$) and decision-stage DHW$_{\min}$ ($r=-0.31$), both negatively correlated with risk: smaller pre-onset gaps predict riskier outcomes.
@@ -981,12 +1002,15 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
 
     \textbf{RQ3 (context signatures):} The 16-bit SFC signature achieves 99.49\% exact row agreement with reference occupancy over 1.4\,M stage rows. Exploratory clustering yields seven decision-stage archetypes, with the most constrained archetype showing 1.32$\times$ higher risk prevalence.
 
-    \textbf{RQ4 (predictive value):} Decision-stage features predict execution-stage risk with AUC 0.81. SFC context features alone achieve AUC 0.61, which shows that spatial context signatures carry independent predictive information beyond scalar indicators.
+    \textbf{RQ4 (predictive value):} Decision-stage features predict execution-stage risk with AUC 0.82. SFC context features alone achieve AUC 0.61, which shows that spatial context signatures carry independent predictive information beyond scalar indicators.
 
     \section{Interpretation and implications}
     The principal contribution is methodological: the framework separates observation, derived relation, event definition, and risk label into auditable layers. By treating lane and neighbour identifiers as reconstructable intermediate products rather than immutable dataset fields, the pipeline's assumptions become explicit and measurable against reference labels.
 
-    This design has three practical implications. First, explicit cutter--follower pairing ensures that safety indicators describe the intended interaction rather than a generic predecessor relation. Second, the multi-indicator results (THW, TTC, DRAC) show that risk interpretation is indicator-dependent and phase-dependent~\cite{zhou2016riskperception,wang2021ssm}, emphasizing the need for transparent indicator choice. Third, the LORO-CV prediction experiment shows that the framework produces predictive features: achieving AUC 0.81 from features available before the execution stage means the outputs support early risk identification, not merely reference-label reproduction. The ablation showing AUC 0.61 for SFC features alone further shows that the context signatures encode risk-relevant spatial information beyond scalar indicators.
+    This design has three practical implications. First, explicit cutter--follower pairing ensures that safety indicators describe the intended interaction rather than a generic predecessor relation. Second, the multi-indicator results (THW, TTC, DRAC) show that risk interpretation is indicator-dependent and phase-dependent~\cite{zhou2016riskperception,wang2021ssm}, emphasizing the need for transparent indicator choice. Third, the LORO-CV prediction experiment shows that the framework produces predictive features: achieving AUC 0.82 from features available before the execution stage means the outputs support early risk identification, not merely reference-label reproduction. The ablation showing AUC 0.61 for SFC features alone further shows that the context signatures encode risk-relevant spatial information beyond scalar indicators.
+
+    \paragraph{Per-recording variability.}
+    The cross-recording perspective also reveals notable variability. Risk prevalence ranges from 11.1\% to 34.1\% across the 60 recordings (median 20.0\%), which likely reflects differences in traffic density, speed distributions, and lane configurations across the six recording sites. LORO-CV fold-level AUC ranges from approximately 0.65 to 0.95, with lower-performing folds concentrated in recordings with fewer events or atypical speed distributions. This variability underscores the importance of the leave-one-recording-out protocol: pooled cross-validation would overestimate performance by allowing the model to learn site-specific patterns. It also suggests that cross-dataset evaluation (e.g., inD or NGSIM) would provide a stronger test of the framework's generalisability than within-highD analysis alone.
 
     Table~\ref{tab:contribution-evidence} maps each contribution claim to the supporting evidence.
 
@@ -1003,20 +1027,20 @@ Contribution & Evidence & Significance \\
 Minimal-input reconstruction & Accuracy $>$0.9998; $F_1=0.999$ & Enables cut-in mining without dataset-specific relation columns. \\
 Pair-consistent indicators & 10,023 events; THW/TTC/DRAC disagreement analysis & Ensures indicators describe the correct interaction pair. \\
 Validated context signatures & 99.49\% row agreement; 7 archetypes; peak risk ratio 1.32 & Compact, reversible descriptors supporting scene retrieval and grouping. \\
-Predictive evaluation & AUC 0.81 (all); AUC 0.61 (SFC alone) & Features carry predictive value; SFC adds independent signal. \\
+Predictive evaluation & AUC 0.82 (all); AUC 0.61 (SFC alone) & Features carry predictive value; SFC adds independent signal. \\
 Reproducible evaluation & Two-path design; parameter table; deterministic outputs & Separates method inputs from reference labels. \\
 \bottomrule
             \end{tabularx}}
     \end{table}
 
     \section{Threats to validity}
-    \textbf{Construct validity:} Risk is operationalised via a THW threshold; alternative definitions (TTC, DRAC, post-encroachment measures) would label different event subsets. The threshold sensitivity analysis in Section~\ref{sec:drac-results} makes this dependence explicit. Additionally, highD lacks wider upstream/downstream context that may influence lane-change decisions~\cite{wanggao2025highd}.
+    \textbf{Construct validity:} Risk is operationalised via a THW threshold; alternative definitions (TTC, DRAC, post-encroachment measures) would label different event subsets. The threshold sensitivity analysis in Section~\ref{sec:drac-results} makes this dependence explicit. The \SI{0.7}{\second} threshold is anchored in a single perceived-criticality study~\cite{tscharn2018thw}; guidance values for safety-critical situations are typically higher (\SIrange{1.8}{2.0}{\second}), so the operational risk label should be interpreted as identifying very short gap-acceptance events rather than universally ``dangerous'' interactions. Additionally, highD lacks wider upstream/downstream context that may influence lane-change decisions~\cite{wanggao2025highd}.
 
-    \textbf{Internal validity:} Reconstruction depends on lane-marking accuracy and coordinate conventions. Errors in these inputs can shift the onset $t_0$ and bias indicators. This is mitigated through geometry model selection against dataset-provided indicators and independent reconstruction variants that agree closely with the reference path.
+    \textbf{Internal validity:} Reconstruction depends on lane-marking accuracy and coordinate conventions. Errors in these inputs can shift the onset $t_0$ and bias indicators. This is mitigated through geometry model selection against dataset-provided indicators and independent reconstruction variants that agree closely with the reference path. A further consideration is that highD positions are derived from overhead drone video via computer-vision tracking; the resulting measurement noise differs from on-vehicle sensing (e.g., radar or lidar), so the absolute indicator values reported here should not be directly compared to values from instrumented-vehicle studies without accounting for positional uncertainty.
 
-    \textbf{External validity:} Results are based on \textit{highD} highway recordings and may not transfer to urban driving, ramp merges, or different sensing setups. Cross-dataset validation is identified as a priority for future work.
+    \textbf{External validity:} Results are based on \textit{highD} highway recordings collected at six German motorway sites under free-flow to moderately congested conditions. The framework's assumptions (straight road segments, clearly marked lanes, and moderate traffic density) may not hold for urban driving, ramp merges, construction zones, or different sensing setups. Cross-dataset validation on inD, rounD, exiD, or NGSIM is identified as a priority for future work.
 
-    \textbf{Conclusion validity:} The thesis reports descriptive differences, sensitivity analyses, and cross-validated predictions rather than causal claims about driver behaviour.
+    \textbf{Conclusion validity:} The thesis reports descriptive differences, sensitivity analyses, and cross-validated predictions rather than causal claims about driver behaviour. The Wilcoxon test reported in the ablation study provides statistical support for the SFC-only model exceeding chance, but the 60-fold LORO-CV produces correlated folds (shared training data), so $p$-values should be interpreted conservatively.
 
     \section{Future work}
     Five directions for future work emerge from this thesis:
@@ -1037,7 +1061,7 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
 
     Evaluated on 60 \textit{highD} recordings with highD identifiers used only as reference labels, the framework achieves mean reconstruction accuracy $>$0.9998, cut-in detection $F_1 = 0.999$, and context-signature agreement of 99.49\% over 1.4\,M stage rows.
 
-    Three lines of evidence demonstrate that the contribution extends beyond reconstruction accuracy. First, multi-indicator analysis shows that THW, TTC, and DRAC capture different severity aspects, with risk interpretation depending on indicator choice and interaction phase. Second, decision-stage features predict execution-stage risk with AUC 0.81, and SFC features alone achieve AUC 0.61, showing that the framework produces features with predictive value. Third, exploratory context-archetype analysis shows that the SFC signatures support interpretable scene grouping linked to differential risk outcomes.
+    Three lines of evidence demonstrate that the contribution extends beyond reconstruction accuracy. First, multi-indicator analysis shows that THW, TTC, and DRAC capture different severity aspects, with risk interpretation depending on indicator choice and interaction phase. Second, decision-stage features predict execution-stage risk with AUC 0.82, and SFC features alone achieve AUC 0.61, showing that the framework produces features with predictive value. Third, exploratory context-archetype analysis shows that the SFC signatures support interpretable scene grouping linked to differential risk outcomes.
 
     The result is a reproducible, auditable pipeline for cut-in analysis that serves as a basis for cross-dataset transfer, richer predictive models, and downstream applications requiring pair-consistent interaction features.
 
@@ -1113,6 +1137,12 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
         \newblock Analysis of the clustering properties of the Hilbert space-filling curve.
         \newblock \emph{IEEE Transactions on Knowledge and Data Engineering}, 13(1):124--141, 2001.
         \newblock DOI: \url{https://doi.org/10.1109/TKDE.2001.859372}.
+
+        \bibitem{deo2018csp}
+        N.~Deo and M.~M. Trivedi.
+        \newblock Convolutional social pooling for vehicle trajectory prediction.
+        \newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)}, 2018.
+        \newblock DOI: \url{https://doi.org/10.1109/CVPRW.2018.00196}.
 
         \bibitem{archer2005indicators}
         J.~Archer.
