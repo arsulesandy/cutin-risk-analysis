@@ -138,7 +138,7 @@ def load_data():
     def bits(c):
         return [(int(c) >> i) & 1 for i in range(16)]
 
-    ev = (sfc_d.groupby(["event_id", "recording_id", "cutter_id"])["code_mirrored"]
+    ev = (sfc_d.groupby(["event_id", "recording_id", "cutter_id", "t0_frame"])["code_mirrored"]
           .apply(lambda cs: np.mean([bits(c) for c in cs], axis=0)).reset_index())
     bc = [f"sfc_{i}" for i in range(16)]
     ev[bc] = pd.DataFrame(ev["code_mirrored"].tolist(), index=ev.index)
@@ -146,7 +146,14 @@ def load_data():
 
     sf["recording_id"] = sf["recording_id"].astype(str).str.zfill(2)
     ev["recording_id"] = ev["recording_id"].astype(str).str.zfill(2)
-    m = sf.merge(ev, on=["recording_id", "cutter_id"], how="inner")
+    # Join on the full event identity to avoid duplicating repeated cutters
+    # that appear in multiple cut-ins within the same recording.
+    m = sf.merge(
+        ev,
+        on=["recording_id", "cutter_id", "t0_frame"],
+        how="inner",
+        validate="one_to_one",
+    )
     print(f"Events: {len(m)} ({m['risk_label'].sum()} risky, {m['risk_label'].mean():.1%})")
     return m, bc
 
