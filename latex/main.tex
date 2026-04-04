@@ -18,6 +18,8 @@
 % --- Math, tables, figures ---
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,fit,positioning}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{tabularx}
@@ -303,7 +305,7 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
     \section{Context encoding for interaction analysis}
     Scalar indicators such as minimum THW compress an interaction to a single number and discard information about the surrounding traffic configuration. A vehicle cutting in with an empty adjacent lane faces a different situation than one merging between closely spaced neighbours, yet both may produce identical THW values. Grid-based representations such as occupancy grids address this limitation by encoding the presence or absence of surrounding vehicles in a structured spatial layout~\cite{elfes1989}. In the trajectory-prediction literature, Deo and Trivedi~\cite{deo2018csp} demonstrate that a spatial grid populated with encoded vehicle states (convolutional social pooling) captures interaction structure that improves manoeuvre prediction on highway data, which supports the premise that grid-based context carries information beyond scalar gap measures. Occupancy grids have been adopted widely in robotics and automated driving perception, but their use as an analysis-level context descriptor for offline interaction studies is less common.
 
-    When the grid is small (e.g., 3$\times$3 cells), the resulting binary pattern can be compressed into a compact integer signature using a space-filling curve (SFC). Among the available SFC orderings, the Hilbert curve preserves two-dimensional spatial locality better than simpler alternatives such as the Morton (Z-order) curve, meaning that grid patterns that differ by a single neighbouring cell tend to map to numerically close codes~\cite{moon2001}. This property is useful when clustering or comparing context patterns, because small spatial changes produce small code changes. This thesis uses an ego-centric 3$\times$3 occupancy grid encoded into a 16-bit Hilbert SFC signature, yielding a reversible integer-code representation of local context that supports efficient storage, retrieval, and grouping.
+    When the grid is small (e.g., 3$\times$3 cells), the resulting binary pattern can be compressed into a compact integer signature using a space-filling curve (SFC). Among the available SFC orderings, the Hilbert curve preserves two-dimensional spatial locality better than simpler alternatives such as the Morton (Z-order) curve, meaning that grid patterns that differ by a single neighbouring cell tend to map to numerically close codes~\cite{moon2001}. This property is useful when clustering or comparing context patterns, because small spatial changes produce small code changes. This thesis uses a cutter-centred 3$\times$3 occupancy grid encoded into a 16-bit Hilbert SFC signature, yielding a reversible integer-code representation of local context that supports efficient storage, retrieval, and grouping.
 
     \section{Research gap}
     The reviewed literature establishes surrogate safety measures, phase-aware lane-change models, and predictive risk frameworks, but three gaps motivate this thesis. First, cut-in analysis requires explicit pairing between the cutter and the impacted follower, yet dataset-provided SSMs may correspond to a different vehicle pair. Second, existing highD-based risk models assume that scenario samples and interaction partners are already available; they do not address the minimal-input reconstruction problem when lane and neighbour identifiers are unavailable or inconsistent. Third, compact context representations (e.g., occupancy grids with SFC encoding) have not been combined with end-to-end reference-label verification for cut-in interactions. This thesis addresses these gaps through a framework that reconstructs relations from minimal inputs, computes pair-consistent and phase-aware indicators, and produces reference-validated SFC-based context signatures.
@@ -352,13 +354,15 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
     We define a \textbf{cut-in event} as a lane change where the lane-changing vehicle (the \emph{cutter}) becomes the same-lane predecessor of another vehicle (the \emph{follower}) in the target lane. This definition yields an explicit interacting pair $(A,B)$ with cutter $A$ and follower $B$.
 
     \section{Cut-in onset and stage model}
-    We define cut-in onset $t_0$ as the first frame where the follower's same-lane predecessor becomes the cutter id (i.e., the first frame where the follower relationship is established). Time around $t_0$ is segmented into four stages:
+    We define the cut-in onset, $t_0$, as the first frame in which the cutter becomes the vehicle directly ahead of the follower in the target lane. This frame marks the start of the follower relationship. We divide the time around $t_0$ into four stages:
     \begin{itemize}[leftmargin=1.2em]
   \item \textbf{Intention:} $[t_0-\SI{4}{\second},\, t_0-\SI{2}{\second})$
   \item \textbf{Decision:} $[t_0-\SI{2}{\second},\, t_0)$
   \item \textbf{Execution:} $[t_0,\, t_0+\SI{2}{\second})$
   \item \textbf{Recovery:} $[t_0+\SI{2}{\second},\, t_0+\SI{4}{\second}]$
     \end{itemize}
+
+    Figure~\ref{fig:stage-timeline} illustrates the four-stage alignment around $t_0$.
 
     \begin{figure}[H]
         \centering
@@ -409,18 +413,18 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
     \section{Interaction context signatures (SFC encoding)}
     Scalar indicators like THW or TTC reduce each interaction to a single number and discard information about the surrounding traffic layout. Two cut-ins with identical THW may differ considerably in how constrained the cutter's manoeuvre space is: one may occur in light traffic with empty adjacent lanes, while the other may involve a dense corridor with vehicles on both sides. To capture this spatial context in a form that is compact enough for storage and comparison yet rich enough to distinguish different scene configurations, we encode the local traffic layout as a short integer code.
 
-    For each frame around a cut-in event, we define an ego-centric \textbf{3$\times$3 semantic occupancy grid} around the cutter:
+    For each frame around a cut-in event, we define a cutter-centred \textbf{3$\times$3 semantic occupancy grid}:
     \begin{itemize}[leftmargin=1.2em]
-  \item columns: \{left lane, same lane, right lane\},
-  \item rows: \{preceding, alongside, following\}.
+  \item columns: \{left adjacent lane, cutter's lane, right adjacent lane\},
+  \item rows: \{ahead of the cutter, alongside the cutter, behind the cutter\}.
     \end{itemize}
 
-    Each cell is treated as binary occupancy ($1$ if at least one vehicle occupies the cell, else $0$). The 3$\times$3 grid is embedded in a fixed 4$\times$4 grid and encoded as a 16-bit integer using a locality-preserving space-filling curve order (Hilbert order by default). Because the mapping is deterministic and reversible, we can decode a code back into a grid.
+    Each cell is treated as binary occupancy ($1$ if at least one vehicle occupies the cell, else $0$). The 3$\times$3 grid is embedded in a fixed 4$\times$4 grid and encoded as a 16-bit integer using a locality-preserving space-filling-curve order (Hilbert order by default). Because the mapping is deterministic and reversible, we can decode a code back into a grid. Figure~\ref{fig:sfc-signature-overview} summarises the encoding pipeline from local traffic scene to reversible 16-bit signature.
 
     \begin{figure}[H]
         \centering
         \safeincludegraphics[width=\textwidth]{fig_sfc_signature_overview.pdf}
-        \caption{Interaction context signatures. A 3$\times$3 ego-centric semantic occupancy grid is constructed around the cutter, mirror-normalised to a canonical direction, embedded into a fixed 4$\times$4 grid, and encoded into a reversible 16-bit space-filling-curve (Hilbert) code.}
+        \caption{Construction of an interaction context signature. For each frame, the local traffic scene around the cutter is mapped to a 3$\times$3 semantic occupancy grid, mirror-normalised to a canonical direction, embedded into a fixed 4$\times$4 grid, and encoded as a reversible 16-bit Hilbert-order code.}
         \label{fig:sfc-signature-overview}
     \end{figure}
 
@@ -431,20 +435,55 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
     \label{chap:methods}
 
     \section{Framework overview}
-    \FrameworkName{} takes geometric trajectory signals ($x,y$, velocities, vehicle dimensions) and lane-marking metadata as inputs, and produces lane assignments, neighbour relations, cut-in events, pair-specific safety indicators, and context signatures as outputs. The framework is executed in two parallel paths to enable reference-label evaluation:
+    \FrameworkName{} takes trajectories, vehicle geometry, and lane-marking metadata as inputs. It then reconstructs lane assignments, neighbour relations, cut-in events, pair-specific safety indicators, and context signatures. To evaluate each processing step against the dataset labels, the framework is run in two parallel paths:
 
     \begin{itemize}[leftmargin=1.2em]
   \item \textbf{Reference-label path:} uses highD-provided lane and neighbour identifiers to produce reference relations, events, and signatures.
-  \item \textbf{Reconstruction path:} uses only $x,y$ trajectories and lane markings to produce the same outputs without accessing highD's derived fields.
+  \item \textbf{Reconstruction path:} uses only trajectories and lane markings to produce the same outputs without using highD's derived relational fields as inputs.
     \end{itemize}
 
-    This two-path design enables like-for-like agreement measurements at the frame, event, and representation levels. Figure~\ref{fig:framework-overview} illustrates the framework architecture and the evaluation boundary.
-
+    This two-path design enables like-for-like agreement measurements at the frame, event, and representation levels. Figure~\ref{fig:framework-overview} summarises the processing flow and highlights the evaluation boundary.
 
     \begin{figure}[H]
         \centering
-        \safeincludegraphics[width=0.98\linewidth]{main_figure.png}
-        \caption{Schematic overview of \FrameworkName{} and the evaluation boundary used in this thesis. The minimal-input reconstruction path uses trajectories and lane markings only, while a separate reference-label path built from highD lane and neighbour identifiers is used exclusively for agreement measurement.}
+        \begin{tikzpicture}[
+            font=\small,
+            block/.style={draw, rounded corners=2pt, line width=0.9pt, minimum height=11mm, text width=3.7cm, align=center, inner sep=5pt},
+            inputblock/.style={block, text width=3.4cm},
+            line/.style={-{Latex[length=3.2mm,width=2.1mm]}, line width=0.95pt},
+            group/.style={draw, rounded corners=4pt, dashed, line width=0.8pt, inner sep=6pt}
+        ]
+            \node[inputblock] (traj) {Trajectories and vehicle geometry\\$(x,y)$, speeds, dimensions};
+            \node[inputblock, right=14mm of traj] (lanemeta) {Lane markings\\from recording metadata};
+            \node[inputblock, right=14mm of lanemeta] (reflabels) {highD reference labels\\lane and neighbour ids};
+
+            \node[block, below=13mm of traj] (lane) {Lane inference\\(XY-lane)};
+            \node[block, below=9mm of lane] (neigh) {Leader/follower reconstruction\\within each inferred lane};
+            \node[block, below=9mm of neigh] (events) {Lane-change detection\\and cut-in extraction};
+            \node[block, below=9mm of events] (features) {Pair-specific indicators\\and context signatures};
+
+            \node[block, below=23mm of reflabels] (reference) {Reference relations,\\events, and signatures};
+
+            \path (features) -- (reference) coordinate[midway] (midout);
+            \node[block, text width=4.8cm, below=17mm of midout] (eval) {Agreement evaluation\\frame level, event level,\\and signature level};
+
+            \draw[line] (traj) -- (lane);
+            \draw[line] (lanemeta) |- (lane);
+            \draw[line] (lane) -- (neigh);
+            \draw[line] (neigh) -- (events);
+            \draw[line] (events) -- (features);
+            \draw[line] (reflabels) -- (reference);
+            \draw[line] (features.east) -| (eval.west);
+            \draw[line] (reference.west) -| (eval.east);
+
+            \node[group, fit=(traj)(lanemeta)(lane)(neigh)(events)(features),
+                  label={[font=\bfseries]above:Minimal-input reconstruction path}] {};
+            \node[group, fit=(reflabels)(reference),
+                  label={[font=\bfseries]above:Reference-label path}] {};
+            \node[group, fit=(eval),
+                  label={[font=\bfseries]above:Evaluation boundary}] {};
+        \end{tikzpicture}
+        \caption{Overview of \FrameworkName{}. The minimal-input reconstruction path uses trajectories, vehicle geometry, and lane markings to infer lanes, neighbour relations, cut-in events, pair-specific indicators, and context signatures. In parallel, a reference-label path derived from highD lane and neighbour identifiers provides reference outputs for agreement evaluation only.}
         \label{fig:framework-overview}
     \end{figure}
 
@@ -476,13 +515,13 @@ Reference-label evaluation & Agreement reporting & Frame-level accuracy, event-l
 
     The remainder of this chapter describes each component. Qualitative inspection was additionally performed using an interactive inspection dashboard (Appendix~\ref{app:dashboard}).
 
-    \section{Preliminary processing: data harmonisation}
+    \section{Data preparation and relation reconstruction}
+    \subsection{Preliminary processing and data harmonisation}
     Each highD recording is distributed as three data tables: (i) per-frame trajectories, (ii) per-vehicle metadata, and (iii) recording-level metadata. In preliminary processing we load these tables, perform basic consistency checks (e.g., frame rate and track bounds), and combine them into a consolidated per-frame dataset where each row corresponds to one vehicle at one time step together with the metadata needed in later phases. This consolidated representation is used by both the reference-label path and the reconstruction path so that subsequent comparisons are like-for-like.
 
     We also extract lane-marking positions from the recording metadata because they provide the only map-related input used by the reconstruction method. Dataset-provided lane and neighbour identifiers are retained only for evaluation and are never used as inputs in the reconstruction path.
 
-    \section{Core reconstruction: lane and neighbour inference (Traj2Rel)}
-    The reconstruction layer (Traj2Rel) derives two pieces of relational information from minimal inputs: (i) lane membership for each vehicle and time step, and (ii) the identity of the closest vehicle ahead and behind in the same lane. Together these relations are sufficient to define leader--follower interactions and to express cut-in events as explicit cutter--follower pairs.
+    The next step is the reconstruction layer (Traj2Rel), which derives two pieces of relational information from minimal inputs: (i) lane membership for each vehicle and time step, and (ii) the identity of the closest vehicle ahead and behind in the same lane. Together these relations are sufficient to define leader--follower interactions and to express cut-in events as explicit cutter--follower pairs.
 
     \subsection{Lane inference from lateral position (XY-lane)}
     Lane membership is inferred by mapping lateral position to the interval between two consecutive lane markings provided in the recording metadata. Values outside the roadway are mapped to lane id 0 and are excluded from interaction mining. Algorithm~\ref{alg:lane-inference} summarises the procedure.
@@ -528,10 +567,11 @@ Reference-label evaluation & Agreement reporting & Frame-level accuracy, event-l
     These two components form the core of the \textbf{system under evaluation}: starting from trajectories and lane markings, we can reconstruct the relations needed for downstream interaction mining, indicator computation, and context-signature generation without using dataset-provided neighbour identifiers as inputs.
 
 
-    \section{Interaction mining: lane-change detection}
+    \section{Interaction mining}
+    \subsection{Lane-change detection}
     A lane change is accepted when a vehicle transitions from one stable lane block to another, where the source lane remains unchanged for at least $N_\text{before}$ frames before the transition and the target lane remains unchanged for at least $N_\text{after}$ frames after the transition. Transitions involving invalid lane ids (e.g., lane id 0) are ignored.
 
-    \section{Interaction mining: cut-in extraction (finding the follower)}
+    \subsection{Cut-in extraction}
     Given a lane change into target lane $L$ by vehicle $A$:
     \begin{enumerate}[leftmargin=1.6em]
   \item starting from the lane change start, scan frames forward within a fixed search window,
@@ -559,10 +599,10 @@ initialise $t_0 \leftarrow \text{undefined}$\;
 \Return no event\;
     \end{algorithm}
 
-    \subsection{Design rationale}
+    \paragraph{Design rationale.}
     The framework separates event extraction from risk labelling. Lane changes are detected between stable segments, which reduces sensitivity to label jitter, and follower pairing requires a minimum persistence duration to avoid one-frame oscillations. This is consistent with naturalistic evidence that cut-ins have non-trivial duration rather than occurring instantaneously~\cite{wang2019cutin}.
 
-    \section{Configuration}
+    \subsection{Configuration}
     Table~\ref{tab:config} summarises the key parameters used in the final run (highD 01--60, \SI{25}{\hertz}). These parameters are informed by empirical cut-in duration distributions~\cite{wang2019cutin} and the two-phase risk perception model~\cite{zhou2016riskperception}, and are reported to support reproducibility.
 
     \begin{table}[H]
@@ -592,17 +632,21 @@ SFC encoding & Order & Hilbert \\
             \end{tabularx}}
     \end{table}
 
-    \section{Safety quantification: surrogate measures and geometry model selection}
+    \section{Safety quantification}
     All safety indicators are computed for the explicit cutter--follower pair rather than a generic predecessor, consistent with recent risk models that use interaction-specific features~\cite{shangguan2022,liu2025multitask}. Following Zhou and Itoh~\cite{zhou2016riskperception}, we interpret TTC and THW as complementary indicators across the stage-aligned window.
 
     We compute DHW/THW/TTC for arbitrary pairs using geometry and speeds. Because trajectory datasets may define position references differently (e.g., centre point vs bounding-box corner), we \emph{select a geometry model} by comparing our computed indicators against highD-provided indicators for same-lane (ego, predecessor) pairs on a large random sample. We test multiple plausible reference conventions and select the one that best matches dataset-provided DHW/THW/TTC. In the final run, the best match was obtained with a bounding-box--based interpretation of the position variables (a top-left reference point), combined with vehicle length to compute front and rear positions.
 
     To avoid negative gaps due to noise or reference mismatches, thesis-facing minima are clipped to be non-negative for DHW/THW. TTC is treated as infinite when the follower is not closing ($v_B \leq v_A$).
 
-    \section{Safety quantification: stage-wise features}
+    \subsection{Stage-wise features}
     For each detected cut-in, we align a fixed time window around onset $t_0$ and compute stage-wise summaries for the four stages in Chapter~\ref{chap:theory}. The feature table includes stage minima of DHW/THW/TTC and kinematic aggregates for cutter and follower. These stage-wise summaries are later used not only for descriptive risk analysis, but also for operational-usefulness evaluation through threshold sensitivity and TTC-versus-THW disagreement analysis.
 
-    \section{Context signatures: encoding and reference comparison}
+    \subsection{Deceleration-based indicator: DRAC computation}
+    \label{sec:drac-method}
+    We compute DRAC for the explicit cutter--follower pair in the execution stage using the formula defined in Section~\ref{sec:drac-theory}. The implementation reuses the same pair-consistent longitudinal states (positions, speeds, and DHW) already computed for TTC and THW, so all indicators describe the same interaction pair. DRAC is reported alongside the existing indicators to assess braking demand alongside gap acceptance (THW) and collision timing (TTC).
+
+    \section{Context signatures}
     To capture local traffic context around the cutter compactly, we encode neighbourhood occupancy into the 3$\times$3 semantic grid defined in Chapter~\ref{chap:theory}. Each frame is mapped to a binary occupancy pattern, and the 3$\times$3 cells are embedded into a 4$\times$4 grid and linearised using a Hilbert-type space-filling-curve order. To remove direction-induced asymmetry, events are mirror-normalised to a canonical orientation prior to aggregation.
 
     \paragraph{Minimal-input SFC signatures.}
@@ -620,23 +664,19 @@ SFC encoding & Order & Hilbert \\
     Algorithm~\ref{alg:sfc-signature} summarises how the context signatures are constructed for each stage-aligned frame.
 
     \begin{algorithm}[t]
-\caption{Ego-centric occupancy grid and space-filling-curve context signature}
+\caption{Cutter-centred occupancy grid and space-filling-curve context signature}
 \label{alg:sfc-signature}
 \KwIn{Cut-in event $(A,B,t_0)$, reconstructed lane/relations, neighbourhood range parameters.}
 \KwOut{A stage-aligned sequence of binary grids and a 16-bit context signature per frame.}
 
 \ForEach{frame $t$ in the analysis window around $t_0$}{
-    build a 3$\times$3 ego-centric occupancy grid around the cutter $A$\;
+    build a 3$\times$3 cutter-centred occupancy grid around the cutter $A$\;
     (optional) mirror-normalise the grid to a canonical direction\;
     embed the 3$\times$3 grid into a 4$\times$4 grid with fixed padding\;
     traverse cells in Hilbert order and write occupancy bits into a 16-bit code\;
     store the code and (optionally) the decoded grid for inspection\;
 }
     \end{algorithm}
-
-    \section{Deceleration-based indicator: DRAC computation}
-    \label{sec:drac-method}
-    We compute DRAC for the explicit cutter--follower pair in the execution stage using the formula defined in Section~\ref{sec:drac-theory}. The implementation reuses the same pair-consistent longitudinal states (positions, speeds, and DHW) already computed for TTC and THW, so all indicators describe the same interaction pair. DRAC is reported alongside the existing indicators to assess braking demand alongside gap acceptance (THW) and collision timing (TTC).
 
     \section{Predictive evaluation: decision-stage risk forecasting}
     \label{sec:risk-prediction-method}
@@ -1210,7 +1250,7 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
 
     The dashboard was not developed from scratch. It builds on the official \textit{highD} tools repository, which provides functions for handling and visualising \textit{highD} data in Matlab and Python\footnote{Official repository: \url{https://github.com/RobertKrajewski/highD-dataset}.}. For this thesis, that tooling was adapted and extended with cut-in-specific event selection, cutter--follower highlighting, stage-window synchronisation, and context-signature/indicator panels needed for qualitative inspection of the reconstructed interaction pair.
 
-    The dashboard was used to inspect representative cases and extremes (e.g., lowest-TTC events) and to confirm that reconstructed relations and occupancy signatures correspond to the visible scene. It served as a support tool for validation and communication rather than as a standalone thesis contribution: it was not used to manually correct events or labels, and all reported results are produced by the framework's deterministic components.
+    The dashboard was used to inspect representative cases and extremes (e.g., lowest-TTC events) and to confirm that reconstructed relations and occupancy signatures correspond to the visible scene. It served as a support tool for validation and communication rather than as a standalone thesis contribution: it was not used to manually correct events or labels, and all reported results are produced by the framework's deterministic components. Figure~\ref{fig:gui-dashboard} shows the interface used during this qualitative inspection.
 
     \begin{figure}[H]
         \centering
