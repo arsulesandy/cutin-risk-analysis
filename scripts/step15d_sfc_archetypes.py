@@ -264,38 +264,178 @@ def _cluster_heatmap(row: pd.Series) -> np.ndarray:
 
 def _plot_archetype_heatmaps(summary_df: pd.DataFrame, out_path: Path, *, stage: str, selected_k: int) -> None:
     plt = _load_pyplot()
+    import matplotlib.colors as mcolors
+    import matplotlib.patheffects as pe
+    from matplotlib.patches import Rectangle
+
     n = len(summary_df)
     ncols = min(3, n)
     nrows = int(np.ceil(n / ncols))
-    fig, axes = plt.subplots(nrows, ncols, figsize=(4.6 * ncols + 0.8, 4.0 * nrows))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4.15 * ncols, 4.15 * nrows + 0.55))
     axes_arr = np.atleast_1d(axes).reshape(nrows, ncols)
 
-    im = None
+    lane_labels = ["Away", "Same", "Target"]
+    row_labels = ["Ahead", "Along", "Behind"]
+    bin_edges = [0.0, 0.05, 0.25, 0.50, 0.75, 1.01]
+    bin_colors = ["#f8fafc", "#dbeafe", "#93c5fd", "#3b82f6", "#1d4ed8"]
+    cmap = mcolors.ListedColormap(bin_colors)
+    norm = mcolors.BoundaryNorm(bin_edges, cmap.N)
+
     for idx, (_, row) in enumerate(summary_df.iterrows()):
         ax = axes_arr[idx // ncols, idx % ncols]
         g = _cluster_heatmap(row)
-        im = ax.imshow(g, vmin=0.0, vmax=1.0, cmap="YlGnBu")
-        ax.set_xticks([0, 1, 2], labels=["Left", "Same", "Right"])
-        ax.set_yticks([0, 1, 2], labels=["Ahead", "Along", "Behind"])
-        ax.set_title(
-            f"A{int(row['archetype_id'])}: n={int(row['events'])}, risk={100.0 * float(row['risk_prevalence']):.1f}%",
+        display_g = g.copy()
+        display_g[1, 1] = np.nan
+        ax.imshow(display_g, norm=norm, cmap=cmap, interpolation="nearest")
+        ax.add_patch(
+            Rectangle(
+                (0.5, 0.5),
+                1.0,
+                1.0,
+                facecolor="#d6d3d1",
+                edgecolor="white",
+                linewidth=1.4,
+                hatch="///",
+            )
+        )
+        ax.set_xticks([0, 1, 2], labels=lane_labels)
+        ax.set_yticks([0, 1, 2], labels=row_labels)
+        ax.set_xticks(np.arange(-0.5, 3.0, 1.0), minor=True)
+        ax.set_yticks(np.arange(-0.5, 3.0, 1.0), minor=True)
+        ax.grid(which="minor", color="white", linestyle="-", linewidth=1.2)
+        ax.tick_params(which="minor", bottom=False, left=False)
+        ax.tick_params(axis="both", length=0, labelsize=9, pad=2)
+        ax.set_facecolor("#f8fafc")
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.1)
+            spine.set_color("#64748b")
+
+        xticklabels = ax.get_xticklabels()
+        if len(xticklabels) == 3:
+            xticklabels[2].set_fontweight("bold")
+            xticklabels[2].set_color("#8c2f39")
+
+        aid = int(row["archetype_id"])
+        share_pct = 100.0 * float(row["event_share"])
+        risk_pct = 100.0 * float(row["risk_prevalence"])
+        risk_ratio = float(row["risk_ratio_vs_overall"])
+        ax.text(
+            0.5,
+            1.18,
+            f"A{aid}",
+            transform=ax.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=12,
+            weight="bold",
+            color="#0f172a",
+        )
+        ax.text(
+            0.5,
+            1.10,
+            f"share {share_pct:.1f}% | risk {risk_pct:.1f}%",
+            transform=ax.transAxes,
+            ha="center",
+            va="bottom",
             fontsize=10,
             weight="bold",
+            color="#0f172a",
+        )
+        ratio_color = "#8c2f39" if risk_ratio > 1.05 else "#275c74" if risk_ratio < 0.95 else "#475569"
+        ax.text(
+            0.5,
+            1.03,
+            f"n={int(row['events']):,} | {risk_ratio:.2f}x overall risk",
+            transform=ax.transAxes,
+            ha="center",
+            va="bottom",
+            fontsize=8.6,
+            color=ratio_color,
         )
         for r in range(3):
             for c in range(3):
-                ax.text(c, r, f"{g[r, c]:.2f}", ha="center", va="center", fontsize=9)
+                if r == 1 and c == 1:
+                    ax.text(c, r, "CUT", ha="center", va="center", fontsize=10, weight="bold", color="#334155")
+                    continue
+                value = float(g[r, c])
+                rgba = cmap(norm(value))
+                luminance = 0.2126 * rgba[0] + 0.7152 * rgba[1] + 0.0722 * rgba[2]
+                txt_color = "white" if luminance < 0.48 else "#0f172a"
+                outline = "#0f172a" if txt_color == "white" else "white"
+                txt = ax.text(
+                    c,
+                    r,
+                    f"{int(round(100.0 * value))}%",
+                    ha="center",
+                    va="center",
+                    fontsize=11,
+                    weight="bold",
+                    color=txt_color,
+                )
+                txt.set_path_effects([pe.withStroke(linewidth=1.8, foreground=outline, alpha=0.7)])
 
-    for idx in range(n, nrows * ncols):
-        axes_arr[idx // ncols, idx % ncols].axis("off")
+    if n < nrows * ncols:
+        legend_ax = axes_arr[n // ncols, n % ncols]
+        legend_ax.axis("off")
+        legend_ax.set_xlim(0.0, 1.0)
+        legend_ax.set_ylim(0.0, 1.0)
+        legend_ax.text(
+            0.02,
+            0.96,
+            "How to read this figure",
+            ha="left",
+            va="top",
+            fontsize=12,
+            weight="bold",
+            color="#0f172a",
+        )
+        legend_ax.text(
+            0.02,
+            0.82,
+            "Each label shows mean occupancy in that semantic cell.\n"
+            "The grey hatched centre cell is the cutter position,\n"
+            "so it is fixed by construction rather than informative.",
+            ha="left",
+            va="top",
+            fontsize=9.5,
+            color="#334155",
+            linespacing=1.35,
+        )
+        legend_ax.text(
+            0.02,
+            0.56,
+            "Mirror-normalised lane columns:\nAway | Same | Target",
+            ha="left",
+            va="top",
+            fontsize=9.5,
+            color="#334155",
+            linespacing=1.35,
+        )
+        legend_ax.text(0.02, 0.34, "Occupancy bins", ha="left", va="top", fontsize=10, weight="bold", color="#0f172a")
+        legend_labels = ["0-5%", "5-25%", "25-50%", "50-75%", "75-100%"]
+        y0 = 0.26
+        for legend_idx, (color, label) in enumerate(zip(bin_colors, legend_labels)):
+            y = y0 - 0.065 * legend_idx
+            legend_ax.add_patch(
+                Rectangle((0.04, y - 0.03), 0.10, 0.045, facecolor=color, edgecolor="#94a3b8", linewidth=0.8)
+            )
+            legend_ax.text(0.18, y - 0.008, label, ha="left", va="center", fontsize=9.5, color="#334155")
 
-    fig.suptitle(f"Step 15D archetypes from {stage} stage mirrored binary SFC context (K={selected_k})", fontsize=13)
-    fig.subplots_adjust(left=0.07, right=0.87, bottom=0.07, top=0.90, wspace=0.40, hspace=0.45)
-    if im is not None:
-        cbar_ax = fig.add_axes([0.90, 0.20, 0.022, 0.58])
-        cbar = fig.colorbar(im, cax=cbar_ax)
-        cbar.ax.set_ylabel("Occupancy", rotation=270, labelpad=12)
-    fig.savefig(out_path, dpi=200)
+        for idx in range(n + 1, nrows * ncols):
+            axes_arr[idx // ncols, idx % ncols].axis("off")
+
+    fig.suptitle(f"Decision-stage SFC context archetypes (K={selected_k})", fontsize=14, weight="bold", y=0.985)
+    fig.text(
+        0.5,
+        0.955,
+        f"Stage clustered: {stage}. The target lane is always the right column after mirror normalisation.",
+        ha="center",
+        va="top",
+        fontsize=10,
+        color="#475569",
+    )
+    fig.subplots_adjust(left=0.05, right=0.98, bottom=0.04, top=0.88, wspace=0.22, hspace=0.58)
+    fig.savefig(out_path, dpi=260, bbox_inches="tight", facecolor="white")
     plt.close(fig)
 
 

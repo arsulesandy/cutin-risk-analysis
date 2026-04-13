@@ -1,0 +1,23 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Stage model around the cut-in onset $t_0$ used for stage-wise feature extraction and comparison.\relax }}{12}{figure.caption.13}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Construction of an interaction context signature. For each frame, the local traffic scene around the cutter is mapped to a 3$\times $3 semantic occupancy grid, mirror-normalised, embedded into a fixed 4$\times $4 grid, and encoded as a reversible 16-bit Hilbert-order code. The shaded cells are fixed padding and are not part of the original 3$\times $3 semantic grid.\relax }}{14}{figure.caption.15}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Overview of Traj2Rel-SFC{}. The minimal-input reconstruction path uses trajectories, vehicle geometry, and lane markings to infer lanes, neighbour relations, cut-in events, pair-specific indicators, and context signatures. In parallel, a reference-label path derived from highD lane and neighbour identifiers produces outputs for agreement evaluation only.\relax }}{16}{figure.caption.16}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {6.1}{\ignorespaces Decision-stage occupancy maps. Top: absolute mean occupancy for non-risk and risky events; these panels are intentionally similar and are included mainly as context. Bottom: risk-minus-non-risk difference map, which is the main analytical view because it highlights the cells where occupancy frequency shifts between the two groups.\relax }}{32}{figure.caption.47}%
+\contentsline {figure}{\numberline {6.2}{\ignorespaces Stage-wise risk-minus-non-risk occupancy differences for the intention, decision, and execution stages, shown separately to make the small cell-wise shifts easier to read. Red indicates cells occupied more often in risky events, blue indicates the opposite, and cell labels report signed percentage-point differences. The centre cell is neutral because the cutter occupies it by construction.\relax }}{33}{figure.caption.48}%
+\contentsline {figure}{\numberline {6.3}{\ignorespaces Seven decision-stage context archetypes derived from mirrored binary SFC signatures. After mirror normalisation, the right column corresponds to the target lane, so each panel visualises one canonical cut-in scene family. Cell labels show mean occupancy percentages, while the grey hatched centre cell is neutralised because the cutter occupies it by construction. The figure is intended to emphasise recurring occupancy templates rather than precise continuous gradients; the quantitative risk comparison for these archetypes is given in Figure\nobreakspace {}\ref {fig:sfc-archetype-risk}.\relax }}{35}{figure.caption.49}%
+\contentsline {figure}{\numberline {6.4}{\ignorespaces THW risk prevalence by context archetype}}{36}{figure.caption.50}%
+\contentsline {figure}{\numberline {6.5}{\ignorespaces Lane-change and cut-in counts from the exploratory NGSIM freeway feasibility check. The labels above the cut-in bars show the cut-in-to-lane-change ratio. The figure demonstrates that the event-mining core transfers to another highway trajectory source, but it should not be read as a benchmark comparison against highD because the subsets differ in duration, geometry, and data quality.\relax }}{39}{figure.caption.58}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {B.1}{\ignorespaces Interactive inspection dashboard used for qualitative review. The dashboard is based on a modified version of the official \textit {highD} visualisation tools and was extended with cut-in-specific overlays, event selection, and stage/context displays.\relax }}{54}{figure.caption.64}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {D.1}{\ignorespaces Stage-wise trajectories of the signed occupancy differences for each informative semantic cell. Positive values indicate higher occupancy in risky events, negative values indicate higher occupancy in non-risk events. This view makes it easier to see how the same local region changes from intention to decision to execution.\relax }}{57}{figure.caption.65}%
+\contentsline {figure}{\numberline {D.2}{\ignorespaces Ranked semantic-cell shifts within each stage, shown as signed percentage-point differences. This view makes it explicit which cells drive the contrast at each stage and confirms that the dominant pre-onset changes occur around the cells ahead of the cutter and, later, behind the manoeuvre.\relax }}{58}{figure.caption.66}%

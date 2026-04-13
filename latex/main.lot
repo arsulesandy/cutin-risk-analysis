@@ -1,0 +1,32 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Comparison of the framework presented in this thesis with related lane-change and cut-in studies. \text {$\mathsurround \z@ \mathchar "458$}\ = supported, -- = not addressed.\relax }}{8}{table.caption.8}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Macro-phases and outputs of Traj2Rel-SFC{}.\relax }}{17}{table.caption.17}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Key configuration values for the final framework run.\relax }}{21}{table.caption.22}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces Event counts for the final run (recordings 01--60).\relax }}{27}{table.caption.33}%
+\contentsline {table}{\numberline {6.2}{\ignorespaces Duration statistics (highD 01--60, \SI {25}{\hertz }).\relax }}{27}{table.caption.34}%
+\contentsline {table}{\numberline {6.3}{\ignorespaces Execution-stage indicator minima across all events (10,023 cut-ins).\relax }}{28}{table.caption.35}%
+\contentsline {table}{\numberline {6.4}{\ignorespaces Execution-stage risk summary. $\Delta v = \bar v_{\text {cutter}}-\bar v_{\text {follower}}$.\relax }}{28}{table.caption.36}%
+\contentsline {table}{\numberline {6.5}{\ignorespaces Effect sizes between risk groups (execution stage). $\delta $ is Cliff's delta.\relax }}{29}{table.caption.37}%
+\contentsline {table}{\numberline {6.6}{\ignorespaces THW threshold sensitivity (10,023 events).\relax }}{29}{table.caption.39}%
+\contentsline {table}{\numberline {6.7}{\ignorespaces Execution-stage DRAC distribution (finite only, $n=3{,}393$).\relax }}{29}{table.caption.41}%
+\contentsline {table}{\numberline {6.8}{\ignorespaces DRAC threshold sensitivity (10,023 events).\relax }}{30}{table.caption.42}%
+\contentsline {table}{\numberline {6.9}{\ignorespaces Execution-stage TTC by THW risk group (finite TTC only, $n=3{,}606$).\relax }}{30}{table.caption.43}%
+\contentsline {table}{\numberline {6.10}{\ignorespaces THW-risky vs TTC-threshold overlap (infinite TTC counted as not risky).\relax }}{30}{table.caption.44}%
+\contentsline {table}{\numberline {6.11}{\ignorespaces Top-3 extreme events by minimum execution-stage TTC (finite only).\relax }}{30}{table.caption.46}%
+\contentsline {table}{\numberline {6.12}{\ignorespaces Risk prediction: LORO-CV summary (stump ensemble, 34 features from the intention and decision stages, 60 held-out folds).\relax }}{36}{table.caption.51}%
+\contentsline {table}{\numberline {6.13}{\ignorespaces Top-5 features by Gini importance (stump ensemble, LORO-CV).\relax }}{37}{table.caption.53}%
+\contentsline {table}{\numberline {6.14}{\ignorespaces Feature ablation: LORO-CV (stump ensemble).\relax }}{37}{table.caption.55}%
+\contentsline {table}{\numberline {6.15}{\ignorespaces Exploratory NGSIM freeway feasibility summary. Percentages are calculated over the candidate cut-ins extracted in each subset.\relax }}{39}{table.caption.57}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {7.1}{\ignorespaces Contribution claims and supporting evidence.\relax }}{43}{table.caption.61}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {A.1}{\ignorespaces Mapping between thesis terminology and highD columns (tracks file).\relax }}{51}{table.caption.63}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
