@@ -97,5 +97,14 @@
   "step18": {
     "n_bootstrap": 3000,
     "seed": 7
+  },
+  "step22_exid": {
+    "recordings": "18,07,28,29,50,42,60,70,77,83",
+    "max_recordings": 10,
+    "lane_marker_merge_gap_frames": 2,
+    "search_window_frames": 40,
+    "max_relation_delay_frames": 20,
+    "min_relation_frames": 5,
+    "make_plot": true
   }
 }
