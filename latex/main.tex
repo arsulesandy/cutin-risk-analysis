@@ -18,6 +18,8 @@
 % --- Math, tables, figures ---
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
+\usepackage{xcolor}
+\definecolor{lightfill}{gray}{0.94}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,fit,positioning}
 \usepackage{booktabs}
@@ -152,7 +154,7 @@
 
     Highway cut-ins create new same-lane leader--follower interactions that may require the follower to brake, yet most analysis pipelines depend on dataset-provided lane and neighbour identifiers, limiting reuse across datasets. This thesis presents \FrameworkName{}, a minimal-input framework that reconstructs lane assignment and same-lane relations from trajectory geometry ($x,y$) and lane-marking metadata, detects cut-ins as explicit cutter--follower pairs, computes pair-specific surrogate safety measures (DHW, THW, TTC, DRAC), and encodes surrounding traffic context as reversible 16-bit Hilbert space-filling-curve signatures.
 
-    Evaluated on 60 \textit{highD} recordings (with highD identifiers used only as reference labels), the framework achieves mean reconstruction accuracy $>$0.9998, cut-in detection $F_1 > 0.999$, and context-signature agreement of 99.49\% over 1.4\,M stage rows. Multi-indicator analysis shows that THW, TTC, and DRAC capture complementary severity aspects; only 0.08\% of events exceed the hard-braking DRAC threshold. Decision-stage features predict execution-stage THW risk with ROC-AUC 0.82 under leave-one-recording-out cross-validation, and SFC context features alone achieve AUC 0.61, demonstrating that spatial context signatures carry independent risk-relevant information beyond scalar indicators.
+    Evaluated on 60 \textit{highD} recordings (with highD identifiers used only as reference labels), the framework achieves mean reconstruction accuracy $>$0.9998, cut-in detection $F_1 > 0.999$, and context-signature agreement of 99.49\% over 1.4\,M stage rows. Multi-indicator analysis shows that THW, TTC, and DRAC capture complementary severity aspects; only 0.08\% of events exceed the hard-braking DRAC threshold. Decision-stage features predict execution-stage THW risk with ROC-AUC 0.82 under leave-one-recording-out cross-validation, and SFC context features alone achieve AUC 0.61, demonstrating that spatial context signatures carry independent risk-relevant information beyond scalar indicators. A small exploratory feasibility check on two NGSIM freeway subsets further shows that the lane-change and cut-in mining core can be transferred beyond \textit{highD}, although not at the same validation depth.
 
     From a software-engineering perspective, the result is a portable and auditable analysis pipeline: method inputs are explicitly restricted, intermediate relations are reconstructable and testable, and outputs can be reproduced without relying on dataset-specific derived fields.
 
@@ -244,7 +246,7 @@
     \textbf{RQ4:} Do the reconstructed features carry predictive value? More specifically, can features from the intention and decision stages predict execution-stage risk, and do SFC context signatures contribute independent information beyond scalar indicators?
 
     \section{Scope and delimitations}
-    The framework is evaluated on \textit{highD} highway recordings (drone-based trajectories at \SI{25}{\hertz}) using offline batch processing. The thesis does not aim to infer driver intent beyond observable trajectories, does not include simulation-based re-enactment, and does not claim that any single risk threshold is universally valid. The emphasis is on reproducible scenario extraction, pair-consistent indicator computation, and reference-label evaluation.
+    The framework is evaluated primarily on \textit{highD} highway recordings (drone-based trajectories at \SI{25}{\hertz}) using offline batch processing. To give at least one concrete example beyond \textit{highD}, the thesis also includes a small exploratory feasibility check on two freeway subsets of NGSIM. This add-on is only meant to illustrate transferability of the event-mining core; it is not presented as a second benchmark study or as evidence equivalent to the main highD evaluation. The thesis does not aim to infer driver intent beyond observable trajectories, does not include simulation-based re-enactment, and does not claim that any single risk threshold is universally valid. The emphasis is on reproducible scenario extraction, pair-consistent indicator computation, and reference-label evaluation.
 
     \section{Contributions}
     The main contributions are:
@@ -436,58 +438,64 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
 
     \begin{figure}[H]
         \centering
-        \begin{tikzpicture}[x=0.9cm,y=0.9cm,>=Latex,font=\small]
+        \resizebox{\textwidth}{!}{%
+        \begin{tikzpicture}[x=1cm,y=1cm,>=Latex,font=\small]
             % scene
-            \draw[rounded corners=2pt, line width=0.9pt] (0,0.2) rectangle (2.7,2.4);
-            \node[align=center] at (1.35,1.3) {Local traffic scene\\around the cutter};
+            \node[font=\bfseries, align=center, text width=2.9cm] at (1.4,3.9) {Local traffic scene};
+            \draw[rounded corners=2pt, line width=0.9pt] (0.0,1.0) rectangle (2.8,3.0);
+            \node[align=center, text width=2.2cm] at (1.4,2.0) {Around the cutter};
 
             % arrow 1
-            \draw[-{Latex[length=3.2mm,width=2.0mm]}, line width=1.0pt] (2.9,1.3) -- (3.8,1.3);
+            \draw[-{Latex[length=3.2mm,width=2.0mm]}, line width=1.0pt] (3.2,2.0) -- (4.1,2.0);
 
             % 3x3 grid
-            \node[font=\bfseries] at (5.4,3.0) {3$\times$3 semantic grid};
-            \draw[line width=0.9pt] (4.0,0.0) rectangle (6.8,2.8);
-            \foreach \x in {4.93,5.87} {\draw[line width=0.8pt] (\x,0.0) -- (\x,2.8);}
-            \foreach \y in {0.93,1.87} {\draw[line width=0.8pt] (4.0,\y) -- (6.8,\y);}
-            \fill[gray!20] (4.93,0.93) rectangle (5.87,1.87);
-            \node[font=\scriptsize] at (5.40,1.40) {cutter};
-            \node[font=\scriptsize] at (4.47,3.28) {left};
-            \node[font=\scriptsize] at (5.40,3.28) {cutter's};
-            \node[font=\scriptsize] at (5.40,3.02) {lane};
-            \node[font=\scriptsize] at (6.33,3.28) {right};
-            \node[font=\scriptsize, rotate=90] at (3.55,2.33) {ahead};
-            \node[font=\scriptsize, rotate=90] at (3.55,1.40) {alongside};
-            \node[font=\scriptsize, rotate=90] at (3.55,0.47) {behind};
+            \node[font=\bfseries, align=center, text width=3.6cm] at (6.1,4.3) {3$\times$3 semantic occupancy grid};
+            \draw[line width=0.9pt] (4.6,0.7) rectangle (7.6,3.7);
+            \foreach \x in {5.6,6.6} {\draw[line width=0.8pt] (\x,0.7) -- (\x,3.7);}
+            \foreach \y in {1.7,2.7} {\draw[line width=0.8pt] (4.6,\y) -- (7.6,\y);}
+            \fill[gray!20] (5.6,1.7) rectangle (6.6,2.7);
+            \node[font=\scriptsize, align=center] at (6.1,2.2) {cutter};
+            \node[font=\scriptsize, anchor=east] at (4.35,3.2) {ahead};
+            \node[font=\scriptsize, anchor=east] at (4.35,2.2) {alongside};
+            \node[font=\scriptsize, anchor=east] at (4.35,1.2) {behind};
+            \node[font=\scriptsize, align=center] at (5.1,0.2) {left};
+            \node[font=\scriptsize, align=center, text width=1.1cm] at (6.1,0.18) {cutter\\lane};
+            \node[font=\scriptsize, align=center] at (7.1,0.2) {right};
 
             % arrow 2
-            \draw[-{Latex[length=3.2mm,width=2.0mm]}, line width=1.0pt] (7.1,1.3) -- (8.0,1.3);
-            \node[font=\scriptsize, align=center] at (7.55,2.25) {mirror-normalise};
+            \draw[-{Latex[length=3.2mm,width=2.0mm]}, line width=1.0pt] (8.0,2.0) -- (9.0,2.0);
+            \node[font=\scriptsize, align=center, text width=1.8cm] at (8.5,3.15) {mirror-\\normalise};
 
             % 4x4 grid
-            \node[font=\bfseries] at (10.6,3.0) {fixed 4$\times$4 embedding};
-            \draw[line width=0.9pt] (8.8,0.0) rectangle (12.4,3.6);
-            \foreach \x in {9.7,10.6,11.5} {\draw[line width=0.8pt] (\x,0.0) -- (\x,3.6);}
-            \foreach \y in {0.9,1.8,2.7} {\draw[line width=0.8pt] (8.8,\y) -- (12.4,\y);}
-            % active 3x3 region
-            \draw[line width=1.1pt] (8.8,0.9) rectangle (11.5,3.6);
-            % shaded padding cells
-            \fill[gray!20] (8.8,0.0) rectangle (9.7,0.9);
-            \fill[gray!20] (9.7,0.0) rectangle (10.6,0.9);
-            \fill[gray!20] (10.6,0.0) rectangle (11.5,0.9);
-            \fill[gray!20] (11.5,0.0) rectangle (12.4,0.9);
-            \fill[gray!20] (11.5,0.9) rectangle (12.4,1.8);
-            \fill[gray!20] (11.5,1.8) rectangle (12.4,2.7);
-            \fill[gray!20] (11.5,2.7) rectangle (12.4,3.6);
-            \node[font=\scriptsize, align=center] at (11.95,1.95) {fixed\\padding};
+            \node[font=\bfseries, align=center, text width=3.8cm] at (11.6,5.0) {Embed into fixed 4$\times$4 grid};
+            \draw[line width=0.9pt] (9.6,0.4) rectangle (13.6,4.4);
+            \foreach \x in {10.6,11.6,12.6} {\draw[line width=0.8pt] (\x,0.4) -- (\x,4.4);}
+            \foreach \y in {1.4,2.4,3.4} {\draw[line width=0.8pt] (9.6,\y) -- (13.6,\y);}
+            \fill[gray!20] (9.6,0.4) rectangle (10.6,1.4);
+            \fill[gray!20] (10.6,0.4) rectangle (11.6,1.4);
+            \fill[gray!20] (11.6,0.4) rectangle (12.6,1.4);
+            \fill[gray!20] (12.6,0.4) rectangle (13.6,1.4);
+            \fill[gray!20] (12.6,1.4) rectangle (13.6,2.4);
+            \fill[gray!20] (12.6,2.4) rectangle (13.6,3.4);
+            \fill[gray!20] (12.6,3.4) rectangle (13.6,4.4);
+            \draw[line width=1.1pt] (9.6,1.4) rectangle (12.6,4.4);
+            \fill[gray!20] (9.9,-0.25) rectangle (10.35,0.2);
+            \draw[line width=0.7pt] (9.9,-0.25) rectangle (10.35,0.2);
+            \node[font=\scriptsize, anchor=west] at (9.8,-0.03) {shaded cells = fixed padding};
 
             % arrow 3
-            \draw[-{Latex[length=3.2mm,width=2.0mm]}, line width=1.0pt] (12.7,1.3) -- (13.6,1.3);
-            \node[font=\scriptsize, align=center] at (13.15,2.25) {Hilbert order};
+            \draw[-{Latex[length=3.2mm,width=2.0mm]}, line width=1.0pt] (14.0,2.0) -- (15.0,2.0);
+            \node[font=\scriptsize, align=center, text width=1.6cm] at (14.5,3.15) {Hilbert\\order};
 
-            % code box
-            \draw[rounded corners=2pt, line width=0.9pt] (13.8,0.55) rectangle (16.9,2.05);
-            \node[align=center] at (15.35,1.30) {16-bit reversible\\context signature};
-        \end{tikzpicture}
+            % code boxes
+            \node[font=\bfseries, align=center, text width=4.2cm] at (17.1,4.2) {Hilbert traversal $\rightarrow$ 16-bit code};
+            \draw[rounded corners=2pt, line width=0.9pt] (15.4,2.6) rectangle (18.8,3.35);
+            \node[align=center] at (17.1,2.98) {bits: $b_{15}\,\dots\,b_0$};
+            \draw[rounded corners=2pt, line width=0.9pt] (15.4,1.35) rectangle (18.8,2.1);
+            \node[align=center] at (17.1,1.73) {hex: \texttt{0x3A7F} (example)};
+            \node[font=\scriptsize, align=left, text width=4.3cm] at (17.1,0.25) {Compact, locality-preserving representation for fast matching and grouping.};
+        \end{tikzpicture}%
+        }
         \caption{Construction of an interaction context signature. For each frame, the local traffic scene around the cutter is mapped to a 3$\times$3 semantic occupancy grid, mirror-normalised, embedded into a fixed 4$\times$4 grid, and encoded as a reversible 16-bit Hilbert-order code. The shaded cells are fixed padding and are not part of the original 3$\times$3 semantic grid.}
         \label{fig:sfc-signature-overview}
     \end{figure}
@@ -508,44 +516,112 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
 
     This two-path design enables like-for-like agreement measurements at the frame, event, and representation levels. Figure~\ref{fig:framework-overview} summarises the processing flow and highlights the evaluation boundary.
 
-    \begin{figure}[H]
+    \begin{figure}[p]
         \centering
         \begin{tikzpicture}[
-            font=\small,
-            block/.style={draw, rounded corners=2pt, line width=1.05pt, minimum height=12mm, text width=3.9cm, align=center, inner sep=6pt},
-            inputblock/.style={block, text width=3.6cm},
-            line/.style={-{Latex[length=3.8mm,width=2.4mm]}, line width=1.10pt},
-            group/.style={draw, rounded corners=4pt, dashed, line width=0.9pt, inner sep=7pt}
+            font=\normalsize,
+            >=Latex,
+            % --- node styles ---
+            inputblock/.style={
+                draw, rounded corners=3pt, line width=0.8pt,
+                minimum height=14mm, text width=40mm,
+                align=center, inner sep=7pt,
+                fill=lightfill
+            },
+            block/.style={
+                draw, rounded corners=3pt, line width=0.8pt,
+                minimum height=14mm, text width=40mm,
+                align=center, inner sep=7pt
+            },
+            evalblock/.style={
+                draw, rounded corners=3pt, line width=0.8pt,
+                minimum height=15mm, text width=46mm,
+                align=center, inner sep=7pt,
+                fill=lightfill
+            },
+            % --- edge style ---
+            arr/.style={->, line width=0.9pt},
+            % --- group style ---
+            group/.style={
+                draw, rounded corners=5pt, dashed,
+                line width=0.75pt, inner sep=10pt
+            },
+            grouplabel/.style={
+                font=\normalsize\bfseries
+            }
         ]
-            \node[inputblock] (traj) {Trajectories and vehicle geometry\\$(x,y)$, speeds, dimensions};
-            \node[inputblock, right=14mm of traj] (lanemeta) {Lane markings\\from recording metadata};
-            \node[inputblock, right=14mm of lanemeta] (reflabels) {highD reference labels\\lane and neighbour ids};
 
-            \node[block, below=13mm of traj] (lane) {Lane inference\\(XY-lane)};
-            \node[block, below=9mm of lane] (neigh) {Leader/follower reconstruction\\within each inferred lane};
-            \node[block, below=9mm of neigh] (events) {Lane-change detection\\and cut-in extraction};
-            \node[block, below=9mm of events] (features) {Pair-specific indicators\\and context signatures};
+        % ============================================================
+        %  Layout: two inputs at top (x=0, x=5.2), chain centred at
+        %  x=2.6 below them;  reference column at x=10.2.
+        %  Evaluation centred between columns at bottom.
+        %  Text width ≈ 150 mm (A4, 35+25 mm margins).
+        % ============================================================
 
-            \node[block, below=23mm of reflabels] (reference) {Reference relations,\\events, and signatures};
+        % --- Row 0: inputs ---
+        \node[inputblock] (traj) at (0, 0)
+            {Trajectories and\\vehicle geometry\\[1pt]
+             {\small $(x,y)$, speeds, dimensions}};
 
-            \path (features) -- (reference) coordinate[midway] (midout);
-            \node[block, text width=4.8cm, below=17mm of midout] (eval) {Agreement evaluation\\frame level, event level,\\and signature level};
+        \node[inputblock] (lanemeta) at (4.4, 0)
+            {Lane markings\\from recording\\metadata};
 
-            \draw[line] (traj) -- (lane);
-            \draw[line] (lanemeta) |- (lane);
-            \draw[line] (lane) -- (neigh);
-            \draw[line] (neigh) -- (events);
-            \draw[line] (events) -- (features);
-            \draw[line] (reflabels) -- (reference);
-            \draw[line] (features.east) -| (eval.west);
-            \draw[line] (reference.west) -| (eval.east);
+        % --- Reconstruction chain (centred under two inputs) ---
+        \node[block] (lane) at (2.2, -3.2)
+            {Lane inference\\(XY-lane)};
 
-            \node[group, fit=(traj)(lanemeta)(lane)(neigh)(events)(features),
-                  label={[font=\bfseries]above:Minimal-input reconstruction path}] {};
-            \node[group, fit=(reflabels)(reference),
-                  label={[font=\bfseries]above:Reference-label path}] {};
-            \node[group, fit=(eval),
-                  label={[font=\bfseries]above:Evaluation boundary}] {};
+        \node[block] (neigh) at (2.2, -5.8)
+            {Leader/follower\\reconstruction within\\each inferred lane};
+
+        \node[block] (events) at (2.2, -8.4)
+            {Lane-change detection\\and cut-in extraction};
+
+        \node[block] (features) at (2.2, -11.0)
+            {Pair-specific indicators\\and context signatures};
+
+        % --- Reference path (right column) ---
+        \node[inputblock] (reflabels) at (9.6, 0)
+            {highD reference labels\\[1pt]
+             {\small lane and neighbour ids}};
+
+        \node[block] (reference) at (9.6, -3.2)
+            {Reference relations,\\events, and signatures};
+
+        % --- Evaluation (centred between columns) ---
+        \node[evalblock] (eval) at (6.0, -14.0)
+            {Agreement evaluation\\[1pt]
+             {\small frame level, event level,\\and signature level}};
+
+        % ===== Arrows: reconstruction path =====
+        \draw[arr] (traj.south)     -- ++(0,-0.5) -| (lane);
+        \draw[arr] (lanemeta.south) -- ++(0,-0.5) -| (lane);
+        \draw[arr] (lane)   -- (neigh);
+        \draw[arr] (neigh)  -- (events);
+        \draw[arr] (events) -- (features);
+
+        % ===== Arrows: reference path =====
+        \draw[arr] (reflabels) -- (reference);
+
+        % ===== Arrows: converging into evaluation =====
+        \draw[arr] (features.south) -- ++(0,-0.7) -| ([xshift=4mm]eval.north west);
+        \draw[arr] (reference.south) -- ++(0,-0.7) -| ([xshift=-4mm]eval.north east);
+
+        % ===== Grouping boxes =====
+        \node[group,
+              fit=(traj)(lanemeta)(lane)(neigh)(events)(features),
+              label={[grouplabel]above:Minimal-input reconstruction path}
+             ] {};
+
+        \node[group,
+              fit=(reflabels)(reference),
+              label={[grouplabel]above:Reference-label path}
+             ] {};
+
+        \node[group,
+              fit=(eval),
+              label={[grouplabel]above:Evaluation boundary}
+             ] {};
+
         \end{tikzpicture}
         \caption{Overview of \FrameworkName{}. The minimal-input reconstruction path uses trajectories, vehicle geometry, and lane markings to infer lanes, neighbour relations, cut-in events, pair-specific indicators, and context signatures. In parallel, a reference-label path derived from highD lane and neighbour identifiers produces outputs for agreement evaluation only.}
         \label{fig:framework-overview}
@@ -980,14 +1056,14 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
 
     We present the decision stage as a representative example because it captures the traffic configuration immediately before the cut-in interaction becomes established. Figure~\ref{fig:sfc-decision-grids} therefore shows both absolute occupancy maps (non-risk and risky) and the risk-minus-non-risk difference map for the decision stage. The absolute maps provide context, but the difference map is the main analytical view: positive values indicate cells that are occupied more often in risky events, while negative values indicate the opposite.
 
-    To highlight how group differences evolve over time, Figure~\ref{fig:sfc-stage-diff} shows risk-minus-non-risk difference maps for the intention, decision, and execution stages using a consistent colour scale. The key point is not that risky and non-risky cut-ins form completely different scene types; rather, they share a common cut-in geometry and differ through comparatively small occupancy shifts in a few neighbouring cells. This is why the absolute maps look broadly similar and why the difference maps are more informative. Supplementary absolute maps for the intention and execution stages are provided in Appendix~\ref{app:occupancy-supp}.
+    To highlight how group differences evolve over time, Figure~\ref{fig:sfc-stage-diff} shows risk-minus-non-risk difference maps for the intention, decision, and execution stages using a consistent zero-centred colour scale. The key point is not that risky and non-risky cut-ins form completely different scene types; rather, they share a common cut-in geometry and differ through comparatively small occupancy shifts in a few neighbouring cells. This is why the absolute maps look broadly similar and why the difference maps are more informative. Supplementary interpretation-first views that track and rank these subtle shifts are provided in Appendix~\ref{app:occupancy-supp}.
 
     \begin{figure}[H]
         \centering
         \safeincludegraphics[width=0.43\textwidth]{decision_nonrisk.png}\hfill
         \safeincludegraphics[width=0.43\textwidth]{decision_risk.png}\\[5pt]
         \safeincludegraphics[width=0.62\textwidth]{decision_diff.png}
-        \caption{Decision-stage occupancy maps. Top: absolute mean occupancy for non-risk and risky events. Bottom: risk-minus-non-risk difference map, which is the main analytical view because it highlights the cells where occupancy frequency shifts between the two groups.}
+        \caption{Decision-stage occupancy maps. Top: absolute mean occupancy for non-risk and risky events; these panels are intentionally similar and are included mainly as context. Bottom: risk-minus-non-risk difference map, which is the main analytical view because it highlights the cells where occupancy frequency shifts between the two groups.}
         \label{fig:sfc-decision-grids}
     \end{figure}
 
@@ -999,11 +1075,11 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
         \safeincludegraphics[width=0.58\textwidth]{decision_diff.png}\\[6pt]
         \textbf{Execution stage}\\[2pt]
         \safeincludegraphics[width=0.58\textwidth]{execution_diff.png}
-        \caption{Stage-wise risk-minus-non-risk occupancy differences for the intention, decision, and execution stages, shown separately to make the small cell-wise shifts easier to read.}
+        \caption{Stage-wise risk-minus-non-risk occupancy differences for the intention, decision, and execution stages, shown separately to make the small cell-wise shifts easier to read. Red indicates cells occupied more often in risky events, blue indicates the opposite, and cell labels report signed percentage-point differences. The centre cell is neutral because the cutter occupies it by construction.}
         \label{fig:sfc-stage-diff}
     \end{figure}
 
-    In practical terms, these plots should be read as subtle but structured differences in local traffic context. They suggest that the risky group is associated not with an entirely separate scene family, but with small changes in how tightly neighbouring cells around the cutter are occupied during the lead-up to the cut-in. In the decision stage, the most meaningful pattern is a modest tightening around the target-lane gap rather than a wholesale change of scene type, which is consistent with risky cut-ins being executed in more constrained surrounding traffic.
+    In practical terms, these plots should be read as subtle but structured differences in local traffic context. They suggest that the risky group is associated not with an entirely separate scene family, but with small changes in how tightly neighbouring cells around the cutter are occupied during the lead-up to the cut-in. A compact reading is that risky events shift occupancy away from cells \emph{ahead} of the cutter and toward cells \emph{alongside} or \emph{behind} it during the intention and decision stages; by the execution stage, the remaining differences are smaller and are concentrated mainly in the cells behind the manoeuvre. In the decision stage, the most meaningful pattern is therefore a modest tightening around the target-lane gap rather than a wholesale change of scene type, which is consistent with risky cut-ins being executed in more constrained surrounding traffic.
 
     \subsection{Exploratory decision-stage context archetypes}
     Mean occupancy maps show group-level differences, but they do not directly answer whether the validated SFC representation can recover a small set of reusable scene families. As an additional representational-usefulness check, we therefore decode the mirrored binary SFC signatures back into the semantic 3$\times$3 grid, average the decision-stage grids within each event, and cluster the resulting event-level context vectors. We use the \emph{decision} stage rather than the execution stage so that clustering is based on decision-stage context rather than on the same time window used to define the THW risk label.
@@ -1014,8 +1090,8 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
 
     \begin{figure}[H]
         \centering
-        \safeincludegraphics[width=\textwidth]{archetype_heatmaps.png}
-        \caption{Seven decision-stage context archetypes derived from mirrored binary SFC signatures. After mirror normalisation, the right column corresponds to the target lane, so each panel visualises one canonical cut-in scene family. The figure is intended to show recurring occupancy templates rather than exact cell-wise effect sizes; the quantitative risk comparison for these archetypes is given in Figure~\ref{fig:sfc-archetype-risk}.}
+        \safeincludegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{archetype_heatmaps.png}
+        \caption{Seven decision-stage context archetypes derived from mirrored binary SFC signatures. After mirror normalisation, the right column corresponds to the target lane, so each panel visualises one canonical cut-in scene family. Cell labels show mean occupancy percentages, while the grey hatched centre cell is neutralised because the cutter occupies it by construction. The figure is intended to emphasise recurring occupancy templates rather than precise continuous gradients; the quantitative risk comparison for these archetypes is given in Figure~\ref{fig:sfc-archetype-risk}.}
         \label{fig:sfc-archetypes}
     \end{figure}
 
@@ -1105,6 +1181,41 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
 
     Using the final thesis configuration, with an alongside threshold of \SI{4.0}{\meter} and no fixed ahead/behind cutoff, we compare 1,421,980 stage rows and obtain 1,414,762 exact row matches (99.49\%). Stage-wise exact-match rates are 99.35\% (intention), 99.52\% (decision), and 99.60\% (execution). In the thesis event view, stage-window ANY-frame agreement is 100.00\%, while stage-window ALL-frame agreement is 79.82\%. The raw unmirrored match rate is only 57.56\%; this is best read as a sanity check, because opposite travel directions swap left/right occupancy by construction. Mirror normalisation is therefore required before any like-for-like comparison of left/right context across recordings.
 
+    \section{Exploratory cross-dataset feasibility check (NGSIM)}
+    \label{sec:ngsim-feasibility}
+    To test whether the framework is conceptually tied to \textit{highD} or mainly to engineering choices in preprocessing, we ran a deliberately limited transferability check on the public NGSIM trajectory dataset~\cite{ngsim_2016}. We restricted the analysis to the two freeway subsets, US-101 and I-80, because the arterial subsets (Lankershim Boulevard and Peachtree Street) mix intersection movements, turning traffic, and non-highway lane codes that would confound a highway cut-in study.
+
+    This add-on was not meant to reproduce the full highD evaluation. The question was narrower: can the lane-change and cut-in mining core be moved to another trajectory source with limited adaptation work? For that reason, the NGSIM results are not treated as a second benchmark and are not combined with the main highD statistics.
+
+    The NGSIM prototype processes one location at a time, removes exact duplicate rows, splits repeated source ids when \texttt{Global\_Time} jumps by more than one second, remaps \texttt{Preceding} and \texttt{Following} to the split track instances, and rescales the event-mining thresholds from the highD setting (\SI{25}{\hertz}) to NGSIM's \SI{10}{\hertz}. The feasibility check stops at explicit cutter--follower event mining and pairwise risk summaries. We do not attempt full context-signature validation because NGSIM does not provide highD-style left/right surrounding-vehicle identifiers.
+
+    \begin{table}[H]
+        \centering
+        \caption{Exploratory NGSIM freeway feasibility summary. Percentages are calculated over the candidate cut-ins extracted in each subset.}
+        \label{tab:ngsim-feasibility}
+        {\small
+        \setlength{\tabcolsep}{4pt}
+            \begin{tabular}{@{}lrrrrrrrr@{}}
+\toprule
+Location & Raw rows & Dup. removed & Tracks & Lane chg. & Cut-ins & Cut-ins / LC & TTC finite & Neg. gap \\
+\midrule
+I-80   & 4,566,387 & 0       & 5,678 & 2,647 & 2,530 & 95.6\% & 67.5\% & 4.0\% \\
+US-101 & 4,802,933 & 704,000 & 6,101 & 2,780 & 1,919 & 69.0\% & 54.3\% & 2.4\% \\
+\bottomrule
+            \end{tabular}}
+    \end{table}
+
+    \begin{figure}[H]
+        \centering
+        \safeincludegraphics[width=0.72\textwidth]{ngsim_feasibility_counts.png}
+        \caption{Lane-change and cut-in counts from the exploratory NGSIM freeway feasibility check. The labels above the cut-in bars show the cut-in-to-lane-change ratio. The figure demonstrates that the event-mining core transfers to another highway trajectory source, but it should not be read as a benchmark comparison against highD because the subsets differ in duration, geometry, and data quality.}
+        \label{fig:ngsim-feasibility}
+    \end{figure}
+
+    Table~\ref{tab:ngsim-feasibility} and Figure~\ref{fig:ngsim-feasibility} show that both freeway subsets still produce sizeable event sets after explicit cleaning: 2,780 lane changes and 1,919 candidate cut-ins on US-101, and 2,647 lane changes and 2,530 candidate cut-ins on I-80. This is enough to show that the lane-change and cut-in logic is not tied only to highD. The high I-80 cut-in-to-lane-change ratio should be read only as prototype event yield under the chosen thresholds, not as a behavioural prevalence claim.
+
+    At the same time, the feasibility check also shows why NGSIM should not be treated as a second full validation dataset without further work. First, the export quality is lower: the US-101 subset required removal of 704,000 exact duplicate rows before event mining. Second, NGSIM headways are front-centre based and the kinematics are noisier, consistent with prior observations that direct velocity and acceleration use in NGSIM is sensitive to positional noise~\cite{thiemann2008ngsim}. Third, the available neighbour information is weaker than in highD, which means the full surrounding-context branch cannot be evaluated in the same way. For these reasons, the NGSIM results are used only as exploratory transfer evidence, not as cross-dataset validation on the same level as the main highD study.
+
 % ==============================================================================
     \chapter{Discussion}
     \label{chap:discussion}
@@ -1129,7 +1240,7 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
 
     A smaller supporting contribution is the adapted inspection dashboard. It was not a user-facing evaluated system, but it made manual sanity checks of onset alignment, interaction pairing, and decoded occupancy practical across 60 recordings, which in turn supported the trustworthiness of the final pipeline.
 
-    \paragraph{Transfer beyond highD.} Although this thesis evaluates only highD, the method is structured to make transfer relatively concrete. A second dataset would mainly require (i) a mapping from its road description to lane boundaries, (ii) harmonisation of coordinate conventions and vehicle reference points, and (iii) scenario filters suited to the road type. The onset definition, pair-consistent indicator computation, and SFC encoding can otherwise remain unchanged. The thesis therefore does not prove cross-dataset transfer, but it reduces transfer to a clearly scoped engineering task rather than a conceptual redesign.
+    \paragraph{Transfer beyond highD.} The NGSIM feasibility check in Section~\ref{sec:ngsim-feasibility} makes the transfer question more concrete. After explicit cleaning, identity splitting, neighbour remapping, and threshold rescaling, both freeway subsets still yield sizeable lane-change and cut-in event sets. This suggests that transfer is not blocked by the event definition itself. At the same time, the exercise also shows that transfer is not free: duplicate rows, repeated source ids, front-centre headway definitions, and noisier kinematics become important engineering constraints as soon as the method leaves the more curated highD setting. The framework therefore reduces cross-dataset transfer to a bounded engineering task, but it does not remove dataset differences.
 
     \paragraph{Per-recording variability.}
     The cross-recording perspective also reveals notable variability. Risk prevalence ranges from 11.1\% to 34.1\% across the 60 recordings (median 20.0\%), which likely reflects differences in traffic density, speed distributions, and lane configurations across the six recording sites. LORO-CV fold-level AUC ranges from approximately 0.65 to 0.95, with lower-performing folds concentrated in recordings with fewer events or atypical speed distributions. This variability underscores the importance of the leave-one-recording-out protocol: pooled cross-validation would overestimate performance by allowing the model to learn site-specific patterns. It also suggests that cross-dataset evaluation (e.g., inD or NGSIM) would provide a stronger test of the framework's generalisability than within-highD analysis alone.
@@ -1161,7 +1272,7 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
 
     \textbf{Internal validity:} Reconstruction depends on lane-marking accuracy and coordinate conventions. Errors in these inputs can shift the onset $t_0$ and bias indicators. This is mitigated through geometry model selection against dataset-provided indicators and independent reconstruction variants that agree closely with the reference path. A further consideration is that highD positions are derived from overhead drone video via computer-vision tracking; the resulting measurement noise differs from on-vehicle sensing (e.g., radar or lidar), so the absolute indicator values reported here should not be directly compared to values from instrumented-vehicle studies without accounting for positional uncertainty.
 
-    \textbf{External validity:} Results are based on \textit{highD} highway recordings collected at six German motorway sites under free-flow to moderately congested conditions. The framework's assumptions (straight road segments, clearly marked lanes, and moderate traffic density) may not hold for urban driving, ramp merges, construction zones, or different sensing setups. For non-highway datasets, the lane-based cut-in definition and stage interpretation may also need scenario-specific adaptation even if the reconstruction philosophy remains the same. Cross-dataset validation on inD, rounD, exiD, or NGSIM is identified as a priority for future work.
+    \textbf{External validity:} The main quantitative results are based on \textit{highD} highway recordings collected at six German motorway sites under free-flow to moderately congested conditions. The framework's assumptions (straight road segments, clearly marked lanes, and moderate traffic density) may not hold for urban driving, ramp merges, construction zones, or different sensing setups. The small NGSIM freeway feasibility check shows that the event-mining core can be adapted beyond highD, but it does not establish full cross-dataset validity because the surrounding-context branch and risk metrics remain more sensitive to dataset-specific conventions and noise.
 
     \textbf{Conclusion validity:} The thesis reports descriptive differences, sensitivity analyses, and cross-validated predictions rather than causal claims about driver behaviour. The fold-level Wilcoxon comparisons reported in the ablation study, together with the Bonferroni-adjusted interpretation, support the claim that the SFC-only model exceeds chance. However, the 60-fold LORO-CV still produces correlated folds because training sets overlap heavily, so these $p$-values should be read as supportive rather than definitive. A fuller repeated-measures comparison across a broader set of model variants would strengthen the statistical argument further.
 
@@ -1169,7 +1280,7 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
     Five directions for future work emerge from this thesis:
 
     \begin{enumerate}[leftmargin=1.6em]
-  \item \textbf{Cross-dataset validation:} testing the framework on inD, rounD, exiD, or NGSIM to assess transferability to datasets that provide trajectories and lane markings but not pre-computed neighbour relations.
+  \item \textbf{Full cross-dataset validation:} extending the current exploratory NGSIM check into a calibrated multi-dataset study on inD, rounD, exiD, or cleaner NGSIM subsets, including coordinate harmonisation, kinematic smoothing, and representation-level validation beyond event mining.
   \item \textbf{Parameter sensitivity:} systematic ablation over relevance-distance, pair-persistence, and stage-boundary criteria, with manual review of disagreement cases.
   \item \textbf{Archetype transferability:} testing whether decision-stage context archetypes generalise across datasets, road classes, and prediction tasks.
   \item \textbf{Richer predictive models:} sequence models over full stage windows (rather than stage-level aggregates) to exploit the temporal structure of reconstructed features.
@@ -1190,7 +1301,7 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
 
     This is also where the software-engineering relevance lies. The framework defines explicit input boundaries, reconstructable intermediate products, and deterministic outputs that can be checked against reference labels. As a result, it is relevant not only for analysing highD but also as a basis for portable tooling for scenario mining, safety analysis, and validation workflows in automated-driving software engineering.
 
-    Although the evaluation is confined to highD, transfer to other trajectory datasets appears technically plausible because the method depends on generic ingredients -- positions, vehicle geometry, and lane boundaries -- rather than highD-specific neighbour columns. Demonstrating such transfer empirically remains future work.
+    A small exploratory NGSIM freeway check further supports this claim: after explicit cleaning and identity handling, the same lane-change and cut-in mining logic still produces substantial event sets on US-101 and I-80. However, the exercise also makes the limitation clear. Cross-dataset transfer is constrained less by the event definition itself than by dataset quality, neighbour semantics, and coordinate conventions. A full multi-dataset validation therefore remains future work, even if basic transferability is now illustrated with one public secondary dataset.
 
     The result is a reproducible, auditable pipeline for cut-in analysis that serves as a basis for cross-dataset transfer, richer predictive models, and downstream applications requiring pair-consistent interaction features.
 
@@ -1206,6 +1317,18 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
         \newblock The highD dataset: A drone dataset of naturalistic vehicle trajectories on German highways for validation of highly automated driving systems.
         \newblock In \emph{Proceedings of the IEEE 21st International Conference on Intelligent Transportation Systems (ITSC)}, 2018.
         \newblock DOI: \url{https://doi.org/10.1109/ITSC.2018.8569552}.
+
+        \bibitem{ngsim_2016}
+        U.S. Department of Transportation Federal Highway Administration.
+        \newblock Next Generation Simulation (NGSIM) vehicle trajectories and supporting data.
+        \newblock Dataset, 2016.
+        \newblock DOI: \url{https://doi.org/10.21949/1504477}.
+
+        \bibitem{thiemann2008ngsim}
+        C.~Thiemann, M.~Treiber, and A.~Kesting.
+        \newblock Estimating acceleration and lane-changing dynamics based on NGSIM trajectory data.
+        \newblock \emph{Transportation Research Record}, 2088(1):90--101, 2008.
+        \newblock DOI: \url{https://doi.org/10.3141/2088-10}.
 
         \bibitem{wang2021ssm}
         C.~Wang, Y.~Xie, H.~Huang, and P.~Liu.
@@ -1377,25 +1500,23 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
 
 
 
-    \chapter{Appendix: Supplementary occupancy maps}
+    \chapter{Appendix: Supplementary SFC interpretation views}
     \label{app:occupancy-supp}
 
-    Figure~\ref{fig:sfc-decision-grids} in Chapter~\ref{chap:results} presents the decision-stage occupancy maps in the main text because that stage is the most relevant pre-onset comparison. Figures~\ref{fig:sfc-supp-intention} and~\ref{fig:sfc-supp-execution} provide the corresponding absolute maps for the intention and execution stages at a larger size. These appendix figures are supplementary context views; the main analytical comparison remains the difference maps in Figure~\ref{fig:sfc-stage-diff}.
+    Figure~\ref{fig:sfc-decision-grids} in Chapter~\ref{chap:results} presents the decision-stage occupancy maps in the main text because that stage is the most relevant pre-onset comparison, while Figure~\ref{fig:sfc-stage-diff} provides the core signed difference view. This appendix adds two interpretation-first summaries that make the subtle stage-wise shifts easier to read than repeated absolute heatmaps. Figure~\ref{fig:sfc-stage-trends} follows each semantic cell across the intention, decision, and execution stages, and Figure~\ref{fig:sfc-stage-ranked} ranks the signed percentage-point shifts within each stage.
 
     \begin{figure}[H]
         \centering
-        \safeincludegraphics[width=0.46\textwidth]{intention_nonrisk.png}\hfill
-        \safeincludegraphics[width=0.46\textwidth]{intention_risk.png}
-        \caption{Supplementary absolute occupancy maps for the intention stage (non-risk vs risky).}
-        \label{fig:sfc-supp-intention}
+        \safeincludegraphics[width=\textwidth]{stage_diff_trends.png}
+        \caption{Stage-wise trajectories of the signed occupancy differences for each informative semantic cell. Positive values indicate higher occupancy in risky events, negative values indicate higher occupancy in non-risk events. This view makes it easier to see how the same local region changes from intention to decision to execution.}
+        \label{fig:sfc-stage-trends}
     \end{figure}
 
     \begin{figure}[H]
         \centering
-        \safeincludegraphics[width=0.46\textwidth]{execution_nonrisk.png}\hfill
-        \safeincludegraphics[width=0.46\textwidth]{execution_risk.png}
-        \caption{Supplementary absolute occupancy maps for the execution stage (non-risk vs risky).}
-        \label{fig:sfc-supp-execution}
+        \safeincludegraphics[width=\textwidth]{stage_diff_ranked.png}
+        \caption{Ranked semantic-cell shifts within each stage, shown as signed percentage-point differences. This view makes it explicit which cells drive the contrast at each stage and confirms that the dominant pre-onset changes occur around the cells ahead of the cutter and, later, behind the manoeuvre.}
+        \label{fig:sfc-stage-ranked}
     \end{figure}
 
 
