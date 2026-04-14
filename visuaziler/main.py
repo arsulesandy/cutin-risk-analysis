@@ -63,6 +63,7 @@ def _resolve_recording_paths(arguments: dict, dataset_name: str, recording_id: s
     dataset = _normalize_dataset_name(dataset_name)
     rid = _normalize_recording_id(recording_id)
     resolved_arguments = dict(arguments)
+    user_supplied_sfc_codes = bool(resolved_arguments.get("_sfc_codes_csv_user_supplied", False))
     resolved_arguments["dataset"] = dataset
     resolved_arguments["recording_id"] = rid
     if dataset == "highd":
@@ -71,14 +72,15 @@ def _resolve_recording_paths(arguments: dict, dataset_name: str, recording_id: s
         resolved_arguments["input_meta_path"] = str(highd_recording_meta_csv(rid))
         resolved_arguments["pickle_path"] = str(highd_pickle_path(rid))
         resolved_arguments["background_image"] = str(highd_background_image(rid))
-        resolved_arguments["sfc_codes_csv"] = str(step14_codes_csv_path())
+        if not user_supplied_sfc_codes:
+            resolved_arguments["sfc_codes_csv"] = str(step14_codes_csv_path())
     else:
         resolved_arguments["input_path"] = str(exid_tracks_csv(rid))
         resolved_arguments["input_static_path"] = str(exid_tracks_meta_csv(rid))
         resolved_arguments["input_meta_path"] = str(exid_recording_meta_csv(rid))
         resolved_arguments["pickle_path"] = str(exid_pickle_path(rid))
         resolved_arguments["background_image"] = str(exid_background_image(rid))
-        if not resolved_arguments.get("sfc_codes_csv"):
+        if not user_supplied_sfc_codes:
             resolved_arguments["sfc_codes_csv"] = None
     return resolved_arguments
 
@@ -203,6 +205,7 @@ def create_args():
     parser.add_argument('--save_as_pickle', default=False, type=lambda x: (str(x).lower() == 'true'),
                         help='Optional: you can save the tracks as pickle.')
     parsed_arguments = vars(parser.parse_args())
+    parsed_arguments["_sfc_codes_csv_user_supplied"] = parsed_arguments.get("sfc_codes_csv") is not None
     dataset = _normalize_dataset_name(parsed_arguments.get("dataset"))
     parsed_arguments["dataset"] = dataset
 

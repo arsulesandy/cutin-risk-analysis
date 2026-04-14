@@ -5,6 +5,7 @@ import numpy as np
 
 # TRACK FILE
 BBOX = "bbox"
+ROTATED_BBOX = "rotatedBbox"
 FRAMES = "frames"
 FRAME = "frame"
 TRACK_ID = "id"

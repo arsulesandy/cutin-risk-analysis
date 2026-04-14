@@ -14,6 +14,7 @@ import pandas as pd
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import patches
+from matplotlib.ticker import PercentFormatter
 from PIL import Image
 
 from cutin_risk.paths import exid_dataset_root_path, output_path, project_root
@@ -22,6 +23,8 @@ from cutin_risk.paths import exid_dataset_root_path, output_path, project_root
 OVERVIEW_SOURCE = output_path("figures/Step 22/exid_exploratory_overview.png")
 EXAMPLES_SOURCE = output_path("reports/Step 22/exid_example_events.csv")
 QUALITATIVE_OUTPUT = output_path("figures/Step 22/exid_example_panels.png")
+MERGED_SOURCE = output_path("reports/Step 22/exid_stage_features_merged.csv")
+TTC_SUMMARY_OUTPUT = output_path("figures/Step 22/exid_ttc_summary.png")
 
 
 def _normalize_recording_id(value: str | int | float) -> str:
@@ -232,12 +235,90 @@ def generate_qualitative_figure(*, dataset_root: Path, examples_csv: Path, targe
     return target_path
 
 
+def generate_ttc_summary_figure(*, merged_csv: Path, target_path: Path) -> Path:
+    merged = pd.read_csv(merged_csv).copy()
+    if merged.empty:
+        raise ValueError(f"No exiD stage features found in {merged_csv}")
+
+    ttc = pd.to_numeric(merged["execution_ttc_min"], errors="coerce")
+    merged["ttc_finite"] = np.isfinite(ttc)
+    merged["execution_ttc_finite"] = ttc.replace([np.inf, -np.inf], np.nan)
+
+    summary = (
+        merged.groupby("recording_id", as_index=False)
+        .agg(
+            exported_events=("cutter_id", "count"),
+            execution_ttc_finite_share=("ttc_finite", "mean"),
+            execution_ttc_median=("execution_ttc_finite", "median"),
+        )
+        .sort_values("recording_id")
+    )
+    if summary.empty:
+        raise ValueError(f"No exiD TTC summary rows could be derived from {merged_csv}")
+
+    overall_finite_share = float(merged["ttc_finite"].mean())
+    overall_median = float(merged["execution_ttc_finite"].median())
+    x = np.arange(len(summary), dtype=float)
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.0, 4.2), facecolor="white")
+
+    axes[0].bar(x, summary["execution_ttc_finite_share"], color="#0ea5e9", width=0.72)
+    axes[0].axhline(overall_finite_share, color="#0f172a", linestyle="--", linewidth=1.2)
+    axes[0].set_title("Finite execution-stage TTC share")
+    axes[0].set_xlabel("Recording")
+    axes[0].set_ylabel("Share of exported events")
+    axes[0].set_ylim(0.0, 1.0)
+    axes[0].yaxis.set_major_formatter(PercentFormatter(1.0))
+
+    axes[1].bar(x, summary["execution_ttc_median"], color="#f59e0b", width=0.72)
+    axes[1].axhline(overall_median, color="#0f172a", linestyle="--", linewidth=1.2)
+    axes[1].set_title("Median execution-stage TTC")
+    axes[1].set_xlabel("Recording")
+    axes[1].set_ylabel("TTC [s] (finite only)")
+    axes[1].set_ylim(0.0, float(summary["execution_ttc_median"].max()) * 1.12)
+
+    for axis in axes:
+        axis.set_xticks(x, summary["recording_id"].astype(str))
+        axis.grid(axis="y", linestyle=":", linewidth=0.6, alpha=0.6)
+        axis.set_axisbelow(True)
+        axis.tick_params(axis="x", rotation=45)
+        for spine in ["top", "right"]:
+            axis.spines[spine].set_visible(False)
+
+    axes[0].text(
+        0.99,
+        0.96,
+        f"Overall: {overall_finite_share:.1%}",
+        transform=axes[0].transAxes,
+        ha="right",
+        va="top",
+        fontsize=9.0,
+        color="#0f172a",
+    )
+    axes[1].text(
+        0.99,
+        0.96,
+        f"Overall median: {overall_median:.2f}s",
+        transform=axes[1].transAxes,
+        ha="right",
+        va="top",
+        fontsize=9.0,
+        color="#0f172a",
+    )
+
+    fig.tight_layout()
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(target_path, dpi=180, facecolor=fig.get_facecolor(), bbox_inches="tight")
+    plt.close(fig)
+    return target_path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate thesis-facing exiD artifacts.")
     parser.add_argument("--dataset-root", type=Path, default=exid_dataset_root_path())
     parser.add_argument("--overview-source", type=Path, default=OVERVIEW_SOURCE)
-    parser.add_argument("--examples-csv", type=Path, default=EXAMPLES_SOURCE)
-    parser.add_argument("--qualitative-output", type=Path, default=QUALITATIVE_OUTPUT)
+    parser.add_argument("--merged-csv", type=Path, default=MERGED_SOURCE)
+    parser.add_argument("--ttc-summary-output", type=Path, default=TTC_SUMMARY_OUTPUT)
     parser.add_argument("--latex-dir", type=Path, default=project_root() / "latex")
     args = parser.parse_args()
 
@@ -245,25 +326,24 @@ def main() -> None:
     latex_dir.mkdir(parents=True, exist_ok=True)
 
     overview_target = latex_dir / "exid_exploratory_overview.png"
-    qualitative_target = latex_dir / "exid_example_panels.png"
+    ttc_summary_target = latex_dir / "exid_ttc_summary.png"
 
     if not args.overview_source.exists():
         raise FileNotFoundError(f"Missing overview source: {args.overview_source}")
-    if not args.examples_csv.exists():
-        raise FileNotFoundError(f"Missing examples CSV: {args.examples_csv}")
+    if not args.merged_csv.exists():
+        raise FileNotFoundError(f"Missing merged exiD features: {args.merged_csv}")
 
     shutil.copy2(args.overview_source, overview_target)
-    args.qualitative_output.parent.mkdir(parents=True, exist_ok=True)
-    generated_qualitative = generate_qualitative_figure(
-        dataset_root=args.dataset_root.resolve(),
-        examples_csv=args.examples_csv.resolve(),
-        target_path=args.qualitative_output.resolve(),
+    args.ttc_summary_output.parent.mkdir(parents=True, exist_ok=True)
+    generated_ttc_summary = generate_ttc_summary_figure(
+        merged_csv=args.merged_csv.resolve(),
+        target_path=args.ttc_summary_output.resolve(),
     )
-    shutil.copy2(generated_qualitative, qualitative_target)
+    shutil.copy2(generated_ttc_summary, ttc_summary_target)
 
     print("Saved:", overview_target)
-    print("Saved:", generated_qualitative)
-    print("Saved:", qualitative_target)
+    print("Saved:", generated_ttc_summary)
+    print("Saved:", ttc_summary_target)
 
 
 if __name__ == "__main__":
