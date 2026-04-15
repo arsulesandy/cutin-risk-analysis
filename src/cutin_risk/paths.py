@@ -119,6 +119,11 @@ def dataset_root_path() -> Path:
     return configured_path("dataset_root", "data/raw/highD-dataset-v1.0/data")
 
 
+def exid_dataset_root_path() -> Path:
+    """Return the configured root directory containing exiD CSV files."""
+    return configured_path("exid_dataset_root", "data/raw/exiD-dataset-v2.1/data")
+
+
 def outputs_root_path() -> Path:
     """Return the configured root directory for generated outputs."""
     return configured_path("outputs_root", "outputs")
@@ -203,3 +208,33 @@ def highd_background_image(recording_id: str = "01") -> Path:
     """Return `<recording>_highway.png` background image path."""
     rid = _normalize_recording_id(recording_id)
     return dataset_root_path() / f"{rid}_highway.png"
+
+
+def exid_tracks_csv(recording_id: str = "00") -> Path:
+    """Return `<recording>_tracks.csv` path for an exiD recording."""
+    rid = _normalize_recording_id(recording_id)
+    return exid_dataset_root_path() / f"{rid}_tracks.csv"
+
+
+def exid_tracks_meta_csv(recording_id: str = "00") -> Path:
+    """Return `<recording>_tracksMeta.csv` path for an exiD recording."""
+    rid = _normalize_recording_id(recording_id)
+    return exid_dataset_root_path() / f"{rid}_tracksMeta.csv"
+
+
+def exid_recording_meta_csv(recording_id: str = "00") -> Path:
+    """Return `<recording>_recordingMeta.csv` path for an exiD recording."""
+    rid = _normalize_recording_id(recording_id)
+    return exid_dataset_root_path() / f"{rid}_recordingMeta.csv"
+
+
+def exid_pickle_path(recording_id: str = "00") -> Path:
+    """Return `<recording>.pickle` path under the exiD dataset root."""
+    rid = _normalize_recording_id(recording_id)
+    return exid_dataset_root_path() / f"{rid}.pickle"
+
+
+def exid_background_image(recording_id: str = "00") -> Path:
+    """Return `<recording>_background.png` background image path for exiD."""
+    rid = _normalize_recording_id(recording_id)
+    return exid_dataset_root_path() / f"{rid}_background.png"

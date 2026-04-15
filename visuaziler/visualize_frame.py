@@ -1,4 +1,4 @@
-"""Matplotlib-based interactive frame viewer for highD tracks and SFC context."""
+"""Matplotlib-based interactive frame viewer for highD and exiD tracks."""
 
 import os
 import re
@@ -8,7 +8,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib import patches
+from matplotlib import patches, transforms
 from matplotlib.pyplot import imread
 from matplotlib.widgets import Button, Slider
 
@@ -62,6 +62,8 @@ class VisualizationPlot(object):
         meta_dictionary,
         recording_loader=None,
         recording_options=None,
+        dataset_loader=None,
+        dataset_recording_options=None,
         fig=None,
     ):
         self.arguments = arguments
@@ -69,7 +71,15 @@ class VisualizationPlot(object):
         self.static_info = static_info
         self.meta_dictionary = meta_dictionary
         self.recording_loader = recording_loader
-        self.recording_options = self._normalize_recording_options(recording_options)
+        self.dataset_loader = dataset_loader
+        self.active_dataset_name = self._normalize_dataset_name(
+            arguments.get("dataset") or meta_dictionary.get(DATASET_NAME, "highd")
+        )
+        self.selected_dataset_name = self.active_dataset_name
+        self.dataset_recording_options = self._normalize_dataset_recording_options(dataset_recording_options)
+        if recording_options and self.active_dataset_name not in self.dataset_recording_options:
+            self.dataset_recording_options[self.active_dataset_name] = self._normalize_recording_options(recording_options)
+        self.recording_options = self._recording_options_for_dataset(self.selected_dataset_name)
         self.active_recording_id = self._resolve_recording_id(arguments)
         if self.active_recording_id and self.active_recording_id not in self.recording_options:
             self.recording_options.append(self.active_recording_id)
@@ -84,9 +94,15 @@ class VisualizationPlot(object):
         self.key_event_cid = None
         self.mouse_event_cid = None
         self.scroll_event_cid = None
+        self.resize_event_cid = None
         self.playing = False
         self.playback_fps = 12
         self.playback_timer = None
+        self.road_rotation_deg = 0.0
+        self.road_rotation_center = None
+        self.road_view_xlim = None
+        self.road_view_ylim = None
+        self.road_artist_transform = None
         self.sfc_eval_frame = None
         self.sfc_eval_index = 0
         self.sfc_eval_count = 0
@@ -139,7 +155,7 @@ class VisualizationPlot(object):
             self.fig = fig
             self.ax = self.fig.gca()
         try:
-            self.fig.canvas.manager.set_window_title("HighD Console")
+            self.fig.canvas.manager.set_window_title("{} Console".format(self._dataset_display_name()))
         except Exception:
             pass
         self._center_window_on_screen()
@@ -167,6 +183,28 @@ class VisualizationPlot(object):
         if rid.isdigit():
             return "{:02d}".format(int(rid))
         return rid
+
+    @staticmethod
+    def _normalize_dataset_name(dataset_name):
+        token = str(dataset_name or "highd").strip().lower()
+        if token not in {"highd", "exid"}:
+            return "highd"
+        return token
+
+    def _normalize_dataset_recording_options(self, dataset_recording_options):
+        if not dataset_recording_options:
+            return {}
+        normalized = {}
+        for dataset_name, recording_options in dataset_recording_options.items():
+            normalized[self._normalize_dataset_name(dataset_name)] = self._normalize_recording_options(recording_options)
+        return normalized
+
+    def _recording_options_for_dataset(self, dataset_name):
+        return list(self.dataset_recording_options.get(self._normalize_dataset_name(dataset_name), []))
+
+    def _dataset_display_name(self, dataset_name=None):
+        dataset = self._normalize_dataset_name(dataset_name or self.active_dataset_name)
+        return "exiD" if dataset == "exid" else "highD"
 
     def _normalize_recording_options(self, recording_options):
         if not recording_options:
@@ -225,10 +263,10 @@ class VisualizationPlot(object):
             spine.set_color(self.THEME["panel_edge"])
             spine.set_linewidth(1.0)
 
-        self.ax_header.text(
+        self.header_title_text = self.ax_header.text(
             0.015,
             0.62,
-            "HighD Scenario Intelligence Console",
+            "",
             transform=self.ax_header.transAxes,
             ha="left",
             va="center",
@@ -236,7 +274,7 @@ class VisualizationPlot(object):
             color=self.THEME["text_main"],
             fontweight="bold",
         )
-        self.ax_header.text(
+        self.header_controls_text = self.ax_header.text(
             0.015,
             0.22,
             "Controls: Space play/pause | Left/Right +/-1 | Up/Down +/-10 | L load recording",
@@ -246,27 +284,41 @@ class VisualizationPlot(object):
             fontsize=9.2,
             color=self.THEME["text_muted"],
         )
-        self.ax_header.text(
-            0.62,
-            0.22,
-            "Lane Directions: Upper=Dir1 (x<0) | Lower=Dir2 (x>0)",
-            transform=self.ax_header.transAxes,
-            ha="left",
-            va="center",
-            fontsize=8.8,
-            color=self.THEME["accent_alt"],
-        )
-        self.header_state_text = self.ax_header.text(
-            0.985,
-            0.62,
+        self.header_note_text = self.ax_header.text(
+            0.79,
+            0.24,
             "",
             transform=self.ax_header.transAxes,
             ha="right",
             va="center",
-            fontsize=10.5,
+            fontsize=8.4,
+            color=self.THEME["accent_alt"],
+        )
+        self.header_state_text = self.ax_header.text(
+            0.79,
+            0.64,
+            "",
+            transform=self.ax_header.transAxes,
+            ha="right",
+            va="center",
+            fontsize=9.5,
             color=self.THEME["text_main"],
             fontweight="bold",
         )
+
+        button_y = self.header_bottom + 0.021
+        button_w = 0.072
+        button_h = 0.036
+        button_gap = 0.006
+        button_x = 0.80
+        self.ax_button_dataset_highd = self.fig.add_axes([button_x, button_y, button_w, button_h])
+        self.ax_button_dataset_exid = self.fig.add_axes([button_x + button_w + button_gap, button_y, button_w, button_h])
+        self.button_dataset_highd = Button(self.ax_button_dataset_highd, "highD")
+        self.button_dataset_exid = Button(self.ax_button_dataset_exid, "exiD")
+        self._style_button(self.button_dataset_highd)
+        self._style_button(self.button_dataset_exid)
+        self._refresh_dataset_buttons()
+        self._layout_header_elements()
 
     def _center_window_on_screen(self):
         """
@@ -297,6 +349,97 @@ class VisualizationPlot(object):
                 return
         except Exception:
             pass
+
+    def _header_note(self):
+        if self._normalize_dataset_name(self.active_dataset_name) == "exid":
+            return str(
+                self.meta_dictionary.get(
+                    ROAD_INFO_NOTE,
+                    "exiD exploratory adapter | location-specific background crop active",
+                )
+            )
+        return "Lane Directions: Upper=Dir1 (x<0) | Lower=Dir2 (x>0)"
+
+    def _header_state_label(self):
+        state = "PLAY" if self.playing else "PAUSE"
+        return "Rec {} | Frame {}/{} | {} @ {}fps".format(
+            self.active_recording_id or "-",
+            int(self.current_frame),
+            int(self.maximum_frames),
+            state,
+            int(self.playback_fps),
+        )
+
+    def _header_char_budget(self, expanded_chars, compact_chars):
+        scale = self._responsive_scale()
+        if scale >= 0.94:
+            return int(expanded_chars)
+        if scale <= 0.80:
+            return int(compact_chars)
+        ratio = (scale - 0.80) / 0.14
+        return int(round(compact_chars + ((expanded_chars - compact_chars) * ratio)))
+
+    def _layout_header_elements(self):
+        if not hasattr(self, "header_title_text"):
+            return
+        controls_text = "Controls: Space play/pause | Left/Right +/-1 | Up/Down +/-10 | L load recording"
+        title_font = self._responsive_font(16)
+        controls_font = self._responsive_font(9.2)
+        note_font = self._responsive_font(8.4)
+        state_font = self._responsive_font(9.5)
+        button_font = self._responsive_font(9.2)
+
+        self.header_title_text.set_text("{} Scenario Intelligence Console".format(self._dataset_display_name()))
+        self.header_title_text.set_fontsize(title_font)
+        self.header_controls_text.set_text(self._ellipsize(controls_text, self._header_char_budget(80, 56)))
+        self.header_controls_text.set_fontsize(controls_font)
+        self.header_note_text.set_text(self._ellipsize(self._header_note(), self._header_char_budget(68, 44)))
+        self.header_note_text.set_fontsize(note_font)
+        self.header_state_text.set_text(self._ellipsize(self._header_state_label(), self._header_char_budget(38, 30)))
+        self.header_state_text.set_fontsize(state_font)
+
+        for button in (getattr(self, "button_dataset_highd", None), getattr(self, "button_dataset_exid", None)):
+            if button is not None:
+                button.label.set_fontsize(button_font)
+
+    def _update_header_copy(self):
+        self._layout_header_elements()
+
+    def _refresh_dataset_buttons(self):
+        active = self._normalize_dataset_name(self.selected_dataset_name)
+        button_specs = [
+            (getattr(self, "button_dataset_highd", None), "highd"),
+            (getattr(self, "button_dataset_exid", None), "exid"),
+        ]
+        for button, dataset_name in button_specs:
+            if button is None:
+                continue
+            is_active = dataset_name == active
+            face = self.THEME["accent"] if is_active else self.THEME["button"]
+            button.ax.set_facecolor(face)
+            button.color = face
+            button.hovercolor = self.THEME["button_hover"]
+            button.label.set_color(self.THEME["button_text"])
+
+    def _switch_selected_dataset(self, dataset_name):
+        target = self._normalize_dataset_name(dataset_name)
+        if target == self.selected_dataset_name:
+            return
+        self.selected_dataset_name = target
+        self.recording_options = self._recording_options_for_dataset(target)
+        if self.recording_options:
+            if self.selected_recording_id not in self.recording_options:
+                self.selected_recording_id = self.recording_options[0]
+        else:
+            self.selected_recording_id = None
+        self.recording_slider = self._build_recording_slider()
+        if self.recording_slider is not None:
+            self.recording_slider.on_changed(self.update_recording_slider)
+        self._refresh_dataset_buttons()
+        self._refresh_control_value_labels()
+        if hasattr(self, "status_text"):
+            self.status_text.set_text(self._build_status_text())
+        self.fig.canvas.draw_idle()
 
         # Qt backend
         try:
@@ -534,6 +677,8 @@ class VisualizationPlot(object):
         Returns a tuple: (inferred_mode, sample_count, match_raw, match_canonical)
         where inferred_mode is one of {"raw", "canonical"}.
         """
+        if self._normalize_dataset_name(self.active_dataset_name) != "highd":
+            return None
         if not self.sfc_codes_by_frame:
             return None
 
@@ -549,7 +694,7 @@ class VisualizationPlot(object):
                 if cutter_id is None:
                     continue
 
-                reference_matrix = self._build_highd_reference_matrix(cutter_id, int(frame))
+                reference_matrix = self._build_neighbor_reference_matrix(cutter_id, int(frame))
                 if reference_matrix is None:
                     continue
 
@@ -689,6 +834,10 @@ class VisualizationPlot(object):
         self.button_next2.on_clicked(self.update_button_next2)
         self.button_play_pause.on_clicked(self.update_button_play_pause)
         self.button_load_recording.on_clicked(self.update_button_load_recording)
+        if hasattr(self, "button_dataset_highd"):
+            self.button_dataset_highd.on_clicked(lambda _: self._switch_selected_dataset("highd"))
+        if hasattr(self, "button_dataset_exid"):
+            self.button_dataset_exid.on_clicked(lambda _: self._switch_selected_dataset("exid"))
 
         if self.key_event_cid is not None:
             self.fig.canvas.mpl_disconnect(self.key_event_cid)
@@ -699,6 +848,9 @@ class VisualizationPlot(object):
         if self.scroll_event_cid is not None:
             self.fig.canvas.mpl_disconnect(self.scroll_event_cid)
         self.scroll_event_cid = self.fig.canvas.mpl_connect("scroll_event", self.on_scroll)
+        if self.resize_event_cid is not None:
+            self.fig.canvas.mpl_disconnect(self.resize_event_cid)
+        self.resize_event_cid = self.fig.canvas.mpl_connect("resize_event", self.on_resize)
 
     def _style_button(self, button):
         button.ax.set_facecolor(self.THEME["button"])
@@ -845,40 +997,56 @@ class VisualizationPlot(object):
             self.speed_slider.valtext.set_text("{} fps".format(int(self.playback_fps)))
 
     def _update_header_state(self):
-        if not hasattr(self, "header_state_text"):
-            return
-        state = "PLAY" if self.playing else "PAUSE"
-        self.header_state_text.set_text(
-            "REC {} | FRAME {}/{} | {} @ {}fps".format(
-                self.active_recording_id or "-",
-                int(self.current_frame),
-                int(self.maximum_frames),
-                state,
-                int(self.playback_fps),
-            )
-        )
+        self._layout_header_elements()
 
     def _draw_background(self):
         self.ax.clear()
         self.ax.set_position([0.0, self.road_bottom, 1.0, self.road_top - self.road_bottom])
         self.ax.set_facecolor(self.THEME["road_bg"])
+        self._reset_road_display_transform()
 
         background_image_path = self.arguments.get("background_image")
         if background_image_path is not None and os.path.exists(background_image_path):
             self.background_image = imread(background_image_path)
             self.y_sign = 1
-            self.ax.imshow(self.background_image[:, :, :], alpha=0.93)
+            image_height, image_width = self.background_image.shape[:2]
+            image_extent = [0.0, float(image_width), float(image_height), 0.0]
+            if self._normalize_dataset_name(self.active_dataset_name) == "exid":
+                self._configure_exid_road_display()
+                self.ax.imshow(
+                    self.background_image[:, :, :],
+                    alpha=0.93,
+                    extent=image_extent,
+                    transform=self.road_artist_transform,
+                )
+            else:
+                self.ax.imshow(self.background_image[:, :, :], alpha=0.93, extent=image_extent)
             tint = np.zeros_like(self.background_image[:, :, :], dtype=float)
             tint[..., 0] = 0.04
             tint[..., 1] = 0.10
             tint[..., 2] = 0.18
-            self.ax.imshow(tint, alpha=0.18)
+            if self._road_transform_active():
+                self.ax.imshow(tint, alpha=0.18, extent=image_extent, transform=self.road_artist_transform)
+                self.ax.set_aspect("equal")
+            else:
+                self.ax.imshow(tint, alpha=0.18, extent=image_extent)
+                self.ax.set_aspect("equal")
         else:
             self.background_image = None
             self.y_sign = -1
             self.outer_line_thickness = 0.2
             self.lane_color = "#94a3b8"
             self.plot_highway()
+            self.ax.set_aspect("auto")
+
+        x_limits = self.meta_dictionary.get(BACKGROUND_X_LIMITS)
+        y_limits = self.meta_dictionary.get(BACKGROUND_Y_LIMITS)
+        if self._road_transform_active() and self.road_view_xlim is not None and self.road_view_ylim is not None:
+            self.ax.set_xlim(self.road_view_xlim)
+            self.ax.set_ylim(self.road_view_ylim)
+        elif x_limits is not None and y_limits is not None:
+            self.ax.set_xlim(x_limits)
+            self.ax.set_ylim(y_limits)
 
         self.plot_highway_information()
         self.ax.set_xticks([])
@@ -886,6 +1054,195 @@ class VisualizationPlot(object):
         self.ax.set_autoscale_on(False)
         self.default_xlim = tuple(self.ax.get_xlim())
         self.default_ylim = tuple(self.ax.get_ylim())
+
+    def _background_scale(self):
+        scale = self.meta_dictionary.get(BACKGROUND_SCALE)
+        if scale is None:
+            return 0.10106 * 4.0
+        try:
+            numeric = float(scale)
+        except Exception:
+            return 0.10106 * 4.0
+        return numeric if numeric > 0 else 1.0
+
+    def _display_bbox(self, bbox):
+        arr = np.array(bbox, dtype=float)
+        if self.background_image is None:
+            return arr
+        return arr / self._background_scale()
+
+    def _display_polygon(self, polygon):
+        arr = np.array(polygon, dtype=float)
+        if self.background_image is None:
+            return arr
+        return arr / self._background_scale()
+
+    def _reset_road_display_transform(self):
+        self.road_rotation_deg = 0.0
+        self.road_rotation_center = None
+        self.road_view_xlim = None
+        self.road_view_ylim = None
+        self.road_artist_transform = self.ax.transData
+
+    @staticmethod
+    def _rotate_points(points, center, angle_deg):
+        points_arr = np.asarray(points, dtype=float)
+        if points_arr.size == 0:
+            return points_arr.copy()
+        squeeze = points_arr.ndim == 1
+        if squeeze:
+            points_arr = points_arr.reshape(1, 2)
+        center_arr = np.asarray(center, dtype=float).reshape(1, 2)
+        theta = np.deg2rad(float(angle_deg))
+        rot = np.array(
+            [
+                [np.cos(theta), -np.sin(theta)],
+                [np.sin(theta), np.cos(theta)],
+            ],
+            dtype=float,
+        )
+        rotated = (points_arr - center_arr) @ rot.T + center_arr
+        return rotated[0] if squeeze else rotated
+
+    def _normalize_rotation_angle(self, angle_deg):
+        angle = float(angle_deg)
+        while angle <= -90.0:
+            angle += 180.0
+        while angle > 90.0:
+            angle -= 180.0
+        return angle
+
+    def _road_transform_active(self):
+        return (
+            self._normalize_dataset_name(self.active_dataset_name) == "exid"
+            and self.background_image is not None
+            and self.road_rotation_center is not None
+            and self.road_artist_transform is not None
+        )
+
+    def _transform_display_points(self, points):
+        if not self._road_transform_active():
+            return np.asarray(points, dtype=float)
+        return self._rotate_points(points, self.road_rotation_center, self.road_rotation_deg)
+
+    @staticmethod
+    def _bbox_polygon_points(bounding_box, vehicle_box_y):
+        x0 = float(bounding_box[0])
+        y0 = float(vehicle_box_y)
+        width = float(bounding_box[2])
+        height = float(bounding_box[3])
+        return np.array(
+            [
+                [x0, y0],
+                [x0 + width, y0],
+                [x0 + width, y0 + height],
+                [x0, y0 + height],
+            ],
+            dtype=float,
+        )
+
+    def _vehicle_polygon_for_frame(self, track, current_index, bounding_box, vehicle_box_y):
+        rotated_polygon = track.get(ROTATED_BBOX)
+        if rotated_polygon is not None:
+            try:
+                polygon_points = self._display_polygon(rotated_polygon[current_index])
+                if polygon_points.shape == (4, 2):
+                    return polygon_points
+            except Exception:
+                pass
+        return self._bbox_polygon_points(bounding_box, vehicle_box_y)
+
+    @staticmethod
+    def _triangle_from_rotated_polygon(vehicle_polygon):
+        polygon = np.asarray(vehicle_polygon, dtype=float)
+        if polygon.shape != (4, 2):
+            return None
+        triangle_factor = 0.25
+        a = polygon[3] + ((polygon[2] - polygon[3]) * triangle_factor)
+        b = polygon[0] + ((polygon[1] - polygon[0]) * triangle_factor)
+        c = polygon[0] + ((polygon[3] - polygon[0]) * 0.5)
+        return np.vstack([a, b, c])
+
+    def _compute_exid_display_geometry(self):
+        sample_centers = []
+        sample_corners = []
+
+        for track in self.tracks or []:
+            try:
+                bounding_boxes = self._display_bbox(track[BBOX])
+            except Exception:
+                continue
+            if bounding_boxes is None:
+                continue
+            bounding_boxes = np.asarray(bounding_boxes, dtype=float)
+            if bounding_boxes.ndim != 2 or bounding_boxes.shape[0] == 0 or bounding_boxes.shape[1] < 4:
+                continue
+            stride = max(1, int(len(bounding_boxes) // 18))
+            sampled_boxes = bounding_boxes[::stride]
+            centers = np.column_stack(
+                [
+                    sampled_boxes[:, 0] + (sampled_boxes[:, 2] / 2.0),
+                    sampled_boxes[:, 1] + (sampled_boxes[:, 3] / 2.0),
+                ]
+            )
+            sample_centers.append(centers)
+            for bbox in sampled_boxes:
+                sample_corners.append(self._bbox_polygon_points(bbox, bbox[1]))
+
+        if not sample_centers or not sample_corners:
+            return
+
+        centers_arr = np.vstack(sample_centers)
+        corners_arr = np.vstack(sample_corners)
+        if centers_arr.shape[0] < 2:
+            return
+
+        rotation_center = centers_arr.mean(axis=0)
+        centered = centers_arr - rotation_center
+        covariance = np.cov(centered.T)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
+        principal_axis = eigenvectors[:, int(np.argmax(eigenvalues))]
+        base_angle = np.rad2deg(np.arctan2(principal_axis[1], principal_axis[0]))
+
+        candidate_angles = [self._normalize_rotation_angle(-base_angle + delta) for delta in (0.0, 90.0, -90.0)]
+        best_angle = candidate_angles[0]
+        best_ratio = -np.inf
+        best_rotated_corners = None
+        for candidate in candidate_angles:
+            rotated_corners = self._rotate_points(corners_arr, rotation_center, candidate)
+            span = rotated_corners.max(axis=0) - rotated_corners.min(axis=0)
+            width_span = max(1.0, float(span[0]))
+            height_span = max(1.0, float(span[1]))
+            ratio = width_span / height_span
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_angle = candidate
+                best_rotated_corners = rotated_corners
+
+        if best_rotated_corners is None:
+            return
+
+        xmin, ymin = best_rotated_corners.min(axis=0)
+        xmax, ymax = best_rotated_corners.max(axis=0)
+        x_span = max(1.0, float(xmax - xmin))
+        y_span = max(1.0, float(ymax - ymin))
+        x_pad = max(120.0, x_span * 0.05)
+        y_pad = max(110.0, y_span * 0.24)
+
+        self.road_rotation_deg = float(best_angle)
+        self.road_rotation_center = np.asarray(rotation_center, dtype=float)
+        self.road_view_xlim = (float(xmin - x_pad), float(xmax + x_pad))
+        self.road_view_ylim = (float(ymax + y_pad), float(ymin - y_pad))
+        self.road_artist_transform = transforms.Affine2D().rotate_deg_around(
+            float(self.road_rotation_center[0]),
+            float(self.road_rotation_center[1]),
+            float(self.road_rotation_deg),
+        ) + self.ax.transData
+
+    def _configure_exid_road_display(self):
+        if self._normalize_dataset_name(self.active_dataset_name) != "exid" or self.background_image is None:
+            return
+        self._compute_exid_display_geometry()
 
     def _reload_recording(self, loaded_arguments, loaded_tracks, loaded_static_info, loaded_meta_dictionary):
         self._toggle_playback(force_stop=True)
@@ -895,6 +1252,11 @@ class VisualizationPlot(object):
         self.static_info = loaded_static_info
         self.meta_dictionary = loaded_meta_dictionary
         self.track_lookup = self._build_track_lookup(self.tracks)
+        self.active_dataset_name = self._normalize_dataset_name(
+            loaded_arguments.get("dataset") or loaded_meta_dictionary.get(DATASET_NAME, self.active_dataset_name)
+        )
+        self.selected_dataset_name = self.active_dataset_name
+        self.recording_options = self._recording_options_for_dataset(self.active_dataset_name)
         self.active_recording_id = self._resolve_recording_id(loaded_arguments)
         self.selected_recording_id = self.active_recording_id
         self.maximum_frames = self._compute_maximum_frame()
@@ -909,9 +1271,18 @@ class VisualizationPlot(object):
         self.timeline_event_points = self._build_timeline_event_points()
         self._refresh_timeline_plot()
         self._draw_background()
+        self._refresh_dataset_buttons()
+        self._update_header_copy()
+        try:
+            self.fig.canvas.manager.set_window_title("{} Console".format(self._dataset_display_name()))
+        except Exception:
+            pass
 
         self.frame_slider = self._build_frame_slider()
         self.frame_slider.on_changed(self.update_slider)
+        self.recording_slider = self._build_recording_slider()
+        if self.recording_slider is not None:
+            self.recording_slider.on_changed(self.update_recording_slider)
 
         if self.recording_slider is not None and self.selected_recording_id in self.recording_options:
             selected_index = self.recording_options.index(self.selected_recording_id) + 1
@@ -991,16 +1362,13 @@ class VisualizationPlot(object):
         if current_index < 0 or current_index >= len(track[BBOX]):
             return None
 
-        bounding_box = np.array(track[BBOX][current_index], dtype=float)
-        if self.background_image is not None:
-            bounding_box /= 0.10106
-            bounding_box /= 4
+        bounding_box = self._display_bbox(track[BBOX][current_index])
 
         y_position = self.y_sign * bounding_box[1]
         vehicle_box_y = y_position + (self.y_sign * bounding_box[3] if self.y_sign < 0 else 0)
         center_x = bounding_box[0] + bounding_box[2] / 2
         center_y = vehicle_box_y + bounding_box[3] / 2
-        return np.array([center_x, center_y], dtype=float)
+        return self._transform_display_points(np.array([center_x, center_y], dtype=float))
 
     def _collect_active_cutter_centers(self, active_cutter_ids):
         centers = []
@@ -1105,6 +1473,10 @@ class VisualizationPlot(object):
         eval_summary = self._build_sfc_eval_summary()
         return "\n".join(
             [
+                "Dataset: {} | Selected: {}".format(
+                    self._dataset_display_name(self.active_dataset_name),
+                    self._dataset_display_name(self.selected_dataset_name),
+                ),
                 "Rec: {} | Selected: {}".format(self.active_recording_id or "-", self.selected_recording_id or "-"),
                 "Frame: {}/{} | {} @ {} fps".format(
                     int(self.current_frame), int(self.maximum_frames), state, int(self.playback_fps)
@@ -1207,19 +1579,33 @@ class VisualizationPlot(object):
         self.fig.canvas.draw_idle()
 
     def update_button_load_recording(self, _):
-        if self.recording_loader is None:
+        if self.dataset_loader is None and self.recording_loader is None:
             print("Recording loader is not configured.")
             return
         if self.selected_recording_id is None:
             print("No recording selected.")
             return
         try:
-            loaded = self.recording_loader(self.selected_recording_id)
+            if self.dataset_loader is not None:
+                loaded = self.dataset_loader(self.selected_dataset_name, self.selected_recording_id)
+            else:
+                loaded = self.recording_loader(self.selected_recording_id)
             loaded_arguments, loaded_tracks, loaded_static_info, loaded_meta_dictionary = loaded
         except Exception as exc:
-            print("Failed to load recording {}: {}".format(self.selected_recording_id, exc))
+            print(
+                "Failed to load {} recording {}: {}".format(
+                    self._dataset_display_name(self.selected_dataset_name),
+                    self.selected_recording_id,
+                    exc,
+                )
+            )
             return
-        print("Loaded recording {}.".format(self.selected_recording_id))
+        print(
+            "Loaded {} recording {}.".format(
+                self._dataset_display_name(self.selected_dataset_name),
+                self.selected_recording_id,
+            )
+        )
         self._reload_recording(loaded_arguments, loaded_tracks, loaded_static_info, loaded_meta_dictionary)
 
     def on_key_press(self, event):
@@ -1262,6 +1648,11 @@ class VisualizationPlot(object):
         direction = str(getattr(event, "button", "")).lower()
         self._set_sfc_eval_count(len(evaluations))
         self._step_sfc_eval(-1 if direction == "up" else +1)
+
+    def on_resize(self, _):
+        self._layout_header_elements()
+        self._update_sfc_matrix_overlay()
+        self.fig.canvas.draw_idle()
 
     def trigger_update(self):
         self.remove_patches()
@@ -1310,13 +1701,11 @@ class VisualizationPlot(object):
                 normal_count += 1
 
             try:
-                bounding_box = np.array(track[BBOX][current_index], dtype=float)
+                bounding_box = self._display_bbox(track[BBOX][current_index])
                 current_velocity = track[X_VELOCITY][current_index]
-                if self.background_image is not None:
-                    bounding_box /= 0.10106
-                    bounding_box /= 4
                 y_position = self.y_sign * bounding_box[1]
                 vehicle_box_y = y_position + (self.y_sign * bounding_box[3] if self.y_sign < 0 else 0)
+                vehicle_polygon = self._vehicle_polygon_for_frame(track, current_index, bounding_box, vehicle_box_y)
             except Exception:
                 continue
             visible_count += 1
@@ -1333,23 +1722,36 @@ class VisualizationPlot(object):
                     rect_style["alpha"] = 0.76
                     rect_style["linewidth"] = 0.75
 
-                rect = plt.Rectangle((bounding_box[0], vehicle_box_y), bounding_box[2], bounding_box[3], **rect_style)
+                if self._road_transform_active():
+                    rect_points = self._transform_display_points(vehicle_polygon)
+                    rect = plt.Polygon(rect_points, closed=True, **rect_style)
+                elif self._normalize_dataset_name(self.active_dataset_name) == "exid":
+                    rect = plt.Polygon(vehicle_polygon, closed=True, **rect_style)
+                else:
+                    rect = plt.Rectangle((bounding_box[0], vehicle_box_y), bounding_box[2], bounding_box[3], **rect_style)
                 self.ax.add_patch(rect)
                 plotted_objects.append(rect)
 
             if self.arguments["plotDirectionTriangle"]:
-                triangle_y_position = [y_position, y_position + bounding_box[3], y_position + (bounding_box[3] / 2)]
-                if self.y_sign < 0:
-                    triangle_y_position += self.y_sign * bounding_box[3]
-                if current_velocity < 0:
-                    x_back_position = bounding_box[0] + (bounding_box[2] * 0.2)
-                    triangle_info = np.array([[x_back_position, x_back_position, bounding_box[0]], triangle_y_position])
-                else:
-                    x_back_position = bounding_box[0] + bounding_box[2] - (bounding_box[2] * 0.2)
-                    triangle_info = np.array(
-                        [[x_back_position, x_back_position, bounding_box[0] + bounding_box[2]], triangle_y_position]
-                    )
-                polygon = plt.Polygon(np.transpose(triangle_info), **triangle_style)
+                triangle_points = None
+                if track.get(ROTATED_BBOX) is not None:
+                    triangle_points = self._triangle_from_rotated_polygon(vehicle_polygon)
+                if triangle_points is None:
+                    triangle_y_position = [y_position, y_position + bounding_box[3], y_position + (bounding_box[3] / 2)]
+                    if self.y_sign < 0:
+                        triangle_y_position += self.y_sign * bounding_box[3]
+                    if current_velocity < 0:
+                        x_back_position = bounding_box[0] + (bounding_box[2] * 0.2)
+                        triangle_info = np.array([[x_back_position, x_back_position, bounding_box[0]], triangle_y_position])
+                    else:
+                        x_back_position = bounding_box[0] + bounding_box[2] - (bounding_box[2] * 0.2)
+                        triangle_info = np.array(
+                            [[x_back_position, x_back_position, bounding_box[0] + bounding_box[2]], triangle_y_position]
+                        )
+                    triangle_points = np.transpose(triangle_info)
+                if self._road_transform_active():
+                    triangle_points = self._transform_display_points(triangle_points)
+                polygon = plt.Polygon(triangle_points, **triangle_style)
                 self.ax.add_patch(polygon)
                 plotted_objects.append(polygon)
 
@@ -1385,6 +1787,9 @@ class VisualizationPlot(object):
                 else:
                     target_location = (bounding_box[0], y_position + 1)
                     text_location = (bounding_box[0] + (bounding_box[2] / 2), y_position + 1.5)
+                if self._road_transform_active():
+                    target_location = tuple(self._transform_display_points(np.asarray(target_location, dtype=float)))
+                    text_location = tuple(self._transform_display_points(np.asarray(text_location, dtype=float)))
                 text_patch = self.ax.annotate(
                     annotation_text,
                     xy=target_location,
@@ -1397,6 +1802,10 @@ class VisualizationPlot(object):
 
                 if show_id_on_vehicle:
                     vehicle_text_location = (bounding_box[0] + (bounding_box[2] / 2), vehicle_box_y + (bounding_box[3] / 2))
+                    if self._road_transform_active():
+                        vehicle_text_location = tuple(
+                            self._transform_display_points(np.asarray(vehicle_text_location, dtype=float))
+                        )
                     id_text_patch = self.ax.annotate(
                         "{}".format(track_id), xy=vehicle_text_location, xytext=vehicle_text_location, **id_on_vehicle_text_style
                     )
@@ -1406,16 +1815,18 @@ class VisualizationPlot(object):
             if self.arguments["plotTrackingLines"]:
                 relevant_bounding_boxes = np.array(track[BBOX][0:current_index, :], dtype=float)
                 if relevant_bounding_boxes.shape[0] > 0:
-                    if self.background_image is not None:
-                        relevant_bounding_boxes /= 0.10106
-                        relevant_bounding_boxes /= 4
+                    relevant_bounding_boxes = self._display_bbox(relevant_bounding_boxes)
                     sign = 1 if self.background_image is not None else self.y_sign
                     x_centroid_position = relevant_bounding_boxes[:, 0] + relevant_bounding_boxes[:, 2] / 2
                     y_centroid_position = (sign * relevant_bounding_boxes[:, 1]) + sign * (relevant_bounding_boxes[:, 3]) / 2
-                    centroids = np.transpose([x_centroid_position, y_centroid_position])
                     track_sign = 1 if current_velocity < 0 else -1
+                    centroids = np.transpose(
+                        [x_centroid_position + track_sign * (bounding_box[3] / 2), y_centroid_position]
+                    )
+                    if self._road_transform_active():
+                        centroids = self._transform_display_points(centroids)
                     plotted_centroids = self.ax.plot(
-                        centroids[:, 0] + track_sign * (bounding_box[3] / 2), centroids[:, 1], **track_style
+                        centroids[:, 0], centroids[:, 1], **track_style
                     )
                     plotted_objects.append(plotted_centroids)
 
@@ -1451,11 +1862,30 @@ class VisualizationPlot(object):
         if not sfc_codes_csv or not os.path.exists(sfc_codes_csv):
             return {}
 
-        usecols = ["event_id", "recording_id", "cutter_id", "stage", "frame", "code", "code_hex"]
+        try:
+            available_columns = list(pd.read_csv(sfc_codes_csv, nrows=0).columns)
+        except Exception:
+            return {}
+
+        required_columns = {"frame", "code"}
+        if not required_columns.issubset(available_columns):
+            return {}
+
+        usecols = [
+            column_name
+            for column_name in ("event_id", "recording_id", "cutter_id", "stage", "frame", "code", "code_hex", "dataset")
+            if column_name in available_columns
+        ]
         try:
             df = pd.read_csv(sfc_codes_csv, usecols=usecols)
         except Exception:
             return {}
+
+        if "dataset" in df.columns:
+            dataset_values = df["dataset"].astype(str).str.strip().str.lower()
+            df = df[dataset_values == self._normalize_dataset_name(self.active_dataset_name)]
+            if df.empty:
+                return {}
 
         if "frame" not in df.columns or "code" not in df.columns:
             return {}
@@ -1515,7 +1945,7 @@ class VisualizationPlot(object):
                 return 0
         return value if value > 0 else 0
 
-    def _build_highd_reference_matrix(self, cutter_id, frame):
+    def _build_neighbor_reference_matrix(self, cutter_id, frame):
         try:
             cutter_id_int = int(cutter_id)
         except Exception:
@@ -1538,6 +1968,8 @@ class VisualizationPlot(object):
         g = np.zeros((3, 3), dtype=np.uint8)
         g[1, 1] = 1
 
+        # highD and exiD both normalize lead/rear/side neighbor ids into the
+        # same track columns, so the raw occupancy matrix can be built once.
         id_columns = (
             (LEFT_PRECEDING_ID, LEFT_ALONGSIDE_ID, LEFT_FOLLOWING_ID),
             (PRECEDING_ID, None, FOLLOWING_ID),
@@ -1558,6 +1990,16 @@ class VisualizationPlot(object):
                     g[row, col] = 1
         return g.tolist()
 
+    def _build_reference_matrix(self, cutter_id, frame):
+        if self._normalize_dataset_name(self.active_dataset_name) in {"highd", "exid"}:
+            return self._build_neighbor_reference_matrix(cutter_id, frame)
+        return None
+
+    def _reference_matrix_label(self):
+        if self._normalize_dataset_name(self.active_dataset_name) in {"highd", "exid"}:
+            return "{} Raw-ID Matrix".format(self._dataset_display_name())
+        return "{} Reference Matrix".format(self._dataset_display_name())
+
     def _build_sfc_frame_evaluations(self):
         frame = int(self.current_frame)
         frame_entries = self.sfc_codes_by_frame.get(frame, [])
@@ -1577,7 +2019,7 @@ class VisualizationPlot(object):
             reference_matrix = None
             match = None
             if cutter_id is not None:
-                reference_matrix = self._build_highd_reference_matrix(cutter_id, frame)
+                reference_matrix = self._build_reference_matrix(cutter_id, frame)
                 if reference_matrix is not None:
                     match = bool(
                         np.array_equal(
@@ -1948,7 +2390,7 @@ class VisualizationPlot(object):
                 x0=0.36,
                 y0=y0,
                 cell=cell,
-                label="highD Raw-ID Matrix",
+                label=self._reference_matrix_label(),
                 palette={"on": "#2563eb", "off": "#12263a"},
             )
             self._draw_diff_grid(self.ax_sfc_info, solution_matrix, reference_matrix, x0=0.67, y0=y0, cell=cell)
@@ -1969,7 +2411,7 @@ class VisualizationPlot(object):
             self.ax_sfc_info.text(
                 0.36,
                 0.47,
-                "highD Raw-ID Matrix unavailable",
+                "{} unavailable".format(self._reference_matrix_label()),
                 transform=self.ax_sfc_info.transAxes,
                 ha="left",
                 va="center",
@@ -2090,9 +2532,19 @@ class VisualizationPlot(object):
         self._update_header_state()
 
     def plot_highway(self):
-        upper_lanes = self.meta_dictionary[UPPER_LANE_MARKINGS]
+        upper_lanes = self.meta_dictionary.get(UPPER_LANE_MARKINGS)
+        lower_lanes = self.meta_dictionary.get(LOWER_LANE_MARKINGS)
+        if upper_lanes is None or lower_lanes is None:
+            self.ax.set_xlim(0, 400)
+            self.ax.set_ylim(40, 0)
+            return
+        upper_lanes = np.asarray(upper_lanes, dtype=float)
+        lower_lanes = np.asarray(lower_lanes, dtype=float)
+        if upper_lanes.size < 2 or lower_lanes.size < 2:
+            self.ax.set_xlim(0, 400)
+            self.ax.set_ylim(40, 0)
+            return
         upper_lanes_shape = upper_lanes.shape
-        lower_lanes = self.meta_dictionary[LOWER_LANE_MARKINGS]
         lower_lanes_shape = lower_lanes.shape
 
         asphalt = patches.Rectangle(

@@ -33,10 +33,12 @@
 \@writefile{toc}{\contentsline {section}{\numberline {1.1}Motivation}{1}{section.1.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {1.2}Problem statement and approach}{1}{section.1.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {1.3}Research questions}{2}{section.1.3}\protected@file@percent }
+\citation{moers2022exid}
 \@writefile{toc}{\contentsline {section}{\numberline {1.4}Scope and delimitations}{3}{section.1.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {1.5}Contributions}{3}{section.1.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {1.6}Thesis outline}{4}{section.1.6}\protected@file@percent }
 \citation{highd_2018}
+\citation{moers2022exid}
 \citation{wanggao2025highd}
 \citation{wang2021ssm}
 \citation{johnsson2021validation}
@@ -49,15 +51,15 @@
 \newlabel{chap:relatedwork}{{2}{5}{Related Work}{chapter.2}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {2.1}The highD dataset}{5}{section.2.1}\protected@file@percent }
 \newlabel{sec:highd}{{2.1}{5}{The highD dataset}{section.2.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {2.2}Surrogate safety measures}{5}{section.2.2}\protected@file@percent }
 \citation{wang2019cutin}
 \citation{zhou2016riskperception}
 \citation{shangguan2022}
 \citation{liu2025multitask}
 \citation{hwang2022fsmrl}
+\@writefile{toc}{\contentsline {section}{\numberline {2.2}Surrogate safety measures}{6}{section.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2.3}Lane-changing and cut-in analysis}{6}{section.2.3}\protected@file@percent }
 \citation{elfes1989}
 \citation{deo2018csp}
-\@writefile{toc}{\contentsline {section}{\numberline {2.3}Lane-changing and cut-in analysis}{6}{section.2.3}\protected@file@percent }
 \citation{moon2001}
 \@writefile{toc}{\contentsline {section}{\numberline {2.4}Context encoding for interaction analysis}{7}{section.2.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {2.5}Research gap}{7}{section.2.5}\protected@file@percent }
@@ -221,15 +223,16 @@
 \@writefile{lot}{\contentsline {table}{\numberline {6.14}{\ignorespaces Feature ablation: LORO-CV (stump ensemble).\relax }}{37}{table.caption.55}\protected@file@percent }
 \newlabel{tab:ablation}{{6.14}{37}{Feature ablation: LORO-CV (stump ensemble).\relax }{table.caption.55}{}}
 \@writefile{toc}{\contentsline {paragraph}{Point-biserial correlations.}{37}{section*.56}\protected@file@percent }
-\citation{ngsim_2016}
+\citation{moers2022exid}
 \@writefile{toc}{\contentsline {section}{\numberline {6.8}Reference agreement for context signatures (RQ3)}{38}{section.6.8}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6.9}Exploratory cross-dataset feasibility check (NGSIM)}{38}{section.6.9}\protected@file@percent }
-\newlabel{sec:ngsim-feasibility}{{6.9}{38}{Exploratory cross-dataset feasibility check (NGSIM)}{section.6.9}{}}
-\citation{thiemann2008ngsim}
-\@writefile{lot}{\contentsline {table}{\numberline {6.15}{\ignorespaces Exploratory NGSIM freeway feasibility summary. Percentages are calculated over the candidate cut-ins extracted in each subset.\relax }}{39}{table.caption.57}\protected@file@percent }
-\newlabel{tab:ngsim-feasibility}{{6.15}{39}{Exploratory NGSIM freeway feasibility summary. Percentages are calculated over the candidate cut-ins extracted in each subset.\relax }{table.caption.57}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {6.5}{\ignorespaces Lane-change and cut-in counts from the exploratory NGSIM freeway feasibility check. The labels above the cut-in bars show the cut-in-to-lane-change ratio. The figure demonstrates that the event-mining core transfers to another highway trajectory source, but it should not be read as a benchmark comparison against highD because the subsets differ in duration, geometry, and data quality.\relax }}{39}{figure.caption.58}\protected@file@percent }
-\newlabel{fig:ngsim-feasibility}{{6.5}{39}{Lane-change and cut-in counts from the exploratory NGSIM freeway feasibility check. The labels above the cut-in bars show the cut-in-to-lane-change ratio. The figure demonstrates that the event-mining core transfers to another highway trajectory source, but it should not be read as a benchmark comparison against highD because the subsets differ in duration, geometry, and data quality.\relax }{figure.caption.58}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6.9}Exploratory extension on \textit  {exiD}}{38}{section.6.9}\protected@file@percent }
+\newlabel{sec:exid-exploratory}{{6.9}{38}{Exploratory extension on \textit {exiD}}{section.6.9}{}}
+\citation{wang2019cutin}
+\citation{wang2021ssm}
+\@writefile{lof}{\contentsline {figure}{\numberline {6.5}{\ignorespaces Exploratory exiD overview for the 10 selected recordings. Left: number of exported cut-ins per recording. Right: median execution-stage THW per recording. The variation across files reflects the heterogeneous interaction density of entry/exit scenes and reinforces that this add-on should be read as a limited transferability illustration rather than as a second benchmark.\relax }}{39}{figure.caption.57}\protected@file@percent }
+\newlabel{fig:exid-overview}{{6.5}{39}{Exploratory exiD overview for the 10 selected recordings. Left: number of exported cut-ins per recording. Right: median execution-stage THW per recording. The variation across files reflects the heterogeneous interaction density of entry/exit scenes and reinforces that this add-on should be read as a limited transferability illustration rather than as a second benchmark.\relax }{figure.caption.57}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6.6}{\ignorespaces Execution-stage TTC summary for the exploratory exiD extension. Left: share of exported cut-ins with finite TTC in each recording. Right: median execution-stage TTC among finite-TTC events only. Dashed lines show the pooled overall values (46.5\% finite share; median \SI {24.85}{\second }). Reporting both panels avoids conflating TTC severity with TTC availability, since TTC is undefined for non-closing interactions.\relax }}{40}{figure.caption.58}\protected@file@percent }
+\newlabel{fig:exid-ttc-summary}{{6.6}{40}{Execution-stage TTC summary for the exploratory exiD extension. Left: share of exported cut-ins with finite TTC in each recording. Right: median execution-stage TTC among finite-TTC events only. Dashed lines show the pooled overall values (46.5\% finite share; median \SI {24.85}{\second }). Reporting both panels avoids conflating TTC severity with TTC availability, since TTC is undefined for non-closing interactions.\relax }{figure.caption.58}{}}
 \@writefile{toc}{\contentsline {chapter}{\numberline {7}Discussion}{41}{chapter.7}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
@@ -245,30 +248,29 @@
 \@writefile{toc}{\contentsline {paragraph}{Per-recording variability.}{43}{section*.60}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {7.1}{\ignorespaces Contribution claims and supporting evidence.\relax }}{43}{table.caption.61}\protected@file@percent }
 \newlabel{tab:contribution-evidence}{{7.1}{43}{Contribution claims and supporting evidence.\relax }{table.caption.61}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7.3}Threats to validity}{43}{section.7.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {7.4}Future work}{44}{section.7.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7.3}Threats to validity}{44}{section.7.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7.4}Future work}{45}{section.7.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {chapter}{\numberline {8}Conclusion}{47}{chapter.8}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
 \@writefile{loa}{\addvspace {10\p@ }}
 \newlabel{chap:conclusion}{{8}{47}{Conclusion}{chapter.8}{}}
 \bibcite{highd_2018}{1}
-\bibcite{ngsim_2016}{2}
-\bibcite{thiemann2008ngsim}{3}
-\bibcite{wang2021ssm}{4}
-\bibcite{johnsson2021validation}{5}
-\bibcite{hwang2022fsmrl}{6}
-\bibcite{wang2019cutin}{7}
-\bibcite{zhou2016riskperception}{8}
+\bibcite{moers2022exid}{2}
+\bibcite{wang2021ssm}{3}
+\bibcite{johnsson2021validation}{4}
+\bibcite{hwang2022fsmrl}{5}
+\bibcite{wang2019cutin}{6}
+\bibcite{zhou2016riskperception}{7}
+\bibcite{shangguan2022}{8}
 \@writefile{toc}{\contentsline {chapter}{Bibliography}{49}{chapter.8}\protected@file@percent }
-\bibcite{shangguan2022}{9}
-\bibcite{liu2025multitask}{10}
-\bibcite{tscharn2018thw}{11}
-\bibcite{elfes1989}{12}
-\bibcite{moon2001}{13}
-\bibcite{deo2018csp}{14}
-\bibcite{archer2005indicators}{15}
-\bibcite{wanggao2025highd}{16}
+\bibcite{liu2025multitask}{9}
+\bibcite{tscharn2018thw}{10}
+\bibcite{elfes1989}{11}
+\bibcite{moon2001}{12}
+\bibcite{deo2018csp}{13}
+\bibcite{archer2005indicators}{14}
+\bibcite{wanggao2025highd}{15}
 \@writefile{toc}{\contentsline {chapter}{\numberline {A}Appendix: Terminology and highD field mapping}{51}{appendix.A}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
@@ -281,8 +283,8 @@
 \@writefile{lot}{\addvspace {10\p@ }}
 \@writefile{loa}{\addvspace {10\p@ }}
 \newlabel{app:dashboard}{{B}{53}{Appendix: Qualitative Inspection Dashboard}{appendix.B}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {B.1}{\ignorespaces Interactive inspection dashboard used for qualitative review. The dashboard is based on a modified version of the official \textit  {highD} visualisation tools and was extended with cut-in-specific overlays, event selection, and stage/context displays.\relax }}{54}{figure.caption.64}\protected@file@percent }
-\newlabel{fig:gui-dashboard}{{B.1}{54}{Interactive inspection dashboard used for qualitative review. The dashboard is based on a modified version of the official \textit {highD} visualisation tools and was extended with cut-in-specific overlays, event selection, and stage/context displays.\relax }{figure.caption.64}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {B.1}{\ignorespaces Schematic layout of the interactive inspection dashboard used for qualitative review. The implemented dashboard is based on a modified version of the official \textit  {highD} visualisation tools and was extended with cut-in-specific overlays, event selection, and stage/context displays.\relax }}{54}{figure.caption.64}\protected@file@percent }
+\newlabel{fig:gui-dashboard}{{B.1}{54}{Schematic layout of the interactive inspection dashboard used for qualitative review. The implemented dashboard is based on a modified version of the official \textit {highD} visualisation tools and was extended with cut-in-specific overlays, event selection, and stage/context displays.\relax }{figure.caption.64}{}}
 \@writefile{toc}{\contentsline {chapter}{\numberline {C}Appendix: Plain-language algorithms}{55}{appendix.C}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}

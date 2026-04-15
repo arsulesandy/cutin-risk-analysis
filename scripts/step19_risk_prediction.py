@@ -11,19 +11,18 @@ Evaluation: Leave-One-Recording-Out Cross-Validation (LORO-CV).
 
 from __future__ import annotations
 
-import sys
+import argparse
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy.stats import wilcoxon
+from scipy.stats import friedmanchisquare, wilcoxon
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUTPUTS = PROJECT_ROOT / "outputs" / "reports"
 STAGE_FEATURES = OUTPUTS / "Step 09" / "cutin_stage_features_merged.csv"
 SFC_CODES = OUTPUTS / "Step 15A" / "sfc_binary_codes_long_hilbert_mirrored.csv"
 OUT_DIR = OUTPUTS / "Step 19"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -128,11 +127,11 @@ def metrics(y, yp, prob=None):
 # ---------------------------------------------------------------------------
 # Data loading
 # ---------------------------------------------------------------------------
-def load_data():
-    sf = pd.read_csv(STAGE_FEATURES)
+def load_data(stage_features_path: Path, sfc_codes_path: Path):
+    sf = pd.read_csv(stage_features_path)
     sf["risk_label"] = (sf["execution_thw_min"] < 0.7).astype(int)
 
-    sfc = pd.read_csv(SFC_CODES)
+    sfc = pd.read_csv(sfc_codes_path)
     sfc_d = sfc[sfc["stage"] == "decision"]
 
     def bits(c):
@@ -203,22 +202,41 @@ def sanitize_features(df: pd.DataFrame, features: list[str]) -> pd.DataFrame:
     return df[features].replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
 
-def wilcoxon_vs_chance(res: pd.DataFrame, *, chance: float = 0.5) -> dict[str, float | str]:
+def wilcoxon_vs_chance(
+    res: pd.DataFrame,
+    *,
+    chance: float = 0.5,
+    label: str = "SFC only AUC > chance",
+) -> dict[str, float | str | bool]:
     auc = res[["rec", "auc"]].dropna()
     test = wilcoxon(auc["auc"] - chance, alternative="greater", zero_method="wilcox")
     return {
-        "comparison": "SFC only AUC > chance",
+        "comparison": label,
+        "test": "wilcoxon_signed_rank",
         "metric": "auc",
         "alternative": "greater",
         "n_folds": int(len(auc)),
         "statistic": float(test.statistic),
         "p_value": float(test.pvalue),
+        "p_value_adj": float(test.pvalue),
+        "correction": "none",
+        "family": "single_test",
+        "significant_0_05": bool(test.pvalue < 0.05),
         "reference": chance,
     }
 
 
-def wilcoxon_paired(left: pd.DataFrame, right: pd.DataFrame, *, label: str) -> dict[str, float | str]:
-    merged = left[["rec", "auc"]].merge(right[["rec", "auc"]], on="rec", suffixes=("_left", "_right"))
+def wilcoxon_paired(
+    left: pd.DataFrame,
+    right: pd.DataFrame,
+    *,
+    label: str,
+) -> dict[str, float | str | bool]:
+    merged = left[["rec", "auc"]].merge(
+        right[["rec", "auc"]],
+        on="rec",
+        suffixes=("_left", "_right"),
+    )
     test = wilcoxon(
         merged["auc_left"],
         merged["auc_right"],
@@ -227,13 +245,88 @@ def wilcoxon_paired(left: pd.DataFrame, right: pd.DataFrame, *, label: str) -> d
     )
     return {
         "comparison": label,
+        "test": "wilcoxon_signed_rank",
         "metric": "auc",
         "alternative": "two-sided",
         "n_folds": int(len(merged)),
         "statistic": float(test.statistic),
         "p_value": float(test.pvalue),
+        "p_value_adj": float(test.pvalue),
+        "correction": "none",
+        "family": "single_test",
+        "significant_0_05": bool(test.pvalue < 0.05),
         "reference": np.nan,
     }
+
+
+def bonferroni_adjust(
+    rows: list[dict[str, float | str | bool]],
+    *,
+    family: str,
+) -> list[dict[str, float | str | bool]]:
+    m = max(len(rows), 1)
+    out = []
+    for row in rows:
+        p_value = float(row["p_value"])
+        row = dict(row)
+        row["p_value_adj"] = min(p_value * m, 1.0)
+        row["correction"] = f"Bonferroni ({m} tests)"
+        row["family"] = family
+        row["significant_0_05"] = bool(row["p_value_adj"] < 0.05)
+        out.append(row)
+    return out
+
+
+def _merge_metric_by_fold(
+    named_results: dict[str, pd.DataFrame],
+    *,
+    metric: str = "auc",
+) -> pd.DataFrame:
+    merged = None
+    for name, res in named_results.items():
+        col = _slug(name)
+        frame = res[["rec", metric]].dropna().rename(columns={metric: col})
+        merged = frame if merged is None else merged.merge(frame, on="rec", how="inner")
+    if merged is None:
+        raise ValueError("No fold-level results available for comparison.")
+    return merged.sort_values("rec").reset_index(drop=True)
+
+
+def friedman_ablation(
+    named_results: dict[str, pd.DataFrame],
+    *,
+    metric: str = "auc",
+) -> tuple[dict[str, float | str | bool], pd.DataFrame]:
+    merged = _merge_metric_by_fold(named_results, metric=metric)
+    columns = [_slug(name) for name in named_results]
+    stat, p_value = friedmanchisquare(*(merged[col] for col in columns))
+    ranks = merged[columns].rank(axis=1, method="average", ascending=True)
+    mean_ranks = {
+        f"mean_rank_{_slug(name)}": float(ranks[_slug(name)].mean())
+        for name in named_results
+    }
+    row = {
+        "comparison": "All ablation models",
+        "test": "friedman",
+        "metric": metric,
+        "alternative": "two-sided",
+        "n_folds": int(len(merged)),
+        "statistic": float(stat),
+        "p_value": float(p_value),
+        "p_value_adj": float(p_value),
+        "correction": "none",
+        "family": "omnibus",
+        "significant_0_05": bool(p_value < 0.05),
+        "reference": np.nan,
+        **mean_ranks,
+    }
+    rank_df = pd.DataFrame(
+        {
+            "feature_set": list(named_results.keys()),
+            "mean_rank": [mean_ranks[f"mean_rank_{_slug(name)}"] for name in named_results],
+        }
+    ).sort_values("mean_rank", ascending=False)
+    return row, rank_df
 
 
 # ---------------------------------------------------------------------------
@@ -309,11 +402,33 @@ def loro_cv(df, features, model_type="ensemble"):
 # Main
 # ---------------------------------------------------------------------------
 def main():
+    parser = argparse.ArgumentParser(description="Step 19: Risk prediction from pre-outcome features.")
+    parser.add_argument(
+        "--stage-features",
+        type=Path,
+        default=STAGE_FEATURES,
+        help="Merged stage-feature CSV to use for the prediction study.",
+    )
+    parser.add_argument(
+        "--sfc-codes",
+        type=Path,
+        default=SFC_CODES,
+        help="Mirror-normalized SFC long-code CSV.",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=OUT_DIR,
+        help="Directory where Step 19 outputs should be written.",
+    )
+    args = parser.parse_args()
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+
     print("=" * 70)
     print("Step 19: Risk Prediction from Pre-Outcome Features")
     print("=" * 70)
 
-    df, bc = load_data()
+    df, bc = load_data(args.stage_features, args.sfc_codes)
     fg = feature_groups(bc)
 
     # --- Run both models on all features ---
@@ -330,10 +445,10 @@ def main():
             f"  Recall={summary['mean_recall']:.4f} (±{summary['std_recall']:.4f})"
         )
         print(f"    mean ΔF1 vs baseline={summary['mean_delta_f1']:.4f}")
-        res.to_csv(OUT_DIR / f"loro_{mt}.csv", index=False)
-        pd.DataFrame([summary]).to_csv(OUT_DIR / f"summary_{mt}.csv", index=False)
+        res.to_csv(args.out_dir / f"loro_{mt}.csv", index=False)
+        pd.DataFrame([summary]).to_csv(args.out_dir / f"summary_{mt}.csv", index=False)
         if fi is not None:
-            fi.to_csv(OUT_DIR / f"importance_{mt}.csv", index=False)
+            fi.to_csv(args.out_dir / f"importance_{mt}.csv", index=False)
             print(f"    Top features: {', '.join(fi.head(5)['feature'].tolist())}")
 
     # --- Ablation (ensemble only) ---
@@ -343,7 +458,7 @@ def main():
     for name, feats in fg.items():
         res, _ = loro_cv(df, feats, model_type="ensemble")
         ablation_folds[name] = res
-        res.to_csv(OUT_DIR / f"loro_ablation_{_slug(name)}.csv", index=False)
+        res.to_csv(args.out_dir / f"loro_ablation_{_slug(name)}.csv", index=False)
         summary = summarize_results(res)
         row = {
             "feature_set": name,
@@ -367,25 +482,49 @@ def main():
         )
 
     abl_df = pd.DataFrame(ablation)
-    abl_df.to_csv(OUT_DIR / "ablation.csv", index=False)
+    abl_df.to_csv(args.out_dir / "ablation.csv", index=False)
 
-    tests = [
-        wilcoxon_vs_chance(ablation_folds["SFC only"], chance=0.5),
+    omnibus_test, rank_df = friedman_ablation(ablation_folds, metric="auc")
+    rank_df.to_csv(args.out_dir / "ablation_mean_ranks.csv", index=False)
+
+    follow_up_tests = [
         wilcoxon_paired(
             ablation_folds["All (kin+SFC)"],
             ablation_folds["Kinematic only"],
             label="All vs Kinematic only",
         ),
+        wilcoxon_paired(
+            ablation_folds["All (kin+SFC)"],
+            ablation_folds["SFC only"],
+            label="All vs SFC only",
+        ),
+        wilcoxon_paired(
+            ablation_folds["Kinematic only"],
+            ablation_folds["SFC only"],
+            label="Kinematic only vs SFC only",
+        ),
+        wilcoxon_vs_chance(
+            ablation_folds["SFC only"],
+            chance=0.5,
+            label="SFC only AUC > chance",
+        ),
     ]
+    follow_up_tests = bonferroni_adjust(
+        follow_up_tests,
+        family="ablation_follow_up",
+    )
+    tests = [omnibus_test, *follow_up_tests]
     tests_df = pd.DataFrame(tests)
-    tests_df.to_csv(OUT_DIR / "ablation_tests.csv", index=False)
+    tests_df.to_csv(args.out_dir / "ablation_tests.csv", index=False)
 
-    print("\n=== Paired Statistical Tests ===")
+    print("\n=== Ablation Statistical Tests ===")
     for row in tests:
         print(
-            f"  {row['comparison']}: statistic={row['statistic']:.4f}, "
-            f"p={row['p_value']:.6f} ({row['alternative']})"
+            f"  {row['comparison']} [{row['test']}]: statistic={row['statistic']:.4f}, "
+            f"p={row['p_value']:.6g}, p_adj={row['p_value_adj']:.6g} ({row['alternative']})"
         )
+    print("\n  Mean ranks (higher is better):")
+    print(rank_df.to_string(index=False))
 
     # --- Correlations ---
     print("\n=== Top Feature-Risk Correlations ===")
@@ -400,10 +539,10 @@ def main():
                 c = 0.0
         corrs.append({"feature": col, "corr": round(c, 4)})
     corr_df = pd.DataFrame(corrs).sort_values("corr", key=abs, ascending=False)
-    corr_df.to_csv(OUT_DIR / "correlations.csv", index=False)
+    corr_df.to_csv(args.out_dir / "correlations.csv", index=False)
     print(corr_df.head(10).to_string(index=False))
 
-    print(f"\nAll outputs saved to {OUT_DIR}")
+    print(f"\nAll outputs saved to {args.out_dir}")
 
 
 if __name__ == "__main__":

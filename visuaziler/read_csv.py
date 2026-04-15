@@ -5,6 +5,7 @@ import numpy as np
 
 # TRACK FILE
 BBOX = "bbox"
+ROTATED_BBOX = "rotatedBbox"
 FRAMES = "frames"
 FRAME = "frame"
 TRACK_ID = "id"
@@ -63,6 +64,12 @@ N_CARS = "numCars"
 N_TRUCKS = "numTrucks"
 UPPER_LANE_MARKINGS = "upperLaneMarkings"
 LOWER_LANE_MARKINGS = "lowerLaneMarkings"
+DATASET_NAME = "datasetName"
+DATASET_DISPLAY_NAME = "datasetDisplayName"
+BACKGROUND_SCALE = "backgroundScale"
+BACKGROUND_X_LIMITS = "backgroundXLimits"
+BACKGROUND_Y_LIMITS = "backgroundYLimits"
+ROAD_INFO_NOTE = "roadInfoNote"
 
 
 def read_track_csv(arguments):

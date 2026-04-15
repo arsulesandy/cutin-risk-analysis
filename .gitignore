@@ -220,10 +220,8 @@ data/.DS_Store
 configs/paths.local.json
 configs/detection.local.json
 configs/thesis.local.json
-.DS_Store
 outputs
-.DS_Store
 Halftime_Presentation_Traj2Rel_SFC.pptx
 ~$Halftime_Presentation_Traj2Rel_SFC.pptx
-.DS_Store
 /tmp
+/drone-dataset-tools-master

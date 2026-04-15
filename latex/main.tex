@@ -154,7 +154,7 @@
 
     Highway cut-ins create new same-lane leader--follower interactions that may require the follower to brake, yet most analysis pipelines depend on dataset-provided lane and neighbour identifiers, limiting reuse across datasets. This thesis presents \FrameworkName{}, a minimal-input framework that reconstructs lane assignment and same-lane relations from trajectory geometry ($x,y$) and lane-marking metadata, detects cut-ins as explicit cutter--follower pairs, computes pair-specific surrogate safety measures (DHW, THW, TTC, DRAC), and encodes surrounding traffic context as reversible 16-bit Hilbert space-filling-curve signatures.
 
-    Evaluated on 60 \textit{highD} recordings (with highD identifiers used only as reference labels), the framework achieves mean reconstruction accuracy $>$0.9998, cut-in detection $F_1 > 0.999$, and context-signature agreement of 99.49\% over 1.4\,M stage rows. Multi-indicator analysis shows that THW, TTC, and DRAC capture complementary severity aspects; only 0.08\% of events exceed the hard-braking DRAC threshold. Decision-stage features predict execution-stage THW risk with ROC-AUC 0.82 under leave-one-recording-out cross-validation, and SFC context features alone achieve AUC 0.61, demonstrating that spatial context signatures carry independent risk-relevant information beyond scalar indicators. A small exploratory feasibility check on two NGSIM freeway subsets further shows that the lane-change and cut-in mining core can be transferred beyond \textit{highD}, although not at the same validation depth.
+    Evaluated on 60 \textit{highD} recordings (with highD identifiers used only as reference labels), the framework achieves mean reconstruction accuracy $>$0.9998, cut-in detection $F_1 > 0.999$, and context-signature agreement of 99.49\% over 1.4\,M stage rows. Multi-indicator analysis shows that THW, TTC, and DRAC capture complementary severity aspects; only 0.08\% of events exceed the hard-braking DRAC threshold. Decision-stage features predict execution-stage THW risk with ROC-AUC 0.82 under leave-one-recording-out cross-validation, and SFC context features alone achieve AUC 0.62, demonstrating that spatial context signatures carry independent risk-relevant information beyond scalar indicators. A small exploratory extension on 10 \textit{exiD} recordings further shows that the same lane-reconstruction and cut-in mining core can be moved to highly interactive highway entry/exit scenes without redesigning the pipeline, although this add-on is intentionally limited and is not presented as a second benchmark.
 
     From a software-engineering perspective, the result is a portable and auditable analysis pipeline: method inputs are explicitly restricted, intermediate relations are reconstructable and testable, and outputs can be reproduced without relying on dataset-specific derived fields.
 
@@ -246,7 +246,7 @@
     \textbf{RQ4:} Do the reconstructed features carry predictive value? More specifically, can features from the intention and decision stages predict execution-stage risk, and do SFC context signatures contribute independent information beyond scalar indicators?
 
     \section{Scope and delimitations}
-    The framework is evaluated primarily on \textit{highD} highway recordings (drone-based trajectories at \SI{25}{\hertz}) using offline batch processing. To give at least one concrete example beyond \textit{highD}, the thesis also includes a small exploratory feasibility check on two freeway subsets of NGSIM. This add-on is only meant to illustrate transferability of the event-mining core; it is not presented as a second benchmark study or as evidence equivalent to the main highD evaluation. The thesis does not aim to infer driver intent beyond observable trajectories, does not include simulation-based re-enactment, and does not claim that any single risk threshold is universally valid. The emphasis is on reproducible scenario extraction, pair-consistent indicator computation, and reference-label evaluation.
+    The framework is evaluated primarily on \textit{highD} highway recordings (drone-based trajectories at \SI{25}{\hertz}) using offline batch processing. To give one concrete example beyond \textit{highD} without expanding the thesis into a second full benchmark, the thesis also includes a small exploratory extension on 10 \textit{exiD} recordings from highway entry/exit scenes~\cite{moers2022exid}. This add-on is meant only to illustrate transferability of the event-mining core to a related but more interactive highway geometry; it is not presented as evidence equivalent to the main highD evaluation. Older public freeway datasets such as NGSIM were considered as possible transfer targets, but they are left to future work because their noisier kinematics and different neighbour semantics would require a broader harmonisation effort than this thesis can justify. The thesis does not aim to infer driver intent beyond observable trajectories, does not include simulation-based re-enactment, and does not claim that any single risk threshold is universally valid. The emphasis is on reproducible scenario extraction, pair-consistent indicator computation, and reference-label evaluation.
 
     \section{Contributions}
     The main contributions are:
@@ -255,7 +255,7 @@
   \item \textbf{Minimal-input relation reconstruction:} lane inference and same-lane predecessor/follower reconstruction from $x,y$ trajectories and lane markings, evaluated frame by frame against highD reference labels (mean accuracy $>$0.9998).
   \item \textbf{Explicit cutter--follower pairing and pair-consistent indicators:} cut-ins are detected as explicit interacting pairs with a reproducible onset definition; DHW, THW, TTC, and DRAC are computed for the actual cutter--follower pair and interpreted stage-wise.
   \item \textbf{Reversible context signatures:} a direction-normalised 3$\times$3 occupancy grid encoded into a 16-bit Hilbert SFC signature, validated against highD reference occupancy (99.49\% exact row agreement over 1.4\,M stage rows).
-  \item \textbf{Predictive evaluation:} a LORO-CV experiment showing that decision-stage features predict execution-stage THW risk with ROC-AUC 0.82; SFC context features alone achieve AUC 0.61, showing that the framework produces predictive features beyond descriptive agreement.
+  \item \textbf{Predictive evaluation:} a LORO-CV experiment showing that decision-stage features predict execution-stage THW risk with ROC-AUC 0.82; SFC context features alone achieve AUC 0.62, showing that the framework produces predictive features beyond descriptive agreement.
   \item \textbf{Reproducible two-path evaluation:} the minimal-input reconstruction path and the reference-label path are executed in parallel, producing deterministic outputs that can be regenerated from the same settings.
     \end{enumerate}
 
@@ -263,7 +263,7 @@
 
     \section{Thesis outline}
 
-    Chapter~\ref{chap:relatedwork} positions the thesis within the literature on surrogate safety measures, cut-in analysis, and context encoding, and identifies three research gaps that motivate the framework. Chapter~\ref{chap:researchmethod} describes the four-level evaluation methodology (frame, event, representation, and prediction). Chapter~\ref{chap:theory} formally defines cut-in events, the stage model, safety indicators (DHW, THW, TTC, DRAC), and the SFC context-signature encoding. Chapter~\ref{chap:methods} details each framework component, the two-path evaluation design, and the predictive evaluation protocol. Chapter~\ref{chap:results} reports reconstruction accuracy, risk characterisation, multi-indicator analysis, context-signature verification, and prediction results. Chapter~\ref{chap:discussion} discusses implications, per-recording variability, and threats to validity. Chapter~\ref{chap:conclusion} summarises the contributions and outlines future work.
+    Chapter~\ref{chap:relatedwork} positions the thesis within the literature on surrogate safety measures, cut-in analysis, and context encoding, and identifies three research gaps that motivate the framework. Chapter~\ref{chap:researchmethod} describes the four-level evaluation methodology (frame, event, representation, and prediction). Chapter~\ref{chap:theory} formally defines cut-in events, the stage model, safety indicators (DHW, THW, TTC, DRAC), and the SFC context-signature encoding. Chapter~\ref{chap:methods} details each framework component, the two-path evaluation design, and the predictive evaluation protocol. Chapter~\ref{chap:results} reports reconstruction accuracy, risk characterisation, multi-indicator analysis, context-signature verification, prediction results, and a small exploratory exiD extension. Chapter~\ref{chap:discussion} discusses implications, per-recording variability, and threats to validity. Chapter~\ref{chap:conclusion} summarises the contributions and outlines future work.
 
 % ==============================================================================
     \chapter{Related Work}
@@ -273,12 +273,12 @@
 
     \section{The highD dataset}
     \label{sec:highd}
-    The \textit{highD} dataset is a drone-based collection of naturalistic highway trajectories recorded at six locations on German highways~\cite{highd_2018}. It provides 60 recordings at \SI{25}{\hertz}, each containing per-frame vehicle states (position, velocity, acceleration), lane identifiers, and neighbour identifiers for surrounding vehicles (same-lane preceding/following and adjacent-lane neighbours). These dataset-computed columns are referred to as \emph{derived fields} in this thesis. A mapping between the terminology used in this thesis and the relevant highD columns is provided in Appendix~\ref{app:field-mapping}.
+    The \textit{highD} dataset is a drone-based collection of naturalistic highway trajectories recorded at six locations on German highways~\cite{highd_2018}. It provides 60 recordings at \SI{25}{\hertz}, each containing per-frame vehicle states (position, velocity, acceleration), lane identifiers, and neighbour identifiers for surrounding vehicles (same-lane preceding/following and adjacent-lane neighbours). These dataset-computed columns are referred to as \emph{derived fields} in this thesis. A mapping between the terminology used in this thesis and the relevant highD columns is provided in Appendix~\ref{app:field-mapping}. A closely related dataset from the same broader collection is \textit{exiD}, which focuses on highly interactive highway entry/exit scenarios rather than straight motorway segments~\cite{moers2022exid}; this thesis uses exiD only for a small exploratory extension, not as a second main evaluation dataset.
 
     In this thesis, highD's lane and neighbour identifiers are used exclusively as \emph{reference labels} for evaluating the reconstruction method. The framework derives all relations from trajectory geometry and lane-marking metadata; it never uses highD's derived fields as inputs. This separation is important because recent work has identified lane-change inconsistencies in highD that motivate careful validation when reconstructing events from provided identifiers~\cite{wanggao2025highd}.
 
     \section{Surrogate safety measures}
-    Because crashes are rare in naturalistic data, surrogate safety measures (SSMs) are widely used to assess interaction severity without requiring crash observations. The main indicators used in this thesis are time-to-collision (TTC), time headway (THW), distance headway (DHW), and the deceleration rate to avoid crash (DRAC). Recent reviews and validation studies emphasise that SSMs require careful interpretation and validation because their values depend on modelling assumptions and data quality~\cite{wang2021ssm,johnsson2021validation}. Deceleration-based indicators expressed in \si{\meter\per\second\squared}, such as DRAC, complement time-based measures; Archer~\cite{archer2005indicators} uses \SI{3.35}{\meter\per\second\squared} as a threshold to distinguish serious from non-serious conflicts, while Wang et al.~\cite{wang2021ssm} report DRAC thresholds in the range of \SIrange{3.0}{3.5}{\meter\per\second\squared} across the literature.
+    Because crashes are rare in naturalistic data, surrogate safety measures (SSMs) are widely used to assess interaction severity without requiring crash observations. The main indicators used in this thesis are time-to-collision (TTC), time headway (THW), distance headway (DHW), and the deceleration rate to avoid crash (DRAC). Recent reviews and validation studies emphasise that SSMs require careful interpretation and validation because their values depend on modelling assumptions and data quality~\cite{wang2021ssm,johnsson2021validation}. Deceleration-based indicators expressed in \si{\meter\per\second\squared}, such as DRAC, complement time-based measures (e.g., TTC, THW); Archer~\cite{archer2005indicators} uses \SI{3.35}{\meter\per\second\squared} as a threshold to distinguish serious from non-serious conflicts, while Wang et al.~\cite{wang2021ssm} report DRAC thresholds in the range of \SIrange{3.0}{3.5}{\meter\per\second\squared} across the literature.
 
     \section{Lane-changing and cut-in analysis}
     Lane changes and cut-ins are often described through a combination of incentive, safety, and temporal structure.
@@ -363,7 +363,7 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
 
     \section{Lane change vs cut-in}
     \subsection{Lane change}
-    We define a \textbf{lane change event} as a transition from one stable lane block to another stable lane block. ``Stable'' means the vehicle remains in that lane for at least a minimum number of consecutive frames before and after the transition.
+    We define a \textbf{lane change event} as a transition from one stable lane block to another stable lane block. ``Stable'' means the vehicle remains in that lane for at least a minimum number of consecutive frames before and after the transition. Since the highD dataset is recorded at 25\,Hz, each frame corresponds to 0.04\,s.
 
     \subsection{Cut-in}
     We define a \textbf{cut-in event} as a lane change where the lane-changing vehicle (the \emph{cutter}) becomes the same-lane predecessor of another vehicle (the \emph{follower}) in the target lane. This definition yields an explicit interacting pair $(A,B)$ with cutter $A$ and follower $B$.
@@ -1115,12 +1115,12 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
             \toprule
             Metric & Mean & $\pm$ Std \\
             \midrule
-            ROC-AUC       & 0.824 & $\pm 0.056$ \\
-            $F_1$ (risky class) & 0.519 & $\pm 0.094$ \\
-            Precision     & 0.372 & $\pm 0.094$ \\
-            Recall        & 0.898 & $\pm 0.060$ \\
+            ROC-AUC       & 0.822 & $\pm 0.058$ \\
+            $F_1$ (risky class) & 0.506 & $\pm 0.088$ \\
+            Precision     & 0.357 & $\pm 0.083$ \\
+            Recall        & 0.907 & $\pm 0.060$ \\
             Baseline $F_1$     & 0.000 & $\pm 0.000$ \\
-            $\Delta F_1$ vs baseline & +0.519 & $\pm 0.094$ \\
+            $\Delta F_1$ vs baseline & +0.506 & $\pm 0.088$ \\
             \bottomrule
         \end{tabular}
     \end{table}
@@ -1160,14 +1160,14 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
             \toprule
             Feature set & $n$ & Mean AUC ($\pm$ std) & Mean $F_1$ ($\pm$ std) \\
             \midrule
-            All (kinematic + SFC) & 34 & 0.824 ($\pm 0.056$) & 0.519 ($\pm 0.094$) \\
-            Kinematic only        & 18 & 0.829 ($\pm 0.067$) & 0.518 ($\pm 0.100$) \\
-            SFC only              & 16 & 0.613 ($\pm 0.058$) & 0.344 ($\pm 0.055$) \\
+            All (kinematic + SFC) & 34 & 0.822 ($\pm 0.058$) & 0.506 ($\pm 0.088$) \\
+            Kinematic only        & 18 & 0.832 ($\pm 0.061$) & 0.519 ($\pm 0.086$) \\
+            SFC only              & 16 & 0.621 ($\pm 0.059$) & 0.349 ($\pm 0.056$) \\
             \bottomrule
         \end{tabular}
     \end{table}
 
-    Kinematic features alone achieve slightly higher AUC (0.829) than the full model (0.824), while SFC features alone still achieve AUC 0.613, well above chance (0.50). For statistical interpretation we report two planned fold-level Wilcoxon signed-rank comparisons: SFC-only AUC versus chance level 0.50, and full-model AUC versus kinematic-only AUC. The corresponding uncorrected $p$-values are $1.65 \times 10^{-11}$ and $0.125$. Under a simple Bonferroni correction for these two comparisons, the adjusted values become $3.30 \times 10^{-11}$ and $0.25$, so the interpretation is unchanged: SFC-only performance remains clearly above chance, while the full model is not significantly better than the kinematic-only model. A broader omnibus Friedman test over a larger family of model variants is left for future work. The spatial context signature therefore carries meaningful information about future risk even without scalar speed or gap information, but the dominant predictive signal remains kinematic.
+    Kinematic features alone achieve a slightly higher AUC (0.832) than the full model (0.822), while the SFC-only model still reaches an AUC of 0.621, which is clearly above chance (0.50). To test whether these differences are meaningful, we first used a Friedman test across the three ablation models over the 60 held-out folds. The result was significant ($\chi^2(2)=81.43$, $p = 2.07 \times 10^{-18}$), so we then carried out Bonferroni-corrected Wilcoxon signed-rank tests for the follow-up comparisons. After correction, the difference between the full model and the kinematic-only model was not significant ($p = 0.267$). In contrast, both the full model and the kinematic-only model performed significantly better than the SFC-only model ($p = 6.52 \times 10^{-11}$ and $p = 9.28 \times 10^{-11}$, respectively). The SFC-only model also remained significantly above chance ($p = 4.64 \times 10^{-11}$). Overall, this suggests that the SFC features do contain useful predictive information, but most of the predictive signal is already captured by the kinematic features.
 
     \paragraph{Point-biserial correlations.}
     The strongest individual predictors are decision-stage THW$_{\min}$ ($r=-0.34$) and decision-stage DHW$_{\min}$ ($r=-0.31$), both negatively correlated with risk: smaller pre-onset gaps predict riskier outcomes.
@@ -1180,43 +1180,32 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
     \end{itemize}
 
     Using the final thesis configuration, with an alongside threshold of \SI{4.0}{\meter} and no fixed ahead/behind cutoff, we compare 1,421,980 stage rows and obtain 1,414,762 exact row matches (99.49\%). Stage-wise exact-match rates are 99.35\% (intention), 99.52\% (decision), and 99.60\% (execution). In the thesis event view, stage-window ANY-frame agreement is 100.00\%, while stage-window ALL-frame agreement is 79.82\%. The raw unmirrored match rate is only 57.56\%; this is best read as a sanity check, because opposite travel directions swap left/right occupancy by construction. Mirror normalisation is therefore required before any like-for-like comparison of left/right context across recordings.
+    \section{Exploratory extension on \textit{exiD}}
+    \label{sec:exid-exploratory}
+    To make the transferability claim concrete without turning the thesis into a second benchmark, we ran a deliberately limited exploratory extension on \textit{exiD}, a related drone dataset of highly interactive highway entry/exit scenarios in Germany~\cite{moers2022exid}. We restricted this add-on to 10 recordings (\texttt{07, 18, 28, 29, 42, 50, 60, 70, 77, 83}). These files were chosen pragmatically rather than statistically: the aim was to cover all seven exiD locations, keep visible lane-change activity at each site, and prefer shorter recordings where possible so that extraction, visual review, and figure generation remained tractable.
 
-    \section{Exploratory cross-dataset feasibility check (NGSIM)}
-    \label{sec:ngsim-feasibility}
-    To test whether the framework is conceptually tied to \textit{highD} or mainly to engineering choices in preprocessing, we ran a deliberately limited transferability check on the public NGSIM trajectory dataset~\cite{ngsim_2016}. We restricted the analysis to the two freeway subsets, US-101 and I-80, because the arterial subsets (Lankershim Boulevard and Peachtree Street) mix intersection movements, turning traffic, and non-highway lane codes that would confound a highway cut-in study.
+    The question here is narrower than in the main \textit{highD} evaluation: can the same explicit cut-in event definition, cutter--follower pairing logic, and pairwise risk computation be moved to a related but more interactive highway geometry with only limited adaptation work? For that reason, the exiD results are not pooled with the highD statistics, and we do not repeat the full highD-style reference agreement or prediction study.
 
-    This add-on was not meant to reproduce the full highD evaluation. The question was narrower: can the lane-change and cut-in mining core be moved to another trajectory source with limited adaptation work? For that reason, the NGSIM results are not treated as a second benchmark and are not combined with the main highD statistics.
-
-    The NGSIM prototype processes one location at a time, removes exact duplicate rows, splits repeated source ids when \texttt{Global\_Time} jumps by more than one second, remaps \texttt{Preceding} and \texttt{Following} to the split track instances, and rescales the event-mining thresholds from the highD setting (\SI{25}{\hertz}) to NGSIM's \SI{10}{\hertz}. The feasibility check stops at explicit cutter--follower event mining and pairwise risk summaries. We do not attempt full context-signature validation because NGSIM does not provide highD-style left/right surrounding-vehicle identifiers.
-
-    \begin{table}[H]
-        \centering
-        \caption{Exploratory NGSIM freeway feasibility summary. Percentages are calculated over the candidate cut-ins extracted in each subset.}
-        \label{tab:ngsim-feasibility}
-        {\small
-        \setlength{\tabcolsep}{4pt}
-            \begin{tabular}{@{}lrrrrrrrr@{}}
-\toprule
-Location & Raw rows & Dup. removed & Tracks & Lane chg. & Cut-ins & Cut-ins / LC & TTC finite & Neg. gap \\
-\midrule
-I-80   & 4,566,387 & 0       & 5,678 & 2,647 & 2,530 & 95.6\% & 67.5\% & 4.0\% \\
-US-101 & 4,802,933 & 704,000 & 6,101 & 2,780 & 1,919 & 69.0\% & 54.3\% & 2.4\% \\
-\bottomrule
-            \end{tabular}}
-    \end{table}
+    Figure~\ref{fig:exid-overview} summarises the event yield across the selected recordings. The exported cut-in counts vary strongly across the 10 files, from low tens to more than one hundred events, with recording 77 contributing the largest set. Median execution-stage THW also varies substantially across recordings (roughly \SIrange{1.0}{3.1}{\second}), which is expected because exiD mixes mainline and ramp interactions rather than the straighter motorway segments represented in highD. The point of this figure is therefore not to compare highD and exiD statistically, but to show that the same event-mining core still produces coherent outputs on a related dataset family.
 
     \begin{figure}[H]
         \centering
-        \safeincludegraphics[width=0.72\textwidth]{ngsim_feasibility_counts.png}
-        \caption{Lane-change and cut-in counts from the exploratory NGSIM freeway feasibility check. The labels above the cut-in bars show the cut-in-to-lane-change ratio. The figure demonstrates that the event-mining core transfers to another highway trajectory source, but it should not be read as a benchmark comparison against highD because the subsets differ in duration, geometry, and data quality.}
-        \label{fig:ngsim-feasibility}
+        \safeincludegraphics[width=\textwidth]{exid_exploratory_overview.png}
+        \caption{Exploratory exiD overview for the 10 selected recordings. Left: number of exported cut-ins per recording. Right: median execution-stage THW per recording. The variation across files reflects the heterogeneous interaction density of entry/exit scenes and reinforces that this add-on should be read as a limited transferability illustration rather than as a second benchmark.}
+        \label{fig:exid-overview}
     \end{figure}
 
-    Table~\ref{tab:ngsim-feasibility} and Figure~\ref{fig:ngsim-feasibility} show that both freeway subsets still produce sizeable event sets after explicit cleaning: 2,780 lane changes and 1,919 candidate cut-ins on US-101, and 2,647 lane changes and 2,530 candidate cut-ins on I-80. This is enough to show that the lane-change and cut-in logic is not tied only to highD. The high I-80 cut-in-to-lane-change ratio should be read only as prototype event yield under the chosen thresholds, not as a behavioural prevalence claim.
+    Because TTC is a standard cut-in severity cue in naturalistic studies~\cite{wang2019cutin} but is only defined for closing interactions, Figure~\ref{fig:exid-ttc-summary} reports two TTC-aware summaries: the finite-TTC share and the median over finite TTC events only. This follows the general surrogate-safety guidance that indicator interpretation depends on explicit operational assumptions rather than on a single pooled value~\cite{wang2021ssm}. Across the 424 exploratory exiD events, finite TTC is available for 46.5\% of cases overall, with substantial variation across recordings (14.3\%--68.2\%). Median finite TTC ranges from about \SI{17.6}{\second} to \SI{75.8}{\second}. The dispersion is expected in heterogeneous entry/exit scenes; the methodological point is that the same explicit cutter--follower event definition yields coherent TTC summaries on exiD without redesigning the pipeline.
 
-    At the same time, the feasibility check also shows why NGSIM should not be treated as a second full validation dataset without further work. First, the export quality is lower: the US-101 subset required removal of 704,000 exact duplicate rows before event mining. Second, NGSIM headways are front-centre based and the kinematics are noisier, consistent with prior observations that direct velocity and acceleration use in NGSIM is sensitive to positional noise~\cite{thiemann2008ngsim}. Third, the available neighbour information is weaker than in highD, which means the full surrounding-context branch cannot be evaluated in the same way. For these reasons, the NGSIM results are used only as exploratory transfer evidence, not as cross-dataset validation on the same level as the main highD study.
+    \begin{figure}[H]
+        \centering
+        \safeincludegraphics[width=\textwidth]{exid_ttc_summary.png}
+        \caption{Execution-stage TTC summary for the exploratory exiD extension. Left: share of exported cut-ins with finite TTC in each recording. Right: median execution-stage TTC among finite-TTC events only. Dashed lines show the pooled overall values (46.5\% finite share; median \SI{24.85}{\second}). Reporting both panels avoids conflating TTC severity with TTC availability, since TTC is undefined for non-closing interactions.}
+        \label{fig:exid-ttc-summary}
+    \end{figure}
 
-% ==============================================================================
+    Taken together, the exiD results show a limited but useful form of transfer. The framework is not tied to one exact highD road geometry, and the same minimal-input event definition still yields interpretable cut-in sets together with coherent pairwise THW/TTC summaries in a related dataset family. At the same time, the extension remains intentionally lightweight: only 10 recordings are used, the full reference-label agreement study is not repeated, and no claim is made that exiD provides evidence on the same level as the main highD evaluation.
+
     \chapter{Discussion}
     \label{chap:discussion}
 
@@ -1227,23 +1216,23 @@ US-101 & 4,802,933 & 704,000 & 6,101 & 2,780 & 1,919 & 69.0\% & 54.3\% & 2.4\% \
 
     \textbf{RQ3 (context signatures):} The 16-bit SFC signature achieves 99.49\% exact row agreement with reference occupancy over 1.4\,M stage rows. Exploratory clustering yields seven decision-stage archetypes, with the most constrained archetype showing 1.32$\times$ higher risk prevalence.
 
-    \textbf{RQ4 (predictive value):} Decision-stage features predict execution-stage risk with AUC 0.82. SFC context features alone achieve AUC 0.61, which shows that spatial context signatures carry independent predictive information beyond scalar indicators.
+    \textbf{RQ4 (predictive value):} Decision-stage features predict execution-stage risk with AUC 0.82. SFC context features alone achieve AUC 0.62, which shows that spatial context signatures carry independent predictive information beyond scalar indicators.
 
     \section{Interpretation and implications}
     The principal contribution is methodological: the framework separates observation, derived relation, event definition, and risk label into auditable layers. By treating lane and neighbour identifiers as reconstructable intermediate products rather than immutable dataset fields, the pipeline's assumptions become explicit and measurable against reference labels.
 
     At first glance the framework may seem straightforward: infer lanes, recover leader--follower relations, and then compute indicators. The non-obvious contribution is the enforced evaluation boundary linking these steps. Many related studies operate downstream of scenario extraction and therefore inherit dataset-specific pairing or neighbour assumptions implicitly. This thesis makes those prerequisites explicit, reconstructs them from minimal inputs, and validates them before drawing risk conclusions.
 
-    This design has three practical implications. First, explicit cutter--follower pairing ensures that safety indicators describe the intended interaction rather than a generic predecessor relation. Second, the multi-indicator results (THW, TTC, DRAC) show that risk interpretation is indicator-dependent and phase-dependent~\cite{zhou2016riskperception,wang2021ssm}, emphasizing the need for transparent indicator choice. Third, the LORO-CV prediction experiment shows that the framework produces predictive features: achieving AUC 0.82 from features available before the execution stage means the outputs support early risk identification, not merely reference-label reproduction. The ablation showing AUC 0.61 for SFC features alone further shows that the context signatures encode risk-relevant spatial information beyond scalar indicators.
+    This design has three practical implications. First, explicit cutter--follower pairing ensures that safety indicators describe the intended interaction rather than a generic predecessor relation. Second, the multi-indicator results (THW, TTC, DRAC) show that risk interpretation is indicator-dependent and phase-dependent~\cite{zhou2016riskperception,wang2021ssm}, emphasizing the need for transparent indicator choice. Third, the LORO-CV prediction experiment shows that the framework produces predictive features: achieving AUC 0.82 from features available before the execution stage means the outputs support early risk identification, not merely reference-label reproduction. The ablation showing AUC 0.62 for SFC features alone further shows that the context signatures encode risk-relevant spatial information beyond scalar indicators.
 
-    From a software-engineering perspective, the work contributes a deterministic data-processing and validation pipeline rather than only a traffic-analysis result. The central engineering properties are explicit input contracts, reconstructable intermediate artefacts, reference-based testing, and reproducible outputs. These properties matter because downstream models, dashboards, and safety assessments are only as reliable as the scenario extraction logic that feeds them.
+    From a software-engineering perspective, the work contributes a deterministic data-processing and validation pipeline rather than only a traffic-analysis result. The central engineering properties are explicit input contracts, reconstructable intermediate artefacts, reference-based testing, and reproducible outputs. These properties matter because downstream models, dashboards, and safety assessments are only as reliable as the scenario extraction logic that feeds them. In a safety-critical software context, making preprocessing assumptions explicit is valuable not only for reproducibility but also because silent pairing or reconstruction errors can otherwise propagate into misleading validation evidence.
 
     A smaller supporting contribution is the adapted inspection dashboard. It was not a user-facing evaluated system, but it made manual sanity checks of onset alignment, interaction pairing, and decoded occupancy practical across 60 recordings, which in turn supported the trustworthiness of the final pipeline.
 
-    \paragraph{Transfer beyond highD.} The NGSIM feasibility check in Section~\ref{sec:ngsim-feasibility} makes the transfer question more concrete. After explicit cleaning, identity splitting, neighbour remapping, and threshold rescaling, both freeway subsets still yield sizeable lane-change and cut-in event sets. This suggests that transfer is not blocked by the event definition itself. At the same time, the exercise also shows that transfer is not free: duplicate rows, repeated source ids, front-centre headway definitions, and noisier kinematics become important engineering constraints as soon as the method leaves the more curated highD setting. The framework therefore reduces cross-dataset transfer to a bounded engineering task, but it does not remove dataset differences.
+    \paragraph{Transfer beyond highD.} The exploratory exiD extension in Section~\ref{sec:exid-exploratory} makes the transfer question more concrete. Because exiD belongs to the same broader dataset family but focuses on highly interactive highway entry/exit scenes rather than straight motorway segments, it is a useful stress test of whether the framework depends on one particular road geometry. Reusing the same cut-in event definition, cutter--follower pairing logic, and pairwise risk-summary path on 10 exiD recordings still produces coherent event sets and interpretable qualitative cases, which supports the claim that transfer is not blocked by the event definition itself. At the same time, the extension is deliberately limited: we do not repeat the full highD-style reference agreement or predictive evaluation, so the exiD results should be read as an illustrative probe of transferability rather than as full cross-dataset validation. Older public freeway datasets such as NGSIM remain relevant future targets, but they would require a broader harmonisation effort because their kinematics and neighbour semantics are less aligned with the present pipeline.
 
     \paragraph{Per-recording variability.}
-    The cross-recording perspective also reveals notable variability. Risk prevalence ranges from 11.1\% to 34.1\% across the 60 recordings (median 20.0\%), which likely reflects differences in traffic density, speed distributions, and lane configurations across the six recording sites. LORO-CV fold-level AUC ranges from approximately 0.65 to 0.95, with lower-performing folds concentrated in recordings with fewer events or atypical speed distributions. This variability underscores the importance of the leave-one-recording-out protocol: pooled cross-validation would overestimate performance by allowing the model to learn site-specific patterns. It also suggests that cross-dataset evaluation (e.g., inD or NGSIM) would provide a stronger test of the framework's generalisability than within-highD analysis alone.
+    The cross-recording perspective also reveals notable variability. Risk prevalence ranges from 11.1\% to 34.1\% across the 60 recordings (median 20.0\%), which likely reflects differences in traffic density, speed distributions, and lane configurations across the six recording sites. LORO-CV fold-level AUC ranges from approximately 0.65 to 0.95, with lower-performing folds concentrated in recordings with fewer events or atypical speed distributions. This variability underscores the importance of the leave-one-recording-out protocol: pooled cross-validation would overestimate performance by allowing the model to learn site-specific patterns. The limited exiD extension supports this interpretation: once the framework moves to a different highway geometry, transfer remains possible, but the surrounding traffic mix and event yield become more heterogeneous immediately.
 
     Table~\ref{tab:contribution-evidence} maps each contribution claim to the supporting evidence.
 
@@ -1261,7 +1250,7 @@ Contribution & Evidence & Significance \\
 Minimal-input reconstruction & Accuracy $>$0.9998; $F_1=0.999$ & Enables cut-in mining without dataset-specific relation columns. \\
 Pair-consistent indicators & 10,023 events; THW/TTC/DRAC disagreement analysis & Ensures indicators describe the correct interaction pair. \\
 Validated context signatures & 99.49\% row agreement; 7 archetypes; peak risk ratio 1.32 & Compact, reversible descriptors supporting scene retrieval and grouping. \\
-Predictive evaluation & AUC 0.82 (all); AUC 0.61 (SFC alone) & Features carry predictive value; SFC adds independent signal. \\
+Predictive evaluation & AUC 0.82 (all); AUC 0.62 (SFC alone) & Features carry predictive value; SFC adds independent signal. \\
 Reproducible evaluation & Two-path design; parameter table; deterministic outputs & Separates method inputs from reference labels. \\
 \bottomrule
             \end{tabularx}}
@@ -1272,15 +1261,15 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
 
     \textbf{Internal validity:} Reconstruction depends on lane-marking accuracy and coordinate conventions. Errors in these inputs can shift the onset $t_0$ and bias indicators. This is mitigated through geometry model selection against dataset-provided indicators and independent reconstruction variants that agree closely with the reference path. A further consideration is that highD positions are derived from overhead drone video via computer-vision tracking; the resulting measurement noise differs from on-vehicle sensing (e.g., radar or lidar), so the absolute indicator values reported here should not be directly compared to values from instrumented-vehicle studies without accounting for positional uncertainty.
 
-    \textbf{External validity:} The main quantitative results are based on \textit{highD} highway recordings collected at six German motorway sites under free-flow to moderately congested conditions. The framework's assumptions (straight road segments, clearly marked lanes, and moderate traffic density) may not hold for urban driving, ramp merges, construction zones, or different sensing setups. The small NGSIM freeway feasibility check shows that the event-mining core can be adapted beyond highD, but it does not establish full cross-dataset validity because the surrounding-context branch and risk metrics remain more sensitive to dataset-specific conventions and noise.
+    \textbf{External validity:} The main quantitative results are based on \textit{highD} highway recordings collected at six German motorway sites under free-flow to moderately congested conditions. The framework's assumptions (straight road segments, clearly marked lanes, and moderate traffic density) may not hold for urban driving, ramp merges, construction zones, or different sensing setups. The small exiD extension shows that the event-mining core can be moved to a related highway dataset with entry/exit interactions, but it remains limited to 10 recordings and does not establish full cross-dataset validity because the full reference-agreement and prediction stack is not repeated there.
 
-    \textbf{Conclusion validity:} The thesis reports descriptive differences, sensitivity analyses, and cross-validated predictions rather than causal claims about driver behaviour. The fold-level Wilcoxon comparisons reported in the ablation study, together with the Bonferroni-adjusted interpretation, support the claim that the SFC-only model exceeds chance. However, the 60-fold LORO-CV still produces correlated folds because training sets overlap heavily, so these $p$-values should be read as supportive rather than definitive. A fuller repeated-measures comparison across a broader set of model variants would strengthen the statistical argument further.
+    \textbf{Conclusion validity:} The thesis reports descriptive differences, sensitivity analyses, and cross-validated predictions rather than causal claims about driver behaviour. Adding the Friedman test and the Bonferroni-corrected Wilcoxon follow-up tests makes the statistical argument stronger, especially for the claim that the main gap is between the SFC-only model and the two models that include kinematic information. At the same time, the 60-fold LORO-CV setup still produces correlated folds because the training sets overlap heavily, so these $p$-values should be treated as supportive evidence rather than as fully independent significance tests. A broader repeated-measures comparison across more model variants would strengthen this part further.
 
     \section{Future work}
     Five directions for future work emerge from this thesis:
 
     \begin{enumerate}[leftmargin=1.6em]
-  \item \textbf{Full cross-dataset validation:} extending the current exploratory NGSIM check into a calibrated multi-dataset study on inD, rounD, exiD, or cleaner NGSIM subsets, including coordinate harmonisation, kinematic smoothing, and representation-level validation beyond event mining.
+  \item \textbf{Full cross-dataset validation:} extending the current exploratory exiD extension into a calibrated multi-dataset study on more exiD recordings and additional datasets such as inD, rounD, or harmonised NGSIM subsets, including coordinate harmonisation, kinematic smoothing, and representation-level validation beyond event mining.
   \item \textbf{Parameter sensitivity:} systematic ablation over relevance-distance, pair-persistence, and stage-boundary criteria, with manual review of disagreement cases.
   \item \textbf{Archetype transferability:} testing whether decision-stage context archetypes generalise across datasets, road classes, and prediction tasks.
   \item \textbf{Richer predictive models:} sequence models over full stage windows (rather than stage-level aggregates) to exploit the temporal structure of reconstructed features.
@@ -1295,13 +1284,13 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
 
     Evaluated on 60 \textit{highD} recordings with highD identifiers used only as reference labels, the framework achieves mean reconstruction accuracy $>$0.9998, cut-in detection $F_1 = 0.999$, and context-signature agreement of 99.49\% over 1.4\,M stage rows.
 
-    Three lines of evidence demonstrate that the contribution extends beyond reconstruction accuracy. First, multi-indicator analysis shows that THW, TTC, and DRAC capture different severity aspects, with risk interpretation depending on indicator choice and interaction phase. Second, decision-stage features predict execution-stage risk with AUC 0.82, and SFC features alone achieve AUC 0.61, showing that the framework produces features with predictive value. Third, exploratory context-archetype analysis shows that the SFC signatures support interpretable scene grouping linked to differential risk outcomes.
+    Three lines of evidence demonstrate that the contribution extends beyond reconstruction accuracy. First, multi-indicator analysis shows that THW, TTC, and DRAC capture different severity aspects, with risk interpretation depending on indicator choice and interaction phase. Second, decision-stage features predict execution-stage risk with AUC 0.82, and SFC features alone achieve AUC 0.62, showing that the framework produces features with predictive value. Third, exploratory context-archetype analysis shows that the SFC signatures support interpretable scene grouping linked to differential risk outcomes.
 
     The thesis contribution is therefore not that cut-ins or surrogate indicators were previously unknown. Rather, it surfaces usually hidden preprocessing assumptions -- lane assignment, neighbour reconstruction, interaction pairing, and local-context encoding -- and validates them within one reproducible pipeline. That is the main reason the approach matters despite being conceptually simple at the level of its individual parts.
 
     This is also where the software-engineering relevance lies. The framework defines explicit input boundaries, reconstructable intermediate products, and deterministic outputs that can be checked against reference labels. As a result, it is relevant not only for analysing highD but also as a basis for portable tooling for scenario mining, safety analysis, and validation workflows in automated-driving software engineering.
 
-    A small exploratory NGSIM freeway check further supports this claim: after explicit cleaning and identity handling, the same lane-change and cut-in mining logic still produces substantial event sets on US-101 and I-80. However, the exercise also makes the limitation clear. Cross-dataset transfer is constrained less by the event definition itself than by dataset quality, neighbour semantics, and coordinate conventions. A full multi-dataset validation therefore remains future work, even if basic transferability is now illustrated with one public secondary dataset.
+    A small exploratory exiD extension further supports this claim: reusing the same lane-reconstruction and cut-in mining logic on 10 entry/exit recordings still produces coherent event sets and interpretable qualitative cases without redesigning the pipeline. However, the limitation is equally important. The exiD add-on is intentionally lightweight and does not repeat the full highD-style reference agreement or predictive evaluation. It therefore illustrates basic transferability, but full multi-dataset validation remains future work.
 
     The result is a reproducible, auditable pipeline for cut-in analysis that serves as a basis for cross-dataset transfer, richer predictive models, and downstream applications requiring pair-consistent interaction features.
 
@@ -1318,17 +1307,11 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
         \newblock In \emph{Proceedings of the IEEE 21st International Conference on Intelligent Transportation Systems (ITSC)}, 2018.
         \newblock DOI: \url{https://doi.org/10.1109/ITSC.2018.8569552}.
 
-        \bibitem{ngsim_2016}
-        U.S. Department of Transportation Federal Highway Administration.
-        \newblock Next Generation Simulation (NGSIM) vehicle trajectories and supporting data.
-        \newblock Dataset, 2016.
-        \newblock DOI: \url{https://doi.org/10.21949/1504477}.
-
-        \bibitem{thiemann2008ngsim}
-        C.~Thiemann, M.~Treiber, and A.~Kesting.
-        \newblock Estimating acceleration and lane-changing dynamics based on NGSIM trajectory data.
-        \newblock \emph{Transportation Research Record}, 2088(1):90--101, 2008.
-        \newblock DOI: \url{https://doi.org/10.3141/2088-10}.
+        \bibitem{moers2022exid}
+        T.~Moers, L.~Vater, R.~Krajewski, J.~Bock, A.~Zlocki, and L.~Eckstein.
+        \newblock The exiD dataset: A real-world trajectory dataset of highly interactive highway scenarios in Germany.
+        \newblock In \emph{2022 IEEE Intelligent Vehicles Symposium (IV)}, pages 958--964, 2022.
+        \newblock DOI: \url{https://doi.org/10.1109/IV51971.2022.9827305}.
 
         \bibitem{wang2021ssm}
         C.~Wang, Y.~Xie, H.~Huang, and P.~Liu.
@@ -1455,15 +1438,24 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
 
     Quantitative agreement metrics provide an overall assessment of reconstruction quality, but they do not on their own reveal whether failures are systematic (e.g., due to direction conventions, onset misalignment, or lane-boundary interpretation). To support qualitative inspection, we use an interactive inspection dashboard that synchronises (i) aerial video playback and track overlays, (ii) the currently selected cut-in event and its cutter--follower pair, and (iii) the derived stage window, indicators, and context signature for the current frame.
 
-    The dashboard was not developed from scratch. It builds on the official \textit{highD} tools repository, which provides functions for handling and visualising \textit{highD} data in Matlab and Python\footnote{Official repository: \url{https://github.com/RobertKrajewski/highD-dataset}.}. For this thesis, we adapted and extended that tooling with cut-in-specific event selection, cutter--follower highlighting, stage-window synchronisation, and context-signature/indicator panels needed for qualitative inspection of the reconstructed interaction pair.
+    The dashboard was not developed from scratch. It builds on the official \textit{highD} tools repository, which provides functions for handling and visualising \textit{highD} data in Matlab and Python\footnote{Official repository: \url{https://github.com/RobertKrajewski/highD-dataset}.}. For this thesis, we adapted and extended that tooling with cut-in-specific event selection, cutter--follower highlighting, stage-window synchronisation, and context-signature/indicator panels needed for qualitative inspection of the reconstructed interaction pair. For the small exiD extension, the same inspection concept was reused with the official drone-dataset-tools as a base so that highD and exiD cases could be reviewed through a consistent event-centred viewer.
 
     The dashboard was used to inspect representative cases and extremes (e.g., lowest-TTC events) and to check three concrete aspects of the pipeline qualitatively: (i) whether the onset $t_0$ aligned with the first visually stable cutter--follower relation, (ii) whether the decoded 3$\times$3 occupancy signature matched the visibly occupied neighbouring regions, and (iii) whether extreme TTC or THW cases reflected genuinely tight insertions rather than obvious indexing or lane-assignment errors. These checks provide qualitative support for the quantitative agreement results, but they are not reported as a separate manual evaluation dataset. No formal user evaluation was conducted. The dashboard served as a support tool for validation and communication rather than as a standalone thesis contribution: it was not used to manually correct events or labels, and all reported results are produced by the framework's deterministic components. Figure~\ref{fig:gui-dashboard} shows the interface used during this qualitative inspection.
 
     \begin{figure}[H]
         \centering
         \safeincludegraphics[width=\textwidth]{fig_gui_command_deck.png}
-        \caption{Interactive inspection dashboard used for qualitative review. The dashboard is based on a modified version of the official \textit{highD} visualisation tools and was extended with cut-in-specific overlays, event selection, and stage/context displays.}
+        \caption{Schematic layout of the interactive inspection dashboard used for qualitative review. The implemented dashboard is based on a modified version of the official \textit{highD} visualisation tools and was extended with cut-in-specific overlays, event selection, and stage/context displays.}
         \label{fig:gui-dashboard}
+    \end{figure}
+
+    To make the exiD reuse more concrete, Figure~\ref{fig:gui-dashboard-exid} shows the same inspection concept applied to an exiD recording. The interface logic is unchanged: the viewer still centres on one event, shows the surrounding traffic in the current frame, and keeps the same event-oriented inspection workflow. The main difference is only in the dataset-specific background rendering and geometry.
+
+    \begin{figure}[H]
+        \centering
+        \safeincludegraphics[width=\textwidth]{fig_gui_exid_dashboard.png}
+        \caption{Example exiD dashboard view used in the exploratory extension. The same event-centred inspection workflow was reused for exiD scenes, with dataset-specific background rendering but unchanged cut-in review logic.}
+        \label{fig:gui-dashboard-exid}
     \end{figure}
 
     \chapter{Appendix: Plain-language algorithms}

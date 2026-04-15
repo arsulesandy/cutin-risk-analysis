@@ -12,7 +12,7 @@
 \contentsline {section}{\numberline {1.6}Thesis outline}{4}{section.1.6}%
 \contentsline {chapter}{\numberline {2}Related Work}{5}{chapter.2}%
 \contentsline {section}{\numberline {2.1}The highD dataset}{5}{section.2.1}%
-\contentsline {section}{\numberline {2.2}Surrogate safety measures}{5}{section.2.2}%
+\contentsline {section}{\numberline {2.2}Surrogate safety measures}{6}{section.2.2}%
 \contentsline {section}{\numberline {2.3}Lane-changing and cut-in analysis}{6}{section.2.3}%
 \contentsline {section}{\numberline {2.4}Context encoding for interaction analysis}{7}{section.2.4}%
 \contentsline {section}{\numberline {2.5}Research gap}{7}{section.2.5}%
@@ -78,14 +78,14 @@
 \contentsline {paragraph}{Ablation study.}{37}{section*.54}%
 \contentsline {paragraph}{Point-biserial correlations.}{37}{section*.56}%
 \contentsline {section}{\numberline {6.8}Reference agreement for context signatures (RQ3)}{38}{section.6.8}%
-\contentsline {section}{\numberline {6.9}Exploratory cross-dataset feasibility check (NGSIM)}{38}{section.6.9}%
+\contentsline {section}{\numberline {6.9}Exploratory extension on \textit {exiD}}{38}{section.6.9}%
 \contentsline {chapter}{\numberline {7}Discussion}{41}{chapter.7}%
 \contentsline {section}{\numberline {7.1}Answers to the research questions}{41}{section.7.1}%
 \contentsline {section}{\numberline {7.2}Interpretation and implications}{41}{section.7.2}%
 \contentsline {paragraph}{Transfer beyond highD.}{42}{section*.59}%
 \contentsline {paragraph}{Per-recording variability.}{43}{section*.60}%
-\contentsline {section}{\numberline {7.3}Threats to validity}{43}{section.7.3}%
-\contentsline {section}{\numberline {7.4}Future work}{44}{section.7.4}%
+\contentsline {section}{\numberline {7.3}Threats to validity}{44}{section.7.3}%
+\contentsline {section}{\numberline {7.4}Future work}{45}{section.7.4}%
 \contentsline {chapter}{\numberline {8}Conclusion}{47}{chapter.8}%
 \contentsline {chapter}{Bibliography}{49}{chapter.8}%
 \contentsline {chapter}{\numberline {A}Appendix: Terminology and highD field mapping}{51}{appendix.A}%

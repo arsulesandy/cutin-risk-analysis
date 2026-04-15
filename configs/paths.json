@@ -1,6 +1,7 @@
 {
   "paths": {
     "dataset_root": "data/raw/highD-dataset-v1.0/data",
+    "exid_dataset_root": "data/raw/exiD-dataset-v2.1/data",
     "outputs_root": "outputs",
     "step14_codes_csv": "outputs/reports/Step 14/sfc_binary_codes_long_hilbert.csv"
   }
