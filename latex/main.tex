@@ -246,7 +246,7 @@
     \textbf{RQ4:} Do the reconstructed features carry predictive value? More specifically, can features from the intention and decision stages predict execution-stage risk, and do SFC context signatures contribute independent information beyond scalar indicators?
 
     \section{Scope and delimitations}
-    The framework is evaluated primarily on \textit{highD} highway recordings (drone-based trajectories at \SI{25}{\hertz}) using offline batch processing. To give one concrete example beyond \textit{highD} without expanding the thesis into a second full benchmark, the thesis also includes a small exploratory extension on 10 \textit{exiD} recordings from highway entry/exit scenes~\cite{moers2022exid}. This add-on is meant only to illustrate transferability of the event-mining core to a related but more interactive highway geometry; it is not presented as evidence equivalent to the main highD evaluation. Older public freeway datasets such as NGSIM were considered as possible transfer targets, but they are left to future work because their noisier kinematics and different neighbour semantics would require a broader harmonisation effort than this thesis can justify. The thesis does not aim to infer driver intent beyond observable trajectories, does not include simulation-based re-enactment, and does not claim that any single risk threshold is universally valid. The emphasis is on reproducible scenario extraction, pair-consistent indicator computation, and reference-label evaluation.
+    The framework is evaluated primarily on \textit{highD} highway recordings (drone-based trajectories at \SI{25}{\hertz}) using offline batch processing. To give one concrete example beyond \textit{highD} without expanding the thesis into a second full benchmark, the thesis also includes a small exploratory extension on 10 \textit{exiD} recordings from highway entry/exit scenes~\cite{moers2022exid}. This add-on is meant only to illustrate transferability of the event-mining core to a related but more interactive highway geometry; it is not presented as evidence equivalent to the main highD evaluation. Older public freeway datasets such as NGSIM were not included in the evaluated thesis pipeline. Appendix~\ref{app:ngsim-feasibility} records a narrow internal feasibility probe on the NGSIM freeway subsets, but that probe reuses dataset-provided lane and neighbour fields after light harmonisation and is therefore not treated as evidence on the same level as either the main highD evaluation or the exploratory exiD extension. Full NGSIM integration remains future work because its noisier kinematics and different neighbour semantics would require a broader harmonisation effort than this thesis can justify. The thesis does not aim to infer driver intent beyond observable trajectories, does not include simulation-based re-enactment, and does not claim that any single risk threshold is universally valid. The emphasis is on reproducible scenario extraction, pair-consistent indicator computation, and reference-label evaluation.
 
     \section{Contributions}
     The main contributions are:
@@ -1229,7 +1229,7 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
 
     A smaller supporting contribution is the adapted inspection dashboard. It was not a user-facing evaluated system, but it made manual sanity checks of onset alignment, interaction pairing, and decoded occupancy practical across 60 recordings, which in turn supported the trustworthiness of the final pipeline.
 
-    \paragraph{Transfer beyond highD.} The exploratory exiD extension in Section~\ref{sec:exid-exploratory} makes the transfer question more concrete. Because exiD belongs to the same broader dataset family but focuses on highly interactive highway entry/exit scenes rather than straight motorway segments, it is a useful stress test of whether the framework depends on one particular road geometry. Reusing the same cut-in event definition, cutter--follower pairing logic, and pairwise risk-summary path on 10 exiD recordings still produces coherent event sets and interpretable qualitative cases, which supports the claim that transfer is not blocked by the event definition itself. At the same time, the extension is deliberately limited: we do not repeat the full highD-style reference agreement or predictive evaluation, so the exiD results should be read as an illustrative probe of transferability rather than as full cross-dataset validation. Older public freeway datasets such as NGSIM remain relevant future targets, but they would require a broader harmonisation effort because their kinematics and neighbour semantics are less aligned with the present pipeline.
+    \paragraph{Transfer beyond highD.} The exploratory exiD extension in Section~\ref{sec:exid-exploratory} makes the transfer question more concrete. Because exiD belongs to the same broader dataset family but focuses on highly interactive highway entry/exit scenes rather than straight motorway segments, it is a useful stress test of whether the framework depends on one particular road geometry. Reusing the same cut-in event definition, cutter--follower pairing logic, and pairwise risk-summary path on 10 exiD recordings still produces coherent event sets and interpretable qualitative cases, which supports the claim that transfer is not blocked by the event definition itself. At the same time, the extension is deliberately limited: we do not repeat the full highD-style reference agreement or predictive evaluation, so the exiD results should be read as an illustrative probe of transferability rather than as full cross-dataset validation. Older public freeway datasets such as NGSIM remain relevant future targets. Appendix~\ref{app:ngsim-feasibility} records a narrow scoping probe showing that the downstream event-mining path can be exercised after a thin NGSIM adapter, but because that probe depends on dataset-provided relation fields and inherits known NGSIM data-quality issues, it does not change the conclusion that full NGSIM transfer requires broader harmonisation.
 
     \paragraph{Per-recording variability.}
     The cross-recording perspective also reveals notable variability. Risk prevalence ranges from 11.1\% to 34.1\% across the 60 recordings (median 20.0\%), which likely reflects differences in traffic density, speed distributions, and lane configurations across the six recording sites. LORO-CV fold-level AUC ranges from approximately 0.65 to 0.95, with lower-performing folds concentrated in recordings with fewer events or atypical speed distributions. This variability underscores the importance of the leave-one-recording-out protocol: pooled cross-validation would overestimate performance by allowing the model to learn site-specific patterns. The limited exiD extension supports this interpretation: once the framework moves to a different highway geometry, transfer remains possible, but the surrounding traffic mix and event yield become more heterogeneous immediately.
@@ -1390,6 +1390,36 @@ Reproducible evaluation & Two-path design; parameter table; deterministic output
         \newblock \emph{Findings}, 2025.
         \newblock DOI: \url{https://doi.org/10.32866/001c.132341}.
 
+        \bibitem{fhwa_i80_2006}
+        U.S.~Federal Highway Administration.
+        \newblock Interstate 80 freeway dataset.
+        \newblock FHWA-HRT-06-137, 2006.
+        \newblock \url{https://www.fhwa.dot.gov/publications/research/operations/06137/index.cfm}.
+
+        \bibitem{fhwa_us101_2007}
+        U.S.~Federal Highway Administration.
+        \newblock US Highway 101 dataset.
+        \newblock FHWA-HRT-07-030, 2007.
+        \newblock \url{https://www.fhwa.dot.gov/publications/research/operations/07030/index.cfm}.
+
+        \bibitem{punzo2011ngsim}
+        V.~Punzo, M.~T.~Borzacchiello, and B.~Ciuffo.
+        \newblock On the assessment of vehicle trajectory data accuracy and application to the Next Generation SIMulation (NGSIM) program data.
+        \newblock \emph{Transportation Research Part C: Emerging Technologies}, 19(6):1243--1262, 2011.
+        \newblock DOI: \url{https://doi.org/10.1016/j.trc.2010.12.007}.
+
+        \bibitem{montanino2013ngsim}
+        M.~Montanino and V.~Punzo.
+        \newblock Making NGSIM data usable for studies on traffic flow theory: Multistep method for vehicle trajectory reconstruction.
+        \newblock \emph{Transportation Research Record}, 2390(1):99--111, 2013.
+        \newblock DOI: \url{https://doi.org/10.3141/2390-11}.
+
+        \bibitem{coifman2017ngsim}
+        B.~Coifman and L.~Li.
+        \newblock A critical evaluation of the Next Generation Simulation (NGSIM) vehicle trajectory dataset.
+        \newblock \emph{Transportation Research Part B: Methodological}, 105:362--377, 2017.
+        \newblock DOI: \url{https://doi.org/10.1016/j.trb.2017.09.018}.
+
     \end{thebibliography}
 
 % ==============================================================================
@@ -1510,6 +1540,57 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
         \caption{Ranked semantic-cell shifts within each stage, shown as signed percentage-point differences. This view makes it explicit which cells drive the contrast at each stage and confirms that the dominant pre-onset changes occur around the cells ahead of the cutter and, later, behind the manoeuvre.}
         \label{fig:sfc-stage-ranked}
     \end{figure}
+
+    \chapter{Appendix: Exploratory NGSIM feasibility probe}
+    \label{app:ngsim-feasibility}
+
+    During scoping, we also ran a narrow feasibility probe on the NGSIM freeway subsets US-101 and I-80, both released as video-derived freeway trajectory datasets by the U.S. Federal Highway Administration~\cite{fhwa_us101_2007,fhwa_i80_2006}. The purpose was deliberately narrower than the exiD extension in Chapter~\ref{chap:results}: we wanted to test whether the downstream lane-change and cut-in mining logic could be exercised on an older public freeway dataset after a thin harmonisation layer. This appendix records that probe so the exclusion of NGSIM from the main evidence base is itself auditable.
+
+    The key methodological point is that this probe does \emph{not} reproduce the thesis evaluation boundary. The NGSIM feasibility adapter reads NGSIM's released \texttt{Lane\_ID}, \texttt{Preceding}, \texttt{Following}, \texttt{Space\_Headway}, and \texttt{Time\_Headway} columns and feeds them into the downstream event-mining path after light cleaning. It therefore does not reconstruct lane membership or same-lane relations from minimal inputs, does not validate reconstructed relations against reference labels, and does not run the predictive evaluation stack. The appendix should thus be read as a portability probe for the \emph{event-mining core} only, not as additional evidence for RQ1 or as a second benchmark.
+
+    This distinction is important because NGSIM trajectory quality has been questioned in the traffic-flow literature. Prior work reported substantial measurement errors and physically implausible differentiated kinematics in the released trajectories, motivating multistep reconstruction and smoothing before theory-heavy use~\cite{punzo2011ngsim,montanino2013ngsim,coifman2017ngsim}. For the present thesis, that literature supports the conservative decision to keep NGSIM outside the main validation chain unless a broader harmonisation and revalidation effort is performed.
+
+    \section{Probe setup and fixed assumptions}
+    The probe used the following fixed assumptions:
+    \begin{itemize}[leftmargin=1.2em]
+  \item scope restricted to the two freeway subsets (\texttt{us-101}, \texttt{i-80}) so the road class remained aligned with the highway cut-in problem,
+  \item process one location at a time to avoid mixing site-specific vehicle ids,
+  \item drop exact duplicate rows on \texttt{(Vehicle\_ID, Frame\_ID, Global\_Time)},
+  \item split repeated source ids when \texttt{Global\_Time} jumps by more than \SI{1}{\second},
+  \item remap \texttt{Preceding} and \texttt{Following} after the split so neighbour links refer to the derived track-instance ids,
+  \item treat \texttt{Time\_Headway > 100\,s} as placeholder/invalid values rather than as genuine car-following measurements,
+  \item adapt the event-persistence parameters to NGSIM's \SI{10}{\hertz} rate: 10 stable frames before the lane change, 10 stable frames after, a 20-frame follower search window, a 6-frame maximum relation delay, a 5-frame minimum relation duration, and a 10-frame precheck window.
+    \end{itemize}
+
+    The strongest claim supported by this probe is modest: a thin adapter is sufficient to produce non-empty, qualitatively interpretable cut-in candidate sets and coarse pairwise THW/TTC summaries on both NGSIM freeway sites. That is useful as software-engineering evidence that the downstream event-mining path is not hard-coded to one file format or one exact dataset family.
+
+    The probe does \emph{not} show that the thesis's minimal-input reconstruction layer transfers to NGSIM, because the adapter depends directly on NGSIM's released lane and neighbour semantics. It also does not establish that the candidate yields are behaviourally meaningful enough for cross-dataset comparison: the very high cut-in-to-lane-change ratio on I-80, the large duplicate removal on US-101, and the non-zero negative-gap share are precisely the kinds of signals that justify a deeper harmonisation pass before any substantive comparison with highD or exiD. Accordingly, NGSIM remains future work at the level of full reconstruction, agreement auditing, and predictive evaluation, even though this appendix records preliminary evidence that a carefully delimited transfer path exists.
+
+    Figure~\ref{fig:ngsim-feasibility} and Table~\ref{tab:ngsim-feasibility} summarise the resulting artefacts.
+
+    \begin{figure}[tbp]
+        \centering
+        \safeincludegraphics[width=\textwidth]{ngsim_feasibility_counts.png}
+        \caption{Exploratory NGSIM feasibility probe on the two freeway subsets. Bars show detected lane changes and cut-in candidates after harmonisation; labels above the cut-in bars show cut-in candidates as a share of detected lane changes. The figure is reported as a scoping artefact only and is not interpreted as cross-dataset validation performance.}
+        \label{fig:ngsim-feasibility}
+    \end{figure}
+
+    \begin{table}[tbp]
+        \centering
+        \caption{Summary of the NGSIM feasibility probe. Negative-gap share denotes candidate events with at least one frame where reported \texttt{Space\_Headway} minus cutter length became negative; it is used only as a harmonisation stress indicator, not as a behavioural result.}
+        \label{tab:ngsim-feasibility}
+        {\small
+        \renewcommand{\arraystretch}{1.15}
+        \resizebox{\textwidth}{!}{%
+            \begin{tabular}{@{}l r r r r r r r r r@{}}
+\toprule
+Location & Raw rows & Duplicates removed & Track instances & Lane changes & Cut-in candidates & Cut-in ratio & Median min THW & Finite TTC share & Negative-gap share \\
+\midrule
+I-80   & 4,566,387 & 0       & 5,678 & 2,647 & 2,530 & 95.6\% & \SI{2.05}{\second} & 67.5\% & 4.0\% \\
+US-101 & 4,802,933 & 704,000 & 6,101 & 2,780 & 1,919 & 69.0\% & \SI{1.60}{\second} & 54.3\% & 2.4\% \\
+\bottomrule
+            \end{tabular}}}
+    \end{table}
 
 
 \end{document}
