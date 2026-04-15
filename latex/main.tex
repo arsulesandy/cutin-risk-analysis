@@ -479,8 +479,8 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
             \fill[gray!20] (12.6,2.4) rectangle (13.6,3.4);
             \fill[gray!20] (12.6,3.4) rectangle (13.6,4.4);
             \draw[line width=1.1pt] (9.6,1.4) rectangle (12.6,4.4);
-            \fill[gray!20] (9.9,-0.25) rectangle (10.35,0.2);
-            \draw[line width=0.7pt] (9.9,-0.25) rectangle (10.35,0.2);
+            \fill[gray!20] (9.3,-0.25) rectangle (9.75,0.2);
+            \draw[line width=0.7pt] (9.3,-0.25) rectangle (9.75,0.2);
             \node[font=\scriptsize, anchor=west] at (9.8,-0.03) {shaded cells = fixed padding};
 
             % arrow 3
@@ -492,7 +492,7 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
             \draw[rounded corners=2pt, line width=0.9pt] (15.4,2.6) rectangle (18.8,3.35);
             \node[align=center] at (17.1,2.98) {bits: $b_{15}\,\dots\,b_0$};
             \draw[rounded corners=2pt, line width=0.9pt] (15.4,1.35) rectangle (18.8,2.1);
-            \node[align=center] at (17.1,1.73) {hex: \texttt{0x3A7F} (example)};
+            \node[align=center] at (17.1,1.73) {hex: e.g., \texttt{0x3A7F}};
             \node[font=\scriptsize, align=left, text width=4.3cm] at (17.1,0.25) {Compact, locality-preserving representation for fast matching and grouping.};
         \end{tikzpicture}%
         }
@@ -564,7 +564,7 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
             {Trajectories and\\vehicle geometry\\[1pt]
              {\small $(x,y)$, speeds, dimensions}};
 
-        \node[inputblock] (lanemeta) at (4.4, 0)
+        \node[inputblock] (lanemeta) at (4.8, 0)
             {Lane markings\\from recording\\metadata};
 
         % --- Reconstruction chain (centred under two inputs) ---
@@ -581,15 +581,15 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
             {Pair-specific indicators\\and context signatures};
 
         % --- Reference path (right column) ---
-        \node[inputblock] (reflabels) at (9.6, 0)
+        \node[inputblock] (reflabels) at (11, 0)
             {highD reference labels\\[1pt]
              {\small lane and neighbour ids}};
 
-        \node[block] (reference) at (9.6, -3.2)
+        \node[block] (reference) at (11, -3.2)
             {Reference relations,\\events, and signatures};
 
         % --- Evaluation (centred between columns) ---
-        \node[evalblock] (eval) at (6.0, -14.0)
+        \node[evalblock] (eval) at (6.0, -15.0)
             {Agreement evaluation\\[1pt]
              {\small frame level, event level,\\and signature level}};
 
@@ -620,7 +620,7 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
 
         \node[group,
               fit=(eval),
-              label={[grouplabel]above:Evaluation boundary}
+              label={[grouplabel]below:Evaluation boundary}
              ] {};
 
         \end{tikzpicture}
