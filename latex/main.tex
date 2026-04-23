@@ -263,7 +263,7 @@
 
     \section{Thesis outline}
 
-    Chapter~\ref{chap:relatedwork} positions the thesis within the literature on surrogate safety measures, cut-in analysis, and context encoding, and identifies three research gaps that motivate the framework. Chapter~\ref{chap:researchmethod} describes the four-level evaluation methodology (frame, event, representation, and prediction). Chapter~\ref{chap:theory} formally defines cut-in events, the stage model, safety indicators (DHW, THW, TTC, DRAC), and the SFC context-signature encoding. Chapter~\ref{chap:methods} details each framework component, the two-path evaluation design, and the predictive evaluation protocol. Chapter~\ref{chap:results} reports reconstruction accuracy, risk characterisation, multi-indicator analysis, context-signature verification, prediction results, and a small exploratory exiD extension. Chapter~\ref{chap:discussion} discusses implications, per-recording variability, and threats to validity. Chapter~\ref{chap:conclusion} summarises the contributions and outlines future work.
+    Chapter~\ref{chap:relatedwork} reviews the literature and motivates the framework. Chapter~\ref{chap:researchmethod} describes the evaluation methodology. Chapter~\ref{chap:theory} defines cut-ins, stages, safety indicators, and the SFC context encoding. Chapter~\ref{chap:methods} presents the framework, the two-path evaluation design, and the prediction protocol. Chapter~\ref{chap:results} reports the main results and the exploratory exiD extension. Chapter~\ref{chap:discussion} covers implications, variability, and validity threats. Chapter~\ref{chap:conclusion} concludes the thesis.
 
 % ==============================================================================
     \chapter{Related Work}
@@ -301,7 +301,7 @@
     \paragraph{Positioning summary.}
     Table~\ref{tab:related-comparison} compares the framework presented in this thesis to the most closely related studies across five dimensions that together define the research gap.
 
-    \begin{table}[H]
+    \begin{table}[htbp]
         \centering
         \caption{Comparison of the framework presented in this thesis with related lane-change and cut-in studies. \checkmark\ = supported, -- = not addressed.}
         \label{tab:related-comparison}
@@ -879,7 +879,7 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
                 Event type & Min (s) & P25 (s) & Median (s) & Mean (s) & P75 (s) & Max (s) \\
                 \midrule
                 Lane change duration & 0.960 & 3.680 & 6.240 & 6.551 & 8.960 & 69.120 \\
-                \shortstack[l]{Observed cut-in relation duration\within post-onset window} & 0.360 & 1.960 & 1.960 & 1.870 & 1.960 & 1.960 \\
+                \shortstack[l]{Observed cut-in relation duration\\within post-onset window} & 0.360 & 1.960 & 1.960 & 1.870 & 1.960 & 1.960 \\
                 \bottomrule
             \end{tabular}}
 
@@ -1062,7 +1062,7 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
 
     We present the decision stage as a representative example because it captures the traffic configuration immediately before the cut-in interaction becomes established. Figure~\ref{fig:sfc-decision-grids} therefore shows both absolute occupancy maps (non-risk and risky) and the risk-minus-non-risk difference map for the decision stage. The absolute maps provide context, but the difference map is the main analytical view: positive values indicate cells that are occupied more often in risky events, while negative values indicate the opposite.
 
-    To highlight how group differences evolve over time, Figure~\ref{fig:sfc-stage-diff} shows risk-minus-non-risk difference maps for the intention, decision, and execution stages using a consistent zero-centred colour scale. The key point is not that risky and non-risky cut-ins form completely different scene types; rather, they share a common cut-in geometry and differ through comparatively small occupancy shifts in a few neighbouring cells. This is why the absolute maps look broadly similar and why the difference maps are more informative. Supplementary interpretation-first views that track and rank these subtle shifts are provided in Appendix~\ref{app:occupancy-supp}.
+    To highlight how group differences evolve over time, Figure~\ref{fig:sfc-stage-diff} shows risk-minus-non-risk difference maps for the intention, decision, and execution stages using a consistent zero-centred colour scale. The key point is not that risky and non-risky cut-ins form completely different scene types; rather, they share a common cut-in geometry and differ through comparatively small occupancy shifts in a few neighbouring cells. This is why the absolute maps look broadly similar and why the difference maps are more informative.
 
     \begin{figure}[H]
         \centering
@@ -1434,12 +1434,12 @@ Reproducible evaluation & Two-path design; parameter table; released pipeline & 
     \appendix
     \cleardoublepage
 
-    \chapter{Appendix: Terminology and highD field mapping}
+    \chapter{Terminology and highD Field Mapping}
     \label{app:field-mapping}
 
-    To maintain the focus of the main chapters on concepts rather than code-level details, we describe lanes and neighbour relations in descriptive terms such as \emph{same-lane leader} or \emph{right-lane follower}. Table~\ref{tab:field-mapping} lists the corresponding column names in the released highD dataset for readers who want to reproduce the evaluation directly from the raw files.
+    This appendix maps the descriptive lane and neighbour terms used in the thesis to the corresponding highD column names.
 
-    \begin{table}[H]
+    \begin{table}[htbp]
         \centering
         \caption{Mapping between thesis terminology and highD columns (tracks file).}
         \label{tab:field-mapping}
@@ -1462,14 +1462,9 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
             \end{tabularx}}
     \end{table}
 
-    HighD distributes each recording as three CSV files:
-    \begin{itemize}[leftmargin=1.2em]
-  \item \texttt{XX\_tracks.csv} (per-frame trajectories),
-  \item \texttt{XX\_tracksMeta.csv} (per-track metadata),
-  \item \texttt{XX\_recordingMeta.csv} (recording metadata, including lane markings).
-    \end{itemize}
+    HighD distributes each recording as three CSV files: \nolinkurl{XX_tracks.csv} (per-frame trajectories), \nolinkurl{XX_tracksMeta.csv} (per-track metadata), and \nolinkurl{XX_recordingMeta.csv} (recording metadata with lane markings).
 
-    \chapter{Appendix: Qualitative Inspection Dashboard}
+    \chapter{Qualitative Inspection Dashboard}
     \label{app:dashboard}
 
     Quantitative agreement metrics provide an overall assessment of reconstruction quality, but they do not on their own reveal whether failures are systematic (e.g., due to direction conventions, onset misalignment, or lane-boundary interpretation). To support qualitative inspection, we use an interactive inspection dashboard that synchronises (i) aerial video playback and track overlays, (ii) the currently selected cut-in event and its cutter--follower pair, and (iii) the derived stage window, indicators, and context signature for the current frame.
@@ -1494,7 +1489,7 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
         \label{fig:gui-dashboard-exid}
     \end{figure}
 
-    \chapter{Appendix: Plain-language algorithms}
+    \chapter{Plain-Language Algorithms}
 
     \section{Lane change detection (stable blocks)}
     \begin{enumerate}[leftmargin=1.6em]
@@ -1528,26 +1523,7 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
 
 
 
-    \chapter{Appendix: Supplementary SFC interpretation views}
-    \label{app:occupancy-supp}
-
-    Figure~\ref{fig:sfc-decision-grids} in Chapter~\ref{chap:results} presents the decision-stage occupancy maps in the main text because that stage is the most relevant pre-onset comparison, while Figure~\ref{fig:sfc-stage-diff} provides the core signed difference view. This appendix adds two interpretation-first summaries that make the subtle stage-wise shifts easier to read than repeated absolute heatmaps. Figure~\ref{fig:sfc-stage-trends} follows each semantic cell across the intention, decision, and execution stages, and Figure~\ref{fig:sfc-stage-ranked} ranks the signed percentage-point shifts within each stage.
-
-    \begin{figure}[H]
-        \centering
-        \safeincludegraphics[width=\textwidth]{stage_diff_trends.png}
-        \caption{Stage-wise trajectories of the signed occupancy differences for each informative semantic cell. Positive values indicate higher occupancy in risky events, negative values indicate higher occupancy in non-risk events. This view makes it easier to see how the same local region changes from intention to decision to execution.}
-        \label{fig:sfc-stage-trends}
-    \end{figure}
-
-    \begin{figure}[H]
-        \centering
-        \safeincludegraphics[width=\textwidth]{stage_diff_ranked.png}
-        \caption{Ranked semantic-cell shifts within each stage, shown as signed percentage-point differences. This view makes it explicit which cells drive the contrast at each stage and confirms that the dominant pre-onset changes occur around the cells ahead of the cutter and, later, behind the manoeuvre.}
-        \label{fig:sfc-stage-ranked}
-    \end{figure}
-
-    \chapter{Appendix: Exploratory NGSIM feasibility probe}
+    \chapter{Exploratory NGSIM Feasibility Probe}
     \label{app:ngsim-feasibility}
 
     During scoping, we also ran a narrow feasibility probe on the NGSIM freeway subsets US-101 and I-80, both released as video-derived freeway trajectory datasets by the U.S. Federal Highway Administration~\cite{fhwa_us101_2007,fhwa_i80_2006}. The purpose was deliberately narrower than the exiD extension in Chapter~\ref{chap:results}: we wanted to test whether the downstream lane-change and cut-in mining logic could be exercised on an older public freeway dataset after a thin harmonisation layer. This appendix records that probe so the exclusion of NGSIM from the main evidence base is itself auditable.
