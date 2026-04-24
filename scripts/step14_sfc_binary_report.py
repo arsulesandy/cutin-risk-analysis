@@ -22,12 +22,12 @@ STAGE_LABELS = {
 }
 CELL_ORDER = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1), (2, 2)]
 CELL_LABELS = {
-    (0, 0): "Ahead\nleft adj.",
+    (0, 0): "Ahead\naway lane",
     (0, 1): "Ahead\ncutter lane",
     (0, 2): "Ahead\ntarget lane",
-    (1, 0): "Alongside\nleft adj.",
+    (1, 0): "Alongside\naway lane",
     (1, 2): "Alongside\ntarget lane",
-    (2, 0): "Behind\nleft adj.",
+    (2, 0): "Behind\naway lane",
     (2, 1): "Behind\ncutter lane",
     (2, 2): "Behind\ntarget lane",
 }
@@ -74,16 +74,16 @@ def plot_grid(
     diff_limit: float | None = None,
 ) -> None:
     fig, ax = plt.subplots(figsize=(6.4, 4.8))
-    xtick_labels = ["left adj.", "cutter lane", "target lane"]
+    xtick_labels = ["away lane", "cutter lane", "target lane"]
     ytick_labels = ["ahead", "alongside", "behind"]
+    display = g.astype(float).copy()
+    display[1, 1] = np.nan
 
     if diff_mode:
         from matplotlib.colors import TwoSlopeNorm
 
         scale = float(diff_limit) if diff_limit is not None else float(np.max(np.abs(g)))
         scale = max(scale, 1e-6)
-        display = g.astype(float).copy()
-        display[1, 1] = np.nan
         cmap = plt.get_cmap("RdBu_r").copy()
         cmap.set_bad(color="#f0f0f0")
         im = ax.imshow(
@@ -93,10 +93,16 @@ def plot_grid(
         )
         cbar = fig.colorbar(im, ax=ax, shrink=0.88, pad=0.03)
         cbar.set_label("risk - non-risk occupancy difference (percentage points)")
+        footer = "pp = percentage points. Positive values mean more occupancy in risky events."
     else:
-        im = ax.imshow(g, vmin=0.0, vmax=1.0, cmap="YlGnBu")
+        cmap = plt.get_cmap("YlGnBu").copy()
+        cmap.set_bad(color="#f0f0f0")
+        im = ax.imshow(display, vmin=0.0, vmax=1.0, cmap=cmap)
         cbar = fig.colorbar(im, ax=ax, shrink=0.88, pad=0.03)
-        cbar.set_label("occupancy probability")
+        cbar.set_label("mean occupancy probability")
+        cbar.set_ticks(np.linspace(0.0, 1.0, 5))
+        cbar.set_ticklabels(["0%", "25%", "50%", "75%", "100%"])
+        footer = "Each cell shows the share of stage frames in which that semantic region is occupied."
 
     ax.set_title(title)
     ax.set_xticks([0, 1, 2], xtick_labels)
@@ -111,7 +117,7 @@ def plot_grid(
     for r in range(3):
         for c in range(3):
             value = float(g[r, c])
-            if diff_mode and r == 1 and c == 1:
+            if r == 1 and c == 1:
                 ax.text(
                     c,
                     r,
@@ -129,7 +135,7 @@ def plot_grid(
                 contrast_cutoff = max((diff_limit or 0.0) * 0.55, 0.02)
                 text_color = "white" if abs(value) >= contrast_cutoff else "#1f1f1f"
             else:
-                label = f"{value:.2f}"
+                label = f"{value * 100:.0f}%"
                 text_color = "white" if value >= 0.55 else "#1f1f1f"
 
             ax.text(
@@ -143,7 +149,8 @@ def plot_grid(
                 color=text_color,
             )
 
-    fig.tight_layout()
+    fig.text(0.5, 0.02, footer, ha="center", fontsize=9, color="#444444")
+    fig.tight_layout(rect=(0.0, 0.05, 1.0, 1.0))
     fig.savefig(out, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
@@ -312,19 +319,19 @@ def main() -> None:
             plot_grid(
                 plt,
                 g_safe,
-                f"{stage_title} stage: non-risk mean occupancy",
+                f"{stage_title} stage: non-risk mean occupancy probability",
                 out_dir / f"{stage}_nonrisk.png",
             )
             plot_grid(
                 plt,
                 g_risk,
-                f"{stage_title} stage: risk mean occupancy",
+                f"{stage_title} stage: risk mean occupancy probability",
                 out_dir / f"{stage}_risk.png",
             )
             plot_grid(
                 plt,
                 g_diff,
-                f"{stage_title} stage: risk - non-risk",
+                f"{stage_title} stage: risk - non-risk occupancy difference",
                 out_dir / f"{stage}_diff.png",
                 diff_mode=True,
                 diff_limit=diff_limit,
