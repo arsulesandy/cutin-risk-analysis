@@ -1,9 +1,11 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
-title: "Cut-in Risk Analysis"
-version: "0.0.0"
-doi: ""
+message: "If you use this software or thesis material, please cite it as below."
+title: "A Minimal-Input Framework for Cut-In Detection and Pair-Specific Risk Analysis in Highway Trajectory Data"
+repository-code: "https://github.com/arsulesandy/cutin-risk-analysis"
+url: "https://github.com/arsulesandy/cutin-risk-analysis"
 authors:
-  - family-names: "TODO"
-    given-names: "Author"
-date-released: "2024-01-01"
+  - family-names: "Arsule"
+    given-names: "Sandeep"
+  - family-names: "Shinde"
+    given-names: "Shradha"
+date-released: "2026-04-15"

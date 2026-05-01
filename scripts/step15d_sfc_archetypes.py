@@ -274,8 +274,8 @@ def _plot_archetype_heatmaps(summary_df: pd.DataFrame, out_path: Path, *, stage:
     fig, axes = plt.subplots(nrows, ncols, figsize=(4.15 * ncols, 4.15 * nrows + 0.55))
     axes_arr = np.atleast_1d(axes).reshape(nrows, ncols)
 
-    lane_labels = ["Away", "Same", "Target"]
-    row_labels = ["Ahead", "Along", "Behind"]
+    lane_labels = ["Away", "Cutter\nlane", "Target\nlane"]
+    row_labels = ["Ahead", "Alongside", "Behind"]
     bin_edges = [0.0, 0.05, 0.25, 0.50, 0.75, 1.01]
     bin_colors = ["#f8fafc", "#dbeafe", "#93c5fd", "#3b82f6", "#1d4ed8"]
     cmap = mcolors.ListedColormap(bin_colors)
@@ -333,7 +333,7 @@ def _plot_archetype_heatmaps(summary_df: pd.DataFrame, out_path: Path, *, stage:
         ax.text(
             0.5,
             1.10,
-            f"share {share_pct:.1f}% | risk {risk_pct:.1f}%",
+            f"share {share_pct:.1f}% | risky {risk_pct:.1f}%",
             transform=ax.transAxes,
             ha="center",
             va="bottom",
@@ -392,7 +392,8 @@ def _plot_archetype_heatmaps(summary_df: pd.DataFrame, out_path: Path, *, stage:
         legend_ax.text(
             0.02,
             0.82,
-            "Each label shows mean occupancy in that semantic cell.\n"
+            "Each cell label shows mean occupancy in that semantic cell.\n"
+            "The header reports cluster share and THW-risk prevalence.\n"
             "The grey hatched centre cell is the cutter position,\n"
             "so it is fixed by construction rather than informative.",
             ha="left",
@@ -403,8 +404,8 @@ def _plot_archetype_heatmaps(summary_df: pd.DataFrame, out_path: Path, *, stage:
         )
         legend_ax.text(
             0.02,
-            0.56,
-            "Mirror-normalised lane columns:\nAway | Same | Target",
+            0.54,
+            "Mirror-normalised lane columns:\nAway | Cutter lane | Target lane",
             ha="left",
             va="top",
             fontsize=9.5,
@@ -428,7 +429,7 @@ def _plot_archetype_heatmaps(summary_df: pd.DataFrame, out_path: Path, *, stage:
     fig.text(
         0.5,
         0.955,
-        f"Stage clustered: {stage}. The target lane is always the right column after mirror normalisation.",
+        f"Stage clustered: {stage}. A1-A7 are cluster IDs relabelled by size (A1 largest); the target lane is always the right column after mirror normalisation.",
         ha="center",
         va="top",
         fontsize=10,
