@@ -458,7 +458,7 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
   \item rows: \{ahead of the cutter, alongside the cutter, behind the cutter\}.
     \end{itemize}
 
-    Each cell is treated as binary occupancy ($1$ if at least one vehicle occupies the cell, else $0$). The 3$\times$3 grid is embedded in a fixed 4$\times$4 grid and encoded as a 16-bit integer using a locality-preserving space-filling-curve order (Hilbert order by default). Because the mapping is deterministic and reversible, we can decode a code back into a grid. Figure~\ref{fig:sfc-signature-overview} summarises the encoding pipeline from local traffic scene to reversible 16-bit signature.
+    Each cell is treated as binary occupancy ($1$ if at least one vehicle occupies the cell, else $0$). The purpose of the SFC step is not to create a new risk score; it is to turn the spatial occupancy pattern for one frame into a compact, reversible context identifier. The 3$\times$3 grid is first mirror-normalised to a common cut-in direction, then embedded in a fixed 4$\times$4 grid and encoded as a 16-bit integer using a locality-preserving space-filling-curve order (Hilbert order by default). Because the mapping is deterministic and reversible, we can decode a code back into the same occupancy grid. Figure~\ref{fig:sfc-signature-overview} summarises this conversion from surrounding-vehicle layout to context signature.
 
     \begin{figure}[H]
         \centering
@@ -471,15 +471,16 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
             arr/.style={-{Latex[length=3.2mm,width=2.0mm]}, line width=1.0pt, draw=accent}
         ]
             % scene
-            \node[paneltitle, text width=3.2cm] at (1.7,4.3) {Local traffic scene};
+            \node[paneltitle, text width=3.2cm] at (1.7,4.35) {Local traffic\\scene};
             \draw[stagebox] (0.1,1.0) rectangle (3.3,3.25);
-            \node[align=center, text width=2.4cm] at (1.7,2.15) {Cutter-centred\\local scene};
+            \node[align=center, text width=2.1cm] at (2.05,2.10) {Raw frame\\around cutter};
+            \draw[arr] (0.62,1.25) -- (0.62,2.70);
 
             % arrow 1
             \draw[arr] (3.7,2.15) -- (4.5,2.15);
 
             % 3x3 grid
-            \node[paneltitle, text width=4.0cm] at (7.0,4.55) {3$\times$3 semantic occupancy grid};
+            \node[paneltitle, text width=4.2cm] at (7.0,4.82) {3$\times$3 occupancy};
             \draw[draw=accent!80!black, line width=1.0pt] (5.2,0.85) rectangle (8.8,4.05);
             \foreach \x in {6.4,7.6} {\draw[draw=accent!70!black, line width=0.8pt] (\x,0.85) -- (\x,4.05);}
             \foreach \y in {1.95,3.05} {\draw[draw=accent!70!black, line width=0.8pt] (5.2,\y) -- (8.8,\y);}
@@ -491,13 +492,14 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
             \node[chip, anchor=east] at (4.95,3.55) {ahead};
             \node[chip, anchor=east] at (4.95,2.50) {alongside};
             \node[chip, anchor=east] at (4.95,1.40) {behind};
+            \node[font=\scriptsize, align=center, text width=4.0cm] at (7.0,0.45) {$1$ = occupied; $0$ = empty};
 
             % arrow 2
             \draw[arr] (9.2,2.15) -- (10.1,2.15);
-            \node[font=\scriptsize, align=center, text=accent, text width=1.9cm] at (9.65,3.35) {mirror\\normalise};
+            \node[font=\scriptsize, align=center, text=accent, text width=2.0cm] at (9.65,3.35) {canonicalise:\\target right};
 
             % 4x4 grid
-            \node[paneltitle, text width=4.3cm] at (12.9,4.85) {Embed into fixed 4$\times$4 grid};
+            \node[paneltitle, text width=4.4cm] at (12.9,4.85) {Canonical grid padded to 4$\times$4};
             \fill[lightfill] (10.6,0.45) rectangle (14.8,4.45);
             \draw[draw=accent!80!black, line width=0.9pt] (10.6,0.45) rectangle (14.8,4.45);
             \foreach \x in {11.65,12.7,13.75} {\draw[draw=accent!65!black, line width=0.8pt] (\x,0.45) -- (\x,4.45);}
@@ -510,22 +512,22 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
             \fill[accentline!45] (13.75,2.45) rectangle (14.8,3.45);
             \fill[accentline!45] (13.75,3.45) rectangle (14.8,4.45);
             \draw[draw=accent!90!black, line width=1.0pt] (10.6,1.45) rectangle (13.75,4.45);
-            \node[chip, anchor=west] at (10.75,0.02) {shaded cells = fixed padding};
+            \node[chip, anchor=west] at (10.75,0.02) {padding = fixed zeros};
 
             % arrow 3
             \draw[arr] (15.2,2.15) -- (16.1,2.15);
-            \node[font=\scriptsize, align=center, text=accent, text width=1.7cm] at (15.65,3.35) {Hilbert\\order};
+            \node[font=\scriptsize, align=center, text=accent, text width=1.9cm] at (15.65,3.35) {Hilbert\\order};
 
             % code boxes
-            \node[paneltitle, text width=4.4cm] at (18.4,4.45) {Hilbert traversal $\rightarrow$ 16-bit code};
+            \node[paneltitle, text width=4.4cm] at (18.4,4.45) {Context signature};
             \draw[stagebox] (16.5,2.7) rectangle (20.3,3.55);
-            \node[align=center] at (18.4,3.12) {bits: $b_{15}\,\dots\,b_0$};
+            \node[align=center] at (18.4,3.12) {16-bit reversible\\context ID};
             \draw[stagebox] (16.5,1.35) rectangle (20.3,2.2);
-            \node[align=center] at (18.4,1.77) {hex: e.g., \texttt{0x3A7F}};
-            \node[font=\scriptsize, align=left, text width=4.4cm] at (18.45,0.35) {Compact, locality-preserving representation for fast matching and grouping.};
+            \node[align=center] at (18.4,1.77) {integer/hex form\\e.g., \texttt{0x3A7F}};
+            \node[font=\scriptsize, align=left, text width=4.4cm] at (18.45,0.35) {Decoded back to the grid; used for comparison and grouping.};
         \end{tikzpicture}%
         }
-        \caption{Construction of an interaction context signature. For each frame, the local traffic scene around the cutter is mapped to a 3$\times$3 semantic occupancy grid, mirror-normalised, embedded into a fixed 4$\times$4 grid, and encoded as a reversible 16-bit Hilbert-order code. The shaded cells are fixed padding and are not part of the original 3$\times$3 semantic grid.}
+        \caption{Construction of an interaction context signature. The first panel is the cutter-centred local scene for one frame; the vertical arrow defines the forward/ahead direction. The scene is discretised into 3$\times$3 occupancy cells, mirrored to a common target-right orientation, padded with fixed zero cells to a 4$\times$4 grid, and read in Hilbert order as a reversible 16-bit context code. The code identifies the local traffic layout; it is not a risk score.}
         \label{fig:sfc-signature-overview}
     \end{figure}
 
