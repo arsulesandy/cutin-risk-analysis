@@ -206,16 +206,17 @@
 % --- Abbreviations ---
     \cleardoublepage
     \chapter*{Abbreviations}
+    \markboth{Abbreviations}{Abbreviations}
     \addcontentsline{toc}{chapter}{Abbreviations}
 
-    \begin{tabular}{@{}ll@{}}
+    \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
         \toprule
         Abbreviation & Meaning \\
         \midrule
         AUC & Area under the ROC curve \\
         DHW & Distance headway (longitudinal gap) \\
         DRAC & Deceleration rate to avoid crash \\
-        highD & Highway drone dataset~\cite{highd_2018} \\
+        highD & Drone-based highway trajectory dataset used in this study~\cite{highd_2018} \\
         LORO-CV & Leave-one-recording-out cross-validation \\
         ROC & Receiver operating characteristic \\
         SFC & Space-filling curve \\
@@ -224,7 +225,7 @@
         TTC & Time-to-collision (gap divided by closing speed, if closing) \\
         XY-lane & Lane inference from $y$ and lane markings \\
         \bottomrule
-    \end{tabular}
+    \end{tabularx}
 
 % ==============================================================================
 % Main matter
@@ -327,7 +328,7 @@
 
     \begin{table}[htbp]
         \centering
-        \caption{Comparison of the framework presented in this thesis with related lane-change and cut-in studies. \checkmark\ = supported, -- = not addressed.}
+        \caption[Comparison with related lane-change and cut-in studies]{Comparison of the framework presented in this thesis with related lane-change and cut-in studies. \checkmark\ = supported, -- = not addressed.}
         \label{tab:related-comparison}
         {\small
         \setlength{\tabcolsep}{3pt}
@@ -527,7 +528,7 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
             \node[font=\scriptsize, align=left, text width=4.4cm] at (18.45,0.35) {Decoded back to the grid; used for comparison and grouping.};
         \end{tikzpicture}%
         }
-        \caption{Construction of an interaction context signature. The first panel is the cutter-centred local scene for one frame; the vertical arrow defines the forward/ahead direction. The scene is discretised into 3$\times$3 occupancy cells, mirrored to a common target-right orientation, padded with fixed zero cells to a 4$\times$4 grid, and read in Hilbert order as a reversible 16-bit context code. The code identifies the local traffic layout; it is not a risk score.}
+        \caption[Construction of an interaction context signature]{Construction of an interaction context signature. The first panel is the cutter-centred local scene for one frame; the vertical arrow defines the forward/ahead direction. The scene is discretised into 3$\times$3 occupancy cells, mirrored to a common target-right orientation, padded with fixed zero cells to a 4$\times$4 grid, and read in Hilbert order as a reversible 16-bit context code. The code identifies the local traffic layout; it is not a risk score.}
         \label{fig:sfc-signature-overview}
     \end{figure}
 
@@ -655,7 +656,7 @@ Hwang et al.~\cite{hwang2022fsmrl} & -- & \checkmark & -- & -- & -- \\
              ] {};
 
         \end{tikzpicture}
-        \caption{Overview of \FrameworkName{}. The minimal-input reconstruction path starts from trajectories, vehicle geometry, and lane markings, then reconstructs lanes, same-lane relations, cut-in events, pair-specific indicators, and context signatures. In parallel, a reference-label path derived from highD lane and neighbour identifiers generates comparison outputs that are used only for agreement evaluation.}
+        \caption[Overview of \FrameworkName{}]{Overview of \FrameworkName{}. The minimal-input reconstruction path starts from trajectories, vehicle geometry, and lane markings, then reconstructs lanes, same-lane relations, cut-in events, pair-specific indicators, and context signatures. In parallel, a reference-label path derived from highD lane and neighbour identifiers generates comparison outputs that are used only for agreement evaluation.}
         \label{fig:framework-overview}
     \end{figure}
 
@@ -698,7 +699,7 @@ Reference-label evaluation & Agreement reporting & Frame-level accuracy, event-l
     \subsection{Lane inference from lateral position (XY-lane)}
     Lane membership is inferred by mapping lateral position to the interval between two consecutive lane markings provided in the recording metadata. Values outside the roadway are mapped to lane id 0 and are excluded from interaction mining. Algorithm~\ref{alg:lane-inference} summarises the procedure.
 
-    \begin{algorithm}[b]
+    \begin{algorithm}[H]
 \caption{Lane inference from lateral position and lane markings}
 \label{alg:lane-inference}
 \KwIn{Vehicle lateral position $y(t)$ and lane boundaries $\{b_0,\dots,b_K\}$ from recording metadata.}
@@ -718,7 +719,7 @@ Reference-label evaluation & Agreement reporting & Frame-level accuracy, event-l
     \subsection{Same-lane leader/follower reconstruction}
     Within each frame and inferred lane, vehicles are ordered by longitudinal position in the travel direction. The immediate leader (ahead) and follower (behind) are given by adjacent vehicles in this ordering. Algorithm~\ref{alg:neighbor-reconstruction} summarises the procedure.
 
-    \begin{algorithm}[b]
+    \begin{algorithm}[H]
 \caption{Same-lane leader/follower reconstruction from geometry}
 \label{alg:neighbor-reconstruction}
 \KwIn{Frame-wise vehicle states with longitudinal position $x(t)$ and inferred lane index $\ell(t)$.}
@@ -753,7 +754,7 @@ Reference-label evaluation & Agreement reporting & Frame-level accuracy, event-l
 
     Algorithm~\ref{alg:cutin-detection} summarises the rule-based cut-in identification used in the reconstruction and reference-label paths.
 
-    \begin{algorithm}[b]
+    \begin{algorithm}[H]
 \caption{Cut-in identification as a cutter--follower pair}
 \label{alg:cutin-detection}
 \KwIn{Lane-change candidate for vehicle $A$ with target lane $L$, reconstructed relations over time.}
@@ -1108,10 +1109,10 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
 
     \begin{figure}[H]
         \centering
-        \safeincludegraphics[width=0.43\textwidth]{decision_nonrisk.png}\hfill
-        \safeincludegraphics[width=0.43\textwidth]{decision_risk.png}\\[5pt]
-        \safeincludegraphics[width=0.62\textwidth]{decision_diff.png}
-        \caption{Decision-stage occupancy maps. The top panels show cell-wise mean occupancy probabilities for non-risk and risky events after mirror normalisation, so each label is the share of decision-stage frames in which that semantic cell is occupied. The bottom panel shows the cell-wise difference (risk minus non-risk) in percentage points.}
+        \safeincludegraphics[width=0.48\textwidth]{decision_nonrisk.png}\hfill
+        \safeincludegraphics[width=0.48\textwidth]{decision_risk.png}\\[5pt]
+        \safeincludegraphics[width=0.72\textwidth]{decision_diff.png}
+        \caption[Decision-stage occupancy maps]{Decision-stage occupancy maps. The top panels show cell-wise mean occupancy probabilities for non-risk and risky events after mirror normalisation, so each label is the share of decision-stage frames in which that semantic cell is occupied. The bottom panel shows the cell-wise difference (risk minus non-risk) in percentage points.}
         \label{fig:sfc-decision-grids}
     \end{figure}
 
@@ -1123,7 +1124,7 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
         \safeincludegraphics[width=0.50\textwidth]{decision_diff.png}\\[6pt]
         \textbf{Execution stage}\\[2pt]
         \safeincludegraphics[width=0.50\textwidth]{execution_diff.png}
-        \caption{Stage-wise risk-minus-non-risk occupancy differences for the intention, decision, and execution stages, shown separately to make the small cell-wise shifts easier to read. Red indicates cells occupied more often in risky events, blue indicates the opposite, and each signed label is a percentage-point difference (pp). The centre cell is neutral because the cutter occupies it by construction.}
+        \caption[Stage-wise risk-minus-non-risk occupancy differences]{Stage-wise risk-minus-non-risk occupancy differences for the intention, decision, and execution stages, shown separately to make the small cell-wise shifts easier to read. Red indicates cells occupied more often in risky events, blue indicates the opposite, and each signed label is a percentage-point difference (pp). The centre cell is neutral because the cutter occupies it by construction.}
         \label{fig:sfc-stage-diff}
     \end{figure}
 
@@ -1139,7 +1140,7 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
     \begin{figure}[p]
         \centering
         \safeincludegraphics[width=0.97\textwidth,height=0.72\textheight,keepaspectratio]{archetype_heatmaps.png}
-        \caption{Seven decision-stage context archetypes derived from mirrored binary SFC signatures. A1--A7 are unsupervised cluster IDs relabelled by cluster size (A1 largest). In each panel, cell labels show mean occupancy percentages, while the text above the grid reports the archetype's event share, risk prevalence, and risk ratio relative to the overall dataset. The grey hatched centre cell is neutralised because the cutter occupies it by construction.}
+        \caption[Seven decision-stage context archetypes]{Seven decision-stage context archetypes derived from mirrored binary SFC signatures. A1--A7 are unsupervised cluster IDs relabelled by cluster size (A1 largest). In each panel, cell labels show mean occupancy percentages, while the text above the grid reports the archetype's event share, risk prevalence, and risk ratio relative to the overall dataset. The grey hatched centre cell is neutralised because the cutter occupies it by construction.}
         \label{fig:sfc-archetypes}
     \end{figure}
 
@@ -1239,7 +1240,7 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
     \begin{figure}[H]
         \centering
         \safeincludegraphics[width=\textwidth]{exid_exploratory_overview.png}
-        \caption{Exploratory exiD overview for the 10 selected recordings. Left: number of exported cut-ins per recording. Right: median execution-stage THW per recording. The variation across files reflects the heterogeneous interaction density of entry/exit scenes and reinforces that this add-on should be read as a limited transferability illustration rather than as a second benchmark.}
+        \caption[Exploratory exiD overview for the 10 selected recordings]{Exploratory exiD overview for the 10 selected recordings. Left: number of exported cut-ins per recording. Right: median execution-stage THW per recording. The variation across files reflects the heterogeneous interaction density of entry/exit scenes and reinforces that this add-on should be read as a limited transferability illustration rather than as a second benchmark.}
         \label{fig:exid-overview}
     \end{figure}
 
@@ -1248,7 +1249,7 @@ Context signatures & -- & 1,421,980 & Frame-level signatures for 10,023 events. 
     \begin{figure}[H]
         \centering
         \safeincludegraphics[width=\textwidth]{exid_ttc_summary.png}
-        \caption{Execution-stage TTC summary for the exploratory exiD extension. Left: share of exported cut-ins with finite TTC in each recording. Right: median execution-stage TTC among finite-TTC events only. Dashed lines show the pooled overall values (46.5\% finite share; median \SI{24.85}{\second}). Reporting both panels avoids conflating TTC severity with TTC availability, since TTC is undefined for non-closing interactions.}
+        \caption[Execution-stage TTC summary for the exploratory exiD extension]{Execution-stage TTC summary for the exploratory exiD extension. Left: share of exported cut-ins with finite TTC in each recording. Right: median execution-stage TTC among finite-TTC events only. Dashed lines show the pooled overall values (46.5\% finite share; median \SI{24.85}{\second}). Reporting both panels avoids conflating TTC severity with TTC availability, since TTC is undefined for non-closing interactions.}
         \label{fig:exid-ttc-summary}
     \end{figure}
 
@@ -1518,7 +1519,7 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
     \begin{figure}[H]
         \centering
         \safeincludegraphics[width=\textwidth]{fig_gui_command_deck.png}
-        \caption{Schematic layout of the interactive inspection dashboard used for qualitative review. The implemented dashboard is based on a modified version of the official \textit{highD} visualisation tools and was extended with cut-in-specific overlays, event selection, and stage/context displays.}
+        \caption[Schematic layout of the interactive inspection dashboard]{Schematic layout of the interactive inspection dashboard used for qualitative review. The implemented dashboard is based on a modified version of the official \textit{highD} visualisation tools and was extended with cut-in-specific overlays, event selection, and stage/context displays.}
         \label{fig:gui-dashboard}
     \end{figure}
 
@@ -1527,7 +1528,7 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
     \begin{figure}[H]
         \centering
         \safeincludegraphics[width=\textwidth]{fig_gui_exid_dashboard.png}
-        \caption{Example exiD dashboard view used in the exploratory extension. The same event-centred inspection workflow was reused for exiD scenes, with dataset-specific background rendering but unchanged cut-in review logic.}
+        \caption[Example exiD dashboard view used in the exploratory extension]{Example exiD dashboard view used in the exploratory extension. The same event-centred inspection workflow was reused for exiD scenes, with dataset-specific background rendering but unchanged cut-in review logic.}
         \label{fig:gui-dashboard-exid}
     \end{figure}
 
@@ -1595,25 +1596,31 @@ Right-lane follower & \texttt{rightFollowingId} & Closest vehicle behind in the 
     \begin{figure}[tbp]
         \centering
         \safeincludegraphics[width=\textwidth]{ngsim_feasibility_counts.png}
-        \caption{Exploratory NGSIM feasibility probe on the two freeway subsets. Bars show detected lane changes and cut-in candidates after harmonisation; labels above the cut-in bars show cut-in candidates as a share of detected lane changes. The figure is reported as a scoping artefact only and is not interpreted as cross-dataset validation performance.}
+        \caption[Exploratory NGSIM feasibility probe on the two freeway subsets]{Exploratory NGSIM feasibility probe on the two freeway subsets. Bars show detected lane changes and cut-in candidates after harmonisation; labels above the cut-in bars show cut-in candidates as a share of detected lane changes. The figure is reported as a scoping artefact only and is not interpreted as cross-dataset validation performance.}
         \label{fig:ngsim-feasibility}
     \end{figure}
 
     \begin{table}[tbp]
         \centering
-        \caption{Summary of the NGSIM feasibility probe. Negative-gap share denotes candidate events with at least one frame where reported \texttt{Space\_Headway} minus cutter length became negative; it is used only as a harmonisation stress indicator, not as a behavioural result.}
+        \caption[Summary of the NGSIM feasibility probe]{Summary of the NGSIM feasibility probe. Negative-gap share denotes candidate events with at least one frame where reported \texttt{Space\_Headway} minus cutter length became negative; it is used only as a harmonisation stress indicator, not as a behavioural result.}
         \label{tab:ngsim-feasibility}
         {\small
         \renewcommand{\arraystretch}{1.15}
-        \resizebox{\textwidth}{!}{%
-            \begin{tabular}{@{}l r r r r r r r r r@{}}
+            \begin{tabularx}{0.82\textwidth}{@{}>{\raggedright\arraybackslash}X r r@{}}
 \toprule
-Location & Raw rows & Duplicates removed & Track instances & Lane changes & Cut-in candidates & Cut-in ratio & Median min THW & Finite TTC share & Negative-gap share \\
+Metric & I-80 & US-101 \\
 \midrule
-I-80   & 4,566,387 & 0       & 5,678 & 2,647 & 2,530 & 95.6\% & \SI{2.05}{\second} & 67.5\% & 4.0\% \\
-US-101 & 4,802,933 & 704,000 & 6,101 & 2,780 & 1,919 & 69.0\% & \SI{1.60}{\second} & 54.3\% & 2.4\% \\
+Raw rows & 4,566,387 & 4,802,933 \\
+Duplicates removed & 0 & 704,000 \\
+Track instances & 5,678 & 6,101 \\
+Lane changes & 2,647 & 2,780 \\
+Cut-in candidates & 2,530 & 1,919 \\
+Cut-in ratio & 95.6\% & 69.0\% \\
+Median min THW & \SI{2.05}{\second} & \SI{1.60}{\second} \\
+Finite TTC share & 67.5\% & 54.3\% \\
+Negative-gap share & 4.0\% & 2.4\% \\
 \bottomrule
-            \end{tabular}}}
+            \end{tabularx}}
     \end{table}
 
 

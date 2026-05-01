@@ -8,6 +8,14 @@ The initial implementation is based on the **highD dataset**, but the codebase i
 
 ---
 
+## Citation
+
+Arsule, S., & Shinde, S. (2026). *A Minimal-Input Framework for Cut-In Detection and Pair-Specific Risk Analysis in Highway Trajectory Data*. Master's thesis in Software Engineering, Chalmers University of Technology and University of Gothenburg.
+
+Repository citation metadata is provided in `CITATION.cff`.
+
+---
+
 ## Scope of the project
 
 The main objectives of this project are:

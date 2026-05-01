@@ -92,21 +92,24 @@ def plot_grid(
             norm=TwoSlopeNorm(vmin=-scale * 100.0, vcenter=0.0, vmax=scale * 100.0),
         )
         cbar = fig.colorbar(im, ax=ax, shrink=0.88, pad=0.03)
-        cbar.set_label("risk - non-risk occupancy difference (percentage points)")
+        cbar.set_label("risk - non-risk occupancy difference (percentage points)", fontsize=10.5)
+        cbar.ax.tick_params(labelsize=10)
         footer = "pp = percentage points. Positive values mean more occupancy in risky events."
     else:
         cmap = plt.get_cmap("YlGnBu").copy()
         cmap.set_bad(color="#f0f0f0")
         im = ax.imshow(display, vmin=0.0, vmax=1.0, cmap=cmap)
         cbar = fig.colorbar(im, ax=ax, shrink=0.88, pad=0.03)
-        cbar.set_label("mean occupancy probability")
+        cbar.set_label("mean occupancy probability", fontsize=10.5)
         cbar.set_ticks(np.linspace(0.0, 1.0, 5))
         cbar.set_ticklabels(["0%", "25%", "50%", "75%", "100%"])
+        cbar.ax.tick_params(labelsize=10)
         footer = "Each cell shows the share of stage frames in which that semantic region is occupied."
 
-    ax.set_title(title)
+    ax.set_title(title, fontsize=13, fontweight="semibold")
     ax.set_xticks([0, 1, 2], xtick_labels)
     ax.set_yticks([0, 1, 2], ytick_labels)
+    ax.tick_params(axis="both", labelsize=11)
 
     # Emphasize the 3x3 semantic cells so small shifts remain legible.
     ax.set_xticks(np.arange(-0.5, 3.0, 1.0), minor=True)
@@ -124,7 +127,7 @@ def plot_grid(
                     "cutter\nfixed",
                     ha="center",
                     va="center",
-                    fontsize=10,
+                    fontsize=11.5,
                     fontweight="semibold",
                     color="#4a4a4a",
                 )
@@ -144,12 +147,12 @@ def plot_grid(
                 label,
                 ha="center",
                 va="center",
-                fontsize=10,
+                fontsize=12.5,
                 fontweight="semibold",
                 color=text_color,
             )
 
-    fig.text(0.5, 0.02, footer, ha="center", fontsize=9, color="#444444")
+    fig.text(0.5, 0.02, footer, ha="center", fontsize=10, color="#444444")
     fig.tight_layout(rect=(0.0, 0.05, 1.0, 1.0))
     fig.savefig(out, dpi=200, bbox_inches="tight")
     plt.close(fig)
