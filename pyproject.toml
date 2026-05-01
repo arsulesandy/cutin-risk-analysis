@@ -9,6 +9,15 @@ description = "Framework for cut-in detection and lane-change risk analysis in h
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
+keywords = ["traffic-safety", "trajectory-analysis", "cut-in", "lane-change", "surrogate-safety"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering",
+]
 
 authors = [
     { name = "Sandeep Arsule" },
@@ -30,6 +39,11 @@ dev = [
     "mypy>=1.8"
 ]
 
+[project.urls]
+Homepage = "https://github.com/arsulesandy/cutin-risk-analysis"
+Repository = "https://github.com/arsulesandy/cutin-risk-analysis"
+Issues = "https://github.com/arsulesandy/cutin-risk-analysis/issues"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
@@ -39,6 +53,11 @@ where = ["src"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint.per-file-ignores]
+# The visualizer scripts retain the original upstream-style module layout and
+# star-imported constants used by the interactive plotting tool.
+"visuaziler/*.py" = ["E402", "F403", "F405"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

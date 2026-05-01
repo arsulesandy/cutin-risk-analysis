@@ -108,7 +108,6 @@ def main():
     ttc_low = ttc_finite & (sf["execution_ttc_min"] < 5.0)
     drac_high = sf["execution_drac_finite"] & (sf["execution_drac"] > 3.35)
 
-    n = len(sf)
     print(f"THW < 0.7s:     {thw_risky.sum():>5} ({thw_risky.mean():.1%})")
     print(f"TTC < 5.0s:     {ttc_low.sum():>5} ({ttc_low.mean():.1%})")
     print(f"DRAC > 3.35:    {drac_high.sum():>5} ({drac_high.mean():.1%})")

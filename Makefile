@@ -1,13 +1,23 @@
-.PHONY: install test lint format
+PYTHON ?= python3
+
+.PHONY: install test lint format check phases clean
 
 install:
-	pip install -e ".[dev]"
+	$(PYTHON) -m pip install -e ".[dev]"
 
 test:
-	pytest
+	$(PYTHON) -m pytest
 
 lint:
-	echo "Add linting commands (e.g., ruff, black)."
+	$(PYTHON) -m ruff check .
 
 format:
-	echo "Add formatting commands (e.g., black, isort)."
+	$(PYTHON) -m ruff format .
+
+check: test lint
+
+phases:
+	$(PYTHON) scripts/run_thesis_phases.py --list-phases
+
+clean:
+	rm -rf .pytest_cache .ruff_cache build dist *.egg-info

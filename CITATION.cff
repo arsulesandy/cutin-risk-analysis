@@ -1,6 +1,9 @@
 cff-version: 1.2.0
 message: "If you use this software or thesis material, please cite it as below."
+type: software
 title: "A Minimal-Input Framework for Cut-In Detection and Pair-Specific Risk Analysis in Highway Trajectory Data"
+version: "0.1.0"
+license: "MIT"
 repository-code: "https://github.com/arsulesandy/cutin-risk-analysis"
 url: "https://github.com/arsulesandy/cutin-risk-analysis"
 authors:
@@ -8,4 +11,5 @@ authors:
     given-names: "Sandeep"
   - family-names: "Shinde"
     given-names: "Shradha"
-date-released: "2026-04-15"
+date-released: "2026-05-02"
+abstract: "Research code for detecting cut-in lane-change interactions and analysing pair-specific surrogate safety indicators in highway trajectory data."

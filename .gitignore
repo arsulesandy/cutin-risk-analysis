@@ -205,9 +205,14 @@ cython_debug/
 data/raw/
 data/interim/
 data/processed/
+output/
+outputs/
 outputs/runs/
 outputs/figures/
 outputs/tables/
+tmp/
+deck_workspace/
+latex/
 
 # Marimo
 marimo/_static/
@@ -217,13 +222,8 @@ data/.DS_Store
 /.idea
 .DS_Store
 /scripts/outputs
-configs/paths.local.json
-configs/detection.local.json
-configs/thesis.local.json
-outputs
+configs/*.local.json
 Halftime_Presentation_Traj2Rel_SFC.pptx
 ~$Halftime_Presentation_Traj2Rel_SFC.pptx
-/tmp
 /drone-dataset-tools-master
 Traj2Rel-SFC-Defense.pptx
-/deck_workspace

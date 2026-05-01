@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 from pathlib import Path
-import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -126,9 +125,6 @@ def main() -> None:
     _plot_counts(summary_df, fig_path)
     canonical_fig = mirror_file_to_step(fig_path, STEP_ID, kind="figures")
 
-    latex_copy = project_root() / "latex" / "ngsim_feasibility_counts.png"
-    shutil.copy2(canonical_fig, latex_copy)
-
     details = [
         "# Step 21 NGSIM Feasibility Report",
         "",
@@ -145,7 +141,6 @@ def main() -> None:
         "- Important limitation: this is an exploratory transferability check, not a second full benchmark.",
         f"- Summary CSV: `{summary_csv}`",
         f"- Figure: `{canonical_fig}`",
-        f"- Thesis figure copy: `{latex_copy}`",
         "",
         "## Summary table",
         "",
@@ -157,7 +152,6 @@ def main() -> None:
     print(summary_df.to_string(index=False))
     print("Saved summary:", summary_csv)
     print("Saved figure:", canonical_fig)
-    print("Copied thesis figure:", latex_copy)
     print("Saved markdown:", details_md)
 
 

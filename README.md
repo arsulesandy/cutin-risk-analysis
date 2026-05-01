@@ -1,118 +1,66 @@
 # Cut-in Risk Analysis
 
-This repository contains the code developed as part of a Master’s thesis on **cut-in lane-change risk analysis** using naturalistic highway trajectory data.
+Research code for the thesis **"A Minimal-Input Framework for Cut-In Detection and Pair-Specific Risk Analysis in Highway Trajectory Data"** by Sandeep Arsule and Shradha Shinde.
 
-The project focuses on detecting cut-in scenarios in a **clear and reproducible way** and analysing how different risk indicators behave during these manoeuvres. The work is intended for **offline analysis and research use**, not for real-time driving systems or controllers.
+The repository implements a reproducible offline pipeline for detecting cut-in lane-change interactions in highway trajectory data, reconstructing pair-specific vehicle context, and comparing surrogate safety indicators over maneuver stages. It is intended as a research artifact, not as a real-time driving system or vehicle controller.
 
-The initial implementation is based on the **highD dataset**, but the codebase is structured to allow additional trajectory datasets to be integrated later without changing the core analysis logic.
+## What This Repository Contains
 
----
+- Dataset adapters and preprocessing utilities for trajectory datasets, with highD as the primary thesis dataset.
+- Rule-based lane-change and cut-in detection.
+- Neighbor and lane reconstruction checks used to validate pair-specific context.
+- Surrogate safety indicators including distance headway, time headway, time-to-collision, safe gap, and braking-demand style measures.
+- Stage-level feature extraction, risk summaries, space-filling-curve encodings, and archetype analysis.
+- Scripts for regenerating reproducibility reports, tables, and figures.
+- A lightweight visual inspection tool under `visuaziler/` (historical directory name).
 
-## Citation
+Raw datasets, generated outputs, and third-party literature PDFs are intentionally not included.
 
-Arsule, S., & Shinde, S. (2026). *A Minimal-Input Framework for Cut-In Detection and Pair-Specific Risk Analysis in Highway Trajectory Data*. Master's thesis in Software Engineering, Chalmers University of Technology and University of Gothenburg.
+## Repository Layout
 
-Repository citation metadata is provided in `CITATION.cff`.
+| Path | Purpose |
+| --- | --- |
+| `src/cutin_risk/` | Python package with dataset readers, detection logic, indicators, analysis, encoding, IO, and visualization helpers. |
+| `scripts/` | Reproducible thesis pipeline steps and phase runners. |
+| `configs/` | Committed default configuration. Use matching `*.local.json` files for machine-specific overrides. |
+| `tests/` | Unit tests for geometry, indicator behavior, and configuration defaults. |
+| `data/` | Local dataset mount point. Raw and derived data are gitignored. |
+| `outputs/` | Generated reports, figures, tables, and manifests. Gitignored. |
+| `docs/` | Public-release notes for data access and reproducibility. |
 
----
+## Requirements
 
-## Scope of the project
+- Python 3.10 or newer
+- Access to the relevant trajectory dataset files, primarily highD for the thesis pipeline
+- A Unix-like shell for the provided runner scripts
 
-The main objectives of this project are:
-
-- To detect lane-change events from trajectory data using explicit, rule-based logic
-- To identify cut-in scenarios based on vehicle neighbour relations
-- To compute established surrogate risk indicators as time series
-- To compare indicators in terms of timing, severity, and agreement
-- To provide a maintainable and reproducible analysis pipeline
-
-The goal is not to define a universal standard for cut-in risk, but to make assumptions, definitions, and results transparent and repeatable.
-
----
-
-## What the pipeline does
-
-The analysis pipeline is organized into four main stages:
-
-### 1. Dataset preparation
-- Load vehicle trajectories and metadata
-- Normalize time, units, and coordinate conventions
-- Validate lane assignments and neighbour relationships
-- Perform basic data quality checks
-
-### 2. Scenario detection
-- Detect lane-change events based on lane assignment over time
-- Identify cut-in situations when a lane-changing vehicle becomes the immediate predecessor of another vehicle in the target lane
-- Extract consistent time windows before, during, and after the manoeuvre
-
-### 3. Risk indicator computation
-For each cut-in scenario, the thesis pipeline computes:
-- Distance headway (DHW)
-- Time headway (THW)
-- Time-to-Collision (TTC)
-
-Indicators are computed as time series to capture how risk evolves over the manoeuvre.
-Additional stage-level features and SFC encodings are built on top of these base indicators.
-
-### 4. Analysis and inspection
-- Compare indicator timing and severity
-- Analyse agreement and disagreement between indicators
-- Generate summary statistics and figures
-- Visually inspect selected scenarios for sanity checking
-
----
-
-## Supported datasets
-
-### highD (primary dataset)
-
-The project currently supports the highD dataset, which consists of drone-recorded highway vehicle trajectories with detailed neighbour information.
-
-Due to licensing restrictions, **raw highD data is not included** in this repository. You must obtain access separately and store the data locally.
-
-### Extending to other datasets
-
-The codebase is designed to be dataset-agnostic. Support for additional trajectory datasets can be added by implementing a dataset adapter, without modifying the detection or analysis logic.
-
----
-
-## Repository structure (overview)
-
-- `src/cutin_risk/`  
-  Core library code, including dataset adapters, detection logic, risk indicators, analysis utilities, and visualization tools.
-
-- `configs/`  
-  Configuration files for datasets and experiments. All runs are driven by configuration to ensure reproducibility.
-
-- `data/`  
-  Local data directories. Raw data is gitignored. Only derived or intermediate artifacts should be stored here.
-
-- `outputs/`  
-  Generated results such as extracted scenarios, figures, and tables. Outputs are written to stable `Step NN` paths and overwritten on rerun.
-
-- `tests/`  
-  Unit and integration tests, primarily focused on indicator calculations and detection logic.
-
----
-
-## Running the code
-
-### Environment setup
-
-Create and activate a virtual environment, then install dependencies:
+Install the package in editable mode with development tools:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -U pip
-pip install -e ".[dev]"
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
 ```
 
-### Path configuration
+Run the checks:
 
-All scripts now resolve default paths from `configs/paths.json`.
+```bash
+make test
+make lint
+```
 
-To set machine-specific paths without committing them, create `configs/paths.local.json`:
+## Data Setup
+
+The thesis data cannot be redistributed with this repository. Obtain dataset access from the original providers and store the files locally.
+
+By default, highD is expected at:
+
+```text
+data/raw/highD-dataset-v1.0/data
+```
+
+For a machine-specific path, create `configs/paths.local.json`:
 
 ```json
 {
@@ -123,170 +71,107 @@ To set machine-specific paths without committing them, create `configs/paths.loc
 }
 ```
 
-Config precedence is:
-1. Environment variables (highest priority)
+Path precedence is:
+
+1. Environment variables
 2. `configs/paths.local.json`
-3. `configs/paths.json` (default, committed)
+3. `configs/paths.json`
 
 Supported environment variables:
-- `CUTIN_PATHS_FILE` (custom JSON config location)
+
+- `CUTIN_PATHS_FILE`
 - `CUTIN_DATASET_ROOT`
 - `CUTIN_OUTPUTS_ROOT`
 - `CUTIN_STEP14_CODES_CSV`
 
-### Detection configuration (thesis-sensitive defaults)
+See [docs/DATA.md](docs/DATA.md) for expected file names and data-publication notes.
 
-Lane-change and cut-in defaults are resolved from `configs/detection.json`.
-To override locally without committing, create `configs/detection.local.json`:
+## Running The Thesis Pipeline
 
-```json
-{
-  "detection": {
-    "lane_change": {
-      "min_stable_before_frames": 25,
-      "min_stable_after_frames": 25,
-      "ignore_lane_ids": [0]
-    },
-    "cutin": {
-      "search_window_frames": 50,
-      "start_offset_frames": 0,
-      "max_relation_delay_frames": 15,
-      "min_relation_frames": 10,
-      "require_new_follower": true,
-      "precheck_frames": 25,
-      "no_neighbor_ids": [0, -1],
-      "require_lane_match": true,
-      "require_preceding_consistency": true
-    }
-  }
-}
-```
-
-Detection config precedence is:
-1. `CUTIN_DETECTION_CONFIG_FILE` (custom JSON config location)
-2. `configs/detection.local.json`
-3. `configs/detection.json`
-4. Built-in defaults in code (used if config file is missing)
-
-### Thesis pipeline configuration
-
-Step-level thesis defaults are resolved from `configs/thesis.json`.
-To override locally without committing, create `configs/thesis.local.json`.
-
-Key groups include:
-- `pipeline` (recording subsets, THW label threshold, CI settings)
-- `risk_label` (risk/very-risk cutoffs)
-- `step03`, `step06`..`step10`, `step14`, `step15a`, `step15d`, `step18` (thesis workflow settings)
-- `indicators` (position reference, indicator numeric safeguards)
-  For highD thesis runs, use `indicators.position_reference = "bbox_topleft"`.
-
-Thesis config precedence is:
-1. `CUTIN_THESIS_CONFIG_FILE` (custom JSON config location)
-2. `configs/thesis.local.json`
-3. `configs/thesis.json`
-4. Built-in defaults in each script (used if config file is missing)
-
-## Thesis alignment note
-
-For proposal-vs-implementation scope transparency, see:
-- `THESIS_SCOPE_DELTA.md`
-
----
-
-## New Member Quick Start (Thesis Flow)
-
-This section is the recommended onboarding flow for thesis users.
-It starts from Python setup, then runs the core steps in order.
-
-Scope for this guide:
-- Core thesis pipeline phases: interaction mining, core reconstruction, safety quantification, context signatures, reference-label evaluation
-- Optional support steps kept in the repository: Step 01, Step 02, Step 04, Step 05, Step 08
-
-### 1) Python setup (`.venv`)
+The recommended entry point is the phase runner:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -U pip
-pip install -e ".[dev]"
+python scripts/run_thesis_phases.py --list-phases
 ```
 
-### 2) Configure dataset path
-
-Create `configs/paths.local.json`:
-
-```json
-{
-  "paths": {
-    "dataset_root": "/absolute/path/to/highD/data",
-    "outputs_root": "outputs"
-  }
-}
-```
-
-Current project default dataset path (from `configs/paths.json`) is:
-- `data/raw/highD-dataset-v1.0/data`
-
-So if you keep the dataset inside this repository, place files like:
-- `data/raw/highD-dataset-v1.0/data/01_tracks.csv`
-- `data/raw/highD-dataset-v1.0/data/01_tracksMeta.csv`
-- `data/raw/highD-dataset-v1.0/data/01_recordingMeta.csv`
-
-Quick path check:
+Run the core phases in order:
 
 ```bash
-ls data/raw/highD-dataset-v1.0/data | head
-```
-
-### 3) Run thesis phases (recommended order)
-
-```bash
-.venv/bin/python scripts/run_thesis_phases.py --list-phases
-.venv/bin/python scripts/run_thesis_phases.py \
+python scripts/run_thesis_phases.py \
   --phases interaction-mining core-reconstruction safety-quantification
-.venv/bin/python scripts/run_thesis_phases.py \
+
+python scripts/run_thesis_phases.py \
   --phases context-signatures reference-label-evaluation
+```
+
+For the approved thesis run, use the wrapper:
+
+```bash
 PYTHON_BIN=.venv/bin/python ./scripts/run_final_thesis_pipeline.sh
 ```
 
-### 4) What each phase does and where output goes
+Key outputs are written under `outputs/reports/`, including:
 
-| Phase | Purpose | Underlying scripts | Main output path |
-|---|---|---|---|
-| Preliminary processing | Basic recording checks and lane-change summary | `step01`, `step02` | `outputs/reports/Step 01`, `outputs/reports/Step 02` |
-| Interaction mining | Cut-in extraction and event statistics | `step03` | `outputs/reports/Step 03` |
-| Core reconstruction | Neighbour and XY-lane reconstruction with agreement checks | `step06`, `step07` | `outputs/reports/Step 06`, `outputs/reports/Step 07` |
-| Safety quantification | Stage features, pair-consistent indicators, and risk summaries | `step09`, `step10` | `outputs/reports/Step 09`, `outputs/reports/Step 10` |
-| Context signatures | SFC encoding, mirroring, and archetype analysis | `step14`, `step14 report`, `step15A`, `step15D` | `outputs/reports/Step 14`, `outputs/reports/Step 15A`, `outputs/reports/Step 15D` |
-| Reference-label evaluation | Confidence intervals over reconstruction agreement | `step18` | `outputs/reports/Step 18` |
+- `outputs/reports/Step 03/cutin_details.md`
+- `outputs/reports/Step 07/xy_lane_pipeline_metrics_summary.csv`
+- `outputs/reports/Step 10/risk_summary_by_recording.csv`
+- `outputs/reports/Step 15D/archetype_report.md`
+- `outputs/reports/final/metrics_with_ci.md`
+- `outputs/reports/final/run_manifest.json`
 
-The low-level step scripts remain in `scripts/` as implementation detail, but the recommended entrypoint is now the phase runner.
+For a fuller reproduction guide, see [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md).
 
----
+## Configuration
 
-## Visualizer (after pipeline run)
+Committed defaults live in:
 
-Use visualizer with Step 15A canonical SFC codes when you want normalized SFC feature inspection:
+- `configs/paths.json`
+- `configs/detection.json`
+- `configs/thesis.json`
+
+Use local overrides for private paths or experiment variants:
+
+- `configs/paths.local.json`
+- `configs/detection.local.json`
+- `configs/thesis.local.json`
+
+These local files are ignored by git. The thesis-sensitive defaults are kept in the committed configuration files so that public reruns use the same assumptions unless explicitly overridden.
+
+## Visual Inspection
+
+To inspect normalized SFC features after Step 15A:
 
 ```bash
-.venv/bin/python visuaziler/main.py \
+python visuaziler/main.py \
   --recording_id 03 \
   --sfc_codes_csv "outputs/reports/Step 15A/sfc_binary_codes_long_hilbert_mirrored.csv" \
   --sfc_codes_canonical true
 ```
 
-Notes:
-- `--recording_id` can be any available recording (for example `01` to `20` in your current local run).
-- For strict matrix verification against highD raw neighbor IDs, prefer Step 14 codes with `--sfc_codes_canonical false` (default).
-- If `sfc_codes_canonical` and code-table orientation are inconsistent, visualizer now auto-corrects mode and marks it with `mode=*` in the SFC panel.
+For strict checks against raw highD neighbor IDs, use Step 14 codes and keep `--sfc_codes_canonical false`.
 
-## Thesis document assets
+## Scope And Limitations
 
-The thesis source now lives in `latex/`.
-To refresh generated figures used by the document from the current `outputs/` tree:
+- The pipeline is designed for offline research and thesis reproducibility.
+- The default thesis configuration targets highD-style trajectory data.
+- exiD and NGSIM-related scripts are exploratory/supporting utilities unless explicitly documented by a thesis phase.
+- The rule-based definitions are intentionally transparent; they are not claimed as universal cut-in or risk standards.
+- Results depend on the dataset license, local data version, and configuration files used for a run.
 
-```bash
-.venv/bin/python scripts/sync_latex_assets.py
+## Citation
+
+If you use this repository, cite:
+
+```text
+Arsule, S., & Shinde, S. (2026). A Minimal-Input Framework for Cut-In Detection
+and Pair-Specific Risk Analysis in Highway Trajectory Data. Master's thesis in
+Software Engineering, Chalmers University of Technology and University of Gothenburg.
 ```
 
-This copies only the figure files referenced by `latex/main.tex` that also exist under `outputs/`.
+Machine-readable citation metadata is available in [CITATION.cff](CITATION.cff).
+
+## License
+
+This repository's original code and documentation are released under the MIT License; see [LICENSE](LICENSE).
+
+Dataset files, generated outputs derived from licensed datasets, thesis build artifacts, and third-party articles or PDFs are not covered by this license and are not redistributed here.
